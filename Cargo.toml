@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "hardfiskur_core",
+    "hardfiskur_uci"
+]
