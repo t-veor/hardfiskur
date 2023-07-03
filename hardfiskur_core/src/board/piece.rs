@@ -1,6 +1,7 @@
 use std::{
     fmt::{Debug, Display, Write},
     num::NonZeroU8,
+    str::FromStr,
 };
 
 use num_derive::{FromPrimitive, ToPrimitive};
@@ -279,6 +280,21 @@ impl Display for Piece {
     }
 }
 
+impl FromStr for Piece {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() == 1 {
+            s.chars()
+                .next()
+                .and_then(Piece::try_from_fen_char)
+                .ok_or(())
+        } else {
+            Err(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
 
@@ -512,5 +528,15 @@ mod test {
                 assert_eq!(piece.as_fen_char().to_string(), format!("{piece}"));
             }
         }
+    }
+
+    #[test]
+    fn test_piece_from_str() {
+        assert_eq!("K".parse(), Ok(Piece::WHITE_KING));
+        assert_eq!("n".parse(), Ok(Piece::BLACK_KNIGHT));
+        assert_eq!("b".parse(), Ok(Piece::BLACK_BISHOP));
+        assert_eq!("".parse::<Piece>(), Err(()));
+        assert_eq!("a".parse::<Piece>(), Err(()));
+        assert_eq!("KK".parse::<Piece>(), Err(()));
     }
 }
