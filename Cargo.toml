@@ -1,5 +1,9 @@
 [workspace]
 members = [
     "hardfiskur_core",
-    "hardfiskur_uci"
+    "hardfiskur_uci",
+    "hardfiskur_ui",
+
+    "find_magics",
+    "magic_bitboard_viewer",
 ]
