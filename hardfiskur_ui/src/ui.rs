@@ -16,6 +16,12 @@ pub struct ChessUIData<'a> {
     pub drag_mask: Bitboard,
 }
 
+impl<'a> ChessUIData<'a> {
+    fn piece_at(&self, square: Square) -> Option<Piece> {
+        self.pieces.get(square.index()).copied().flatten()
+    }
+}
+
 #[derive(Debug)]
 pub struct ChessUIResponse {
     pub egui_response: egui::Response,
@@ -44,9 +50,9 @@ impl ChessUI {
 
         self.paint_board(&data, &painter, board_rect);
 
-        self.paint_pieces(&data, ui, board_rect, rel_mouse_pos);
-
         self.paint_bitboard(&data, ui, &painter, board_rect);
+
+        self.paint_pieces(&data, ui, board_rect, rel_mouse_pos);
 
         let mut response = ChessUIResponse {
             egui_response,
@@ -145,10 +151,8 @@ impl ChessUI {
             .drag_started_by(PointerButton::Primary)
         {
             if let Some(start) = mouse_square {
-                if data.drag_mask.get(start) {
-                    if data.pieces.get(start.index()).copied().flatten().is_some() {
-                        self.drag_start = mouse_square;
-                    }
+                if data.drag_mask.get(start) && data.piece_at(start).is_some() {
+                    self.drag_start = mouse_square;
                 }
             }
         }
@@ -157,11 +161,9 @@ impl ChessUI {
             .egui_response
             .drag_released_by(PointerButton::Primary)
         {
-            if let Some(end) = mouse_square {
-                if let Some(start) = self.drag_start {
-                    if data.pieces.get(start.index()).copied().flatten().is_some() {
-                        response.dropped = Some((start, end));
-                    }
+            if let (Some(start), Some(end)) = (self.drag_start, mouse_square) {
+                if data.piece_at(start).is_some() {
+                    response.dropped = Some((start, end));
                 }
             }
             self.drag_start = None;
