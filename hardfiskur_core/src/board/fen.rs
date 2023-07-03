@@ -72,7 +72,7 @@ pub fn try_parse_fen(fen: &str) -> Option<Board> {
                 let digit = (char as u8) - b'0';
                 file += digit;
             } else {
-                let piece = Piece::try_from_char(char)?;
+                let piece = Piece::try_from_fen_char(char)?;
                 let index = Square::new_unchecked(rank, file).index();
                 board[index] = Some(piece);
 

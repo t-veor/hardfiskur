@@ -70,8 +70,8 @@ impl BoardRepr {
 
     pub fn piece_count(&self, piece_type: PieceType) -> (u32, u32) {
         (
-            self[Piece::new(Color::White, piece_type)].pop_count(),
-            self[Piece::new(Color::Black, piece_type)].pop_count(),
+            self[piece_type.white()].pop_count(),
+            self[piece_type.black()].pop_count(),
         )
     }
 
@@ -129,7 +129,7 @@ impl BoardRepr {
             let removed_pawn = Square::new_unchecked(from.rank(), to.file());
             let removed_pawn_bb = Bitboard::from_square(removed_pawn);
 
-            self[Piece::new(color.flip(), PieceType::Pawn)] ^= removed_pawn_bb;
+            self[PieceType::Pawn.with_color(color.flip())] ^= removed_pawn_bb;
             self[color.flip()] ^= removed_pawn_bb;
 
             // TODO: update Zobrist hash
@@ -157,7 +157,7 @@ impl BoardRepr {
                 let rook_to_bb = Bitboard::from_square(rook_to);
                 let rook_from_to_bb = rook_from_bb ^ rook_to_bb;
 
-                self[Piece::new(color, PieceType::Rook)] ^= rook_from_to_bb;
+                self[PieceType::Rook.with_color(color)] ^= rook_from_to_bb;
                 self[color] ^= rook_from_to_bb;
 
                 // TODO: update Zobrist hash

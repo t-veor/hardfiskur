@@ -55,9 +55,9 @@ impl eframe::App for MagicBitboardViewerUI {
                     let mut board = [None; 64];
                     for (i, piece) in board.iter_mut().enumerate() {
                         if Square::from_index_unchecked(i) == self.square {
-                            *piece = Some(Piece::new(Color::White, self.piece));
+                            *piece = Some(Piece::white(self.piece));
                         } else if self.blockers.get(Square::from_index_unchecked(i)) {
-                            *piece = Some(Piece::new(Color::Black, PieceType::Pawn));
+                            *piece = Some(Piece::BLACK_PAWN);
                         }
                     }
 
