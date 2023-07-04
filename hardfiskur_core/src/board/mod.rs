@@ -1,3 +1,5 @@
+//! Structs and functions related to to the board representation.
+
 pub mod bitboard;
 mod board_repr;
 mod fen;

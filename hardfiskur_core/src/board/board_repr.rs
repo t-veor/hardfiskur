@@ -107,9 +107,14 @@ impl BoardRepr {
     }
 
     /// Make the provided move on the board.
+    ///
     /// No checks are performed to ensure the move is valid.
+    ///
     /// This method is reversible -- to undo the move, simply call this method
-    /// again with the same Move.
+    /// again with the same [`Move`], while the board state is the same as the
+    /// state immediately after performing this move (i.e. if you make multiple
+    /// moves and want to undo them, you must undo the latest move first and the
+    /// earliest move last).
     pub fn move_unchecked(&mut self, the_move: Move) {
         let from = the_move.from_square();
         let to = the_move.to_square();
