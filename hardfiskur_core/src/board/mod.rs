@@ -11,6 +11,7 @@ use bitflags::bitflags;
 
 pub use bitboard::Bitboard;
 pub use board_repr::BoardRepr;
+pub use fen::FenParseError;
 pub use move_repr::{Move, MoveFlags};
 pub use piece::{Color, Piece, PieceType};
 pub use square::Square;
@@ -89,14 +90,6 @@ impl Board {
 
     pub fn starting_position() -> Self {
         Self::try_parse_fen(STARTING_POSITION_FEN).unwrap()
-    }
-
-    pub fn fen(&self) -> String {
-        fen::board_to_fen(self)
-    }
-
-    pub fn try_parse_fen(fen: &str) -> Option<Self> {
-        fen::try_parse_fen(fen)
     }
 }
 

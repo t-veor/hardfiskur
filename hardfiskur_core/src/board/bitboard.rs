@@ -6,7 +6,7 @@ use super::Square;
 /// <https://www.chessprogramming.org/Bitboards>
 ///
 /// Methods assume that the least significant bit is a1, the 8th least
-/// significant bit is a8, and the most significant bit is h8.
+/// significant bit is h1, and the most significant bit is h8.
 ///
 /// The underlying [`u64`] of a bitboard can simply be accessed via `.0`.
 ///

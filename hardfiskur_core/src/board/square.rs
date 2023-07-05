@@ -6,7 +6,7 @@ use std::{
 /// Represents a square on the chessboard.
 ///
 /// Internally, represents a square as an integer from 0-63, with 0 being a1, 7
-/// being a8, and 63 being h8.
+/// being h1, and 63 being h8.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Square(u8);
 
@@ -50,7 +50,7 @@ impl Square {
 
     /// Construct a [`Square`] from the provided [`usize`].
     ///
-    /// The indexing scheme starts with 0 being a1, 7 being a8, and 63 being h8.
+    /// The indexing scheme starts with 0 being a1, 7 being h1, and 63 being h8.
     /// Values outside the range 0-63 will return [`None`].
     pub const fn from_index(index: usize) -> Option<Self> {
         if index < 64 {
