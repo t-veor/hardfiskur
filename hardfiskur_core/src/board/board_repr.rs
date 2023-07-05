@@ -90,11 +90,8 @@ impl BoardRepr {
     }
 
     pub fn pieces(&self) -> impl Iterator<Item = (Piece, Square)> + '_ {
-        self.boards().flat_map(|(piece, board)| {
-            board
-                .bits()
-                .map(move |square| (piece, Square::from_u8_unchecked(square)))
-        })
+        self.boards()
+            .flat_map(|(piece, board)| board.set_squares().map(move |square| (piece, square)))
     }
 
     pub fn boards_colored(&self, color: Color) -> impl Iterator<Item = (Piece, Bitboard)> + '_ {

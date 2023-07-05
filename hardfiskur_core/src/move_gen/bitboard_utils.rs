@@ -1,6 +1,6 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 
-use crate::board::{bitboard::Bitboard, Square};
+use crate::board::{Bitboard, Square};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 pub enum Direction {
@@ -75,7 +75,7 @@ fn positive_ray_attacks(
 ) -> Bitboard {
     let attacks = ray_attacks[square.index()][dir as usize];
     let blocker = attacks & occupied;
-    let block_square = (blocker | Bitboard(0x8000000000000000)).lsb();
+    let block_square = (blocker | Bitboard(0x8000000000000000)).lsb().unwrap();
     attacks ^ ray_attacks[block_square as usize][dir as usize]
 }
 
@@ -87,7 +87,7 @@ fn negative_ray_attacks(
 ) -> Bitboard {
     let attacks = ray_attacks[square.index()][dir as usize];
     let blocker = attacks & occupied;
-    let block_square = (blocker | Bitboard(1)).msb();
+    let block_square = (blocker | Bitboard(1)).msb().unwrap();
     attacks ^ ray_attacks[block_square as usize][dir as usize]
 }
 

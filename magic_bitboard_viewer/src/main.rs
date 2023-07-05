@@ -1,6 +1,6 @@
 use eframe::egui::{self, Layout, Vec2};
 use hardfiskur_core::{
-    board::{bitboard::Bitboard, Color, Piece, PieceType, Square},
+    board::{Bitboard, Piece, PieceType, Square},
     move_gen::lookups::Lookups,
 };
 use hardfiskur_ui::ui::{ChessUI, ChessUIData};

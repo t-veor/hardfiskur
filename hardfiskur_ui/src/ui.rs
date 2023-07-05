@@ -1,7 +1,7 @@
 use egui::{
     epaint::ColorImage, Align2, Painter, PointerButton, Pos2, Rect, Sense, TextureHandle, Ui, Vec2,
 };
-use hardfiskur_core::board::{bitboard::Bitboard, Color, Move, Piece, PieceType, Square};
+use hardfiskur_core::board::{Bitboard, Color, Move, Piece, PieceType, Square};
 
 use crate::constants::{
     BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_WHITE, CHESS_PIECES_SPRITE, SCALE,

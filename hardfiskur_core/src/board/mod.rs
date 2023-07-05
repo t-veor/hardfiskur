@@ -1,6 +1,6 @@
 //! Structs and functions related to to the board representation.
 
-pub mod bitboard;
+mod bitboard;
 mod board_repr;
 mod fen;
 mod move_repr;
@@ -9,6 +9,7 @@ mod square;
 
 use bitflags::bitflags;
 
+pub use bitboard::Bitboard;
 pub use board_repr::BoardRepr;
 pub use move_repr::{Move, MoveFlags};
 pub use piece::{Color, Piece, PieceType};

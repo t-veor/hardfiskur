@@ -1,6 +1,6 @@
 use std::{ops::Range, sync::OnceLock};
 
-use crate::board::{bitboard::Bitboard, Square};
+use crate::board::{Bitboard, Square};
 
 use super::bitboard_utils::{
     bishop_attack_blocker_mask, bishop_attacks, nth_blocker_arrangement_for_mask,

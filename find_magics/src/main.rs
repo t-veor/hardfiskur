@@ -1,7 +1,7 @@
 use rand::{thread_rng, Rng};
 
 use hardfiskur_core::{
-    board::{bitboard::Bitboard, Square},
+    board::{Bitboard, Square},
     move_gen::{
         bitboard_utils::{
             bishop_attack_blocker_mask, bishop_attacks, nth_blocker_arrangement_for_mask,

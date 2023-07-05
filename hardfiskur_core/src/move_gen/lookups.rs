@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use num_traits::FromPrimitive;
 
-use crate::board::{bitboard::Bitboard, Square};
+use crate::board::{Bitboard, Square};
 
 use super::{
     bitboard_utils::{king_moves, knight_attacks, unblocked_ray_attacks, Direction},
@@ -71,7 +71,7 @@ impl Lookups {
 pub fn gen_knight_moves() -> [Bitboard; 64] {
     let mut moves = [Bitboard::default(); 64];
     for (i, moves_from_square) in moves.iter_mut().enumerate() {
-        *moves_from_square = knight_attacks(Bitboard::from_index(i as _));
+        *moves_from_square = knight_attacks(Bitboard::from_index(i));
     }
     moves
 }
@@ -79,7 +79,7 @@ pub fn gen_knight_moves() -> [Bitboard; 64] {
 pub fn gen_king_moves() -> [Bitboard; 64] {
     let mut moves = [Bitboard::default(); 64];
     for (i, moves_from_square) in moves.iter_mut().enumerate() {
-        *moves_from_square = king_moves(Bitboard::from_index(i as _));
+        *moves_from_square = king_moves(Bitboard::from_index(i));
     }
     moves
 }
@@ -88,7 +88,7 @@ pub fn gen_ray_attacks() -> [[Bitboard; 8]; 64] {
     let mut attacks = [[Bitboard::default(); 8]; 64];
 
     for (i, attacks_from_square) in attacks.iter_mut().enumerate() {
-        let base = Bitboard::from_index(i as _);
+        let base = Bitboard::from_index(i);
 
         for (dir, attacks_in_dir) in attacks_from_square.iter_mut().enumerate() {
             let dir_enum = Direction::from_usize(dir).unwrap();
@@ -107,7 +107,7 @@ pub fn gen_in_between(ray_attacks: &[[Bitboard; 8]; 64]) -> [[Bitboard; 64]; 64]
             let ray = ray_attacks[from][dir];
             for to in ray.bits() {
                 let to = to as usize;
-                let ray_between = ray ^ ray_attacks[to][dir] ^ Bitboard::from_index(to as _);
+                let ray_between = ray ^ ray_attacks[to][dir] ^ Bitboard::from_index(to);
                 table[from][to] = ray_between;
                 table[to][from] = ray_between;
             }
