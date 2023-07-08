@@ -96,7 +96,7 @@ impl BaseBoard {
             clicked_square: None,
         };
 
-        self.handle_input(ui, &data, &mut response);
+        self.handle_input(&data, &mut response);
 
         response
     }
@@ -168,14 +168,9 @@ impl BaseBoard {
         )
     }
 
-    fn handle_input(
-        &mut self,
-        ui: &mut Ui,
-        data: &BaseBoardData<'_>,
-        response: &mut BaseBoardResponse,
-    ) {
+    fn handle_input(&mut self, data: &BaseBoardData<'_>, response: &mut BaseBoardResponse) {
         self.handle_drag_piece(data, response);
-        self.handle_draw_arrows(ui, data, response);
+        self.handle_draw_arrows(data, response);
         self.handle_clicks(response);
     }
 
@@ -204,12 +199,7 @@ impl BaseBoard {
         }
     }
 
-    fn handle_draw_arrows(
-        &mut self,
-        ui: &mut Ui,
-        data: &BaseBoardData<'_>,
-        response: &mut BaseBoardResponse,
-    ) {
+    fn handle_draw_arrows(&mut self, data: &BaseBoardData<'_>, response: &mut BaseBoardResponse) {
         if data.allow_arrows
             && response
                 .egui_response
@@ -233,7 +223,10 @@ impl BaseBoard {
             }
         }
 
-        if ui.input(|i| i.pointer.button_released(PointerButton::Primary)) {
+        if response
+            .egui_response
+            .drag_released_by(PointerButton::Primary)
+        {
             self.arrows.clear();
         }
     }
@@ -245,19 +238,24 @@ impl BaseBoard {
     }
 
     fn paint_board(&mut self, painter: &Painter, data: &BaseBoardData<'_>) {
+        painter.rect_filled(self.board_rect, 0.0, BOARD_WHITE);
+
         for square in Square::all() {
             let (rank, file) = (square.rank(), square.file());
-            let (color, opposite_color) = if (rank + file) % 2 > 0 {
-                (BOARD_WHITE, BOARD_BLACK)
-            } else {
-                (BOARD_BLACK, BOARD_WHITE)
-            };
-
             let rect = Self::dst_rect(square, self.board_rect, data.perspective);
 
-            painter.rect_filled(rect, 0.0, color);
+            let square_is_black = (rank + file) % 2 == 0;
+            if square_is_black {
+                painter.rect_filled(rect, 0.0, BOARD_BLACK);
+            }
 
             // Draw coordinate indicators
+            let text_color = if square_is_black {
+                BOARD_WHITE
+            } else {
+                BOARD_BLACK
+            };
+
             let (is_visually_last_row, is_visually_last_column) = match data.perspective {
                 Color::White => (rank == 0, file == 7),
                 Color::Black => (rank == 7, file == 0),
@@ -269,7 +267,7 @@ impl BaseBoard {
                     Align2::LEFT_BOTTOM,
                     (b'a' + file as u8) as char,
                     Default::default(),
-                    opposite_color,
+                    text_color,
                 );
             }
 
@@ -279,7 +277,7 @@ impl BaseBoard {
                     Align2::RIGHT_TOP,
                     (b'1' + rank as u8) as char,
                     Default::default(),
-                    opposite_color,
+                    text_color,
                 );
             }
         }

@@ -1,5 +1,5 @@
 [package]
-name = "magic_bitboard_viewer"
+name = "bitboard_attack_viewer"
 version = "0.1.0"
 edition = "2021"
 

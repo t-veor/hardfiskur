@@ -12,10 +12,9 @@ use super::{
 pub struct Lookups {
     knight_moves: [Bitboard; 64],
     king_moves: [Bitboard; 64],
-    ray_attacks: [[Bitboard; 8]; 64],
     in_between: [[Bitboard; 64]; 64],
 
-    magic: MagicTables,
+    magic: &'static MagicTables,
 }
 
 static LOOKUPS: OnceLock<Lookups> = OnceLock::new();
@@ -27,12 +26,11 @@ impl Lookups {
         let ray_attacks = gen_ray_attacks();
         let in_between = gen_in_between(&ray_attacks);
 
-        let magic = MagicTables::new(&ray_attacks);
+        let magic = MagicTables::get(&ray_attacks);
 
         Self {
             knight_moves,
             king_moves,
-            ray_attacks,
             in_between,
 
             magic,
@@ -65,6 +63,10 @@ impl Lookups {
 
     pub fn get_in_between(&self, from: Square, to: Square) -> Bitboard {
         self.in_between[from.index()][to.index()]
+    }
+
+    pub fn debug_magic_tables(&self) -> &'static MagicTables {
+        self.magic
     }
 }
 

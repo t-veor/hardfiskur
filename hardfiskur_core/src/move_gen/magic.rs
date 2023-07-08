@@ -195,11 +195,11 @@ impl MagicTableEntryIdx {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct MagicTableEntry<'a> {
-    attack_table: &'a [Bitboard],
-    mask: Bitboard,
-    magic: u64,
-    shift: u32,
+pub struct MagicTableEntry<'a> {
+    pub attack_table: &'a [Bitboard],
+    pub mask: Bitboard,
+    pub magic: u64,
+    pub shift: u32,
 }
 
 impl<'a> MagicTableEntry<'a> {
@@ -219,16 +219,25 @@ impl<'a> MagicTableEntry<'a> {
     }
 }
 
-struct StaticMagicTables {
-    attack_table: Vec<Bitboard>,
-    bishop_table_idxs: [MagicTableEntryIdx; 64],
-    rook_table_idxs: [MagicTableEntryIdx; 64],
+fn calculate_attack_table_size() -> usize {
+    BISHOP_MAGICS
+        .iter()
+        .map(|&(_magic, num_bits)| 1 << num_bits)
+        .sum::<usize>()
+        + ROOK_MAGICS
+            .iter()
+            .map(|&(_magic, num_bits)| 1 << num_bits)
+            .sum::<usize>()
 }
 
-fn create_full_attack_table(ray_attacks: &[[Bitboard; 8]; 64]) -> StaticMagicTables {
-    let mut attack_table = Vec::new();
+fn create_full_attack_table(
+    ray_attacks: &[[Bitboard; 8]; 64],
+    out_bishop_table: &mut Vec<MagicTableEntryIdx>,
+    out_rook_table: &mut Vec<MagicTableEntryIdx>,
+) -> Vec<Bitboard> {
+    let mut attack_table = Vec::with_capacity(calculate_attack_table_size());
 
-    let bishop_table_idxs = BISHOP_MAGICS
+    *out_bishop_table = BISHOP_MAGICS
         .iter()
         .enumerate()
         .map(|(i, &(magic, num_bits))| {
@@ -242,9 +251,9 @@ fn create_full_attack_table(ray_attacks: &[[Bitboard; 8]; 64]) -> StaticMagicTab
                 &mut attack_table,
             )
         })
-        .collect::<Vec<_>>();
+        .collect();
 
-    let rook_table_idxs = ROOK_MAGICS
+    *out_rook_table = ROOK_MAGICS
         .iter()
         .enumerate()
         .map(|(i, &(magic, num_bits))| {
@@ -258,16 +267,13 @@ fn create_full_attack_table(ray_attacks: &[[Bitboard; 8]; 64]) -> StaticMagicTab
                 &mut attack_table,
             )
         })
-        .collect::<Vec<_>>();
+        .collect();
 
-    StaticMagicTables {
-        attack_table,
-        bishop_table_idxs: bishop_table_idxs.try_into().unwrap(),
-        rook_table_idxs: rook_table_idxs.try_into().unwrap(),
-    }
+    attack_table
 }
 
-static STATIC_MAGIC_TABLES: OnceLock<StaticMagicTables> = OnceLock::new();
+static ATTACK_TABLE: OnceLock<Vec<Bitboard>> = OnceLock::new();
+static MAGIC_TABLES: OnceLock<MagicTables> = OnceLock::new();
 
 pub struct MagicTables {
     bishop_table: [MagicTableEntry<'static>; 64],
@@ -275,18 +281,25 @@ pub struct MagicTables {
 }
 
 impl MagicTables {
-    pub fn new(ray_attacks: &[[Bitboard; 8]; 64]) -> Self {
-        let static_tables =
-            STATIC_MAGIC_TABLES.get_or_init(|| create_full_attack_table(ray_attacks));
-        let bishop_table = static_tables
-            .bishop_table_idxs
-            .iter()
-            .map(|idx| MagicTableEntry::new(idx, &static_tables.attack_table))
+    pub(super) fn get(ray_attacks: &[[Bitboard; 8]; 64]) -> &'static Self {
+        MAGIC_TABLES.get_or_init(|| Self::new(ray_attacks))
+    }
+
+    // This function should only be called once!
+    fn new(ray_attacks: &[[Bitboard; 8]; 64]) -> Self {
+        let mut bishop_table = Vec::new();
+        let mut rook_table = Vec::new();
+
+        let attack_table = ATTACK_TABLE.get_or_init(|| {
+            create_full_attack_table(ray_attacks, &mut bishop_table, &mut rook_table)
+        });
+        let bishop_table = bishop_table
+            .into_iter()
+            .map(|idx| MagicTableEntry::new(&idx, attack_table))
             .collect::<Vec<_>>();
-        let rook_table = static_tables
-            .rook_table_idxs
-            .iter()
-            .map(|idx| MagicTableEntry::new(idx, &static_tables.attack_table))
+        let rook_table = rook_table
+            .into_iter()
+            .map(|idx| MagicTableEntry::new(&idx, attack_table))
             .collect::<Vec<_>>();
 
         Self {
@@ -301,5 +314,13 @@ impl MagicTables {
 
     pub fn rook_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         self.rook_table[square.index()].get_attacks(occupied)
+    }
+
+    pub fn debug_bishop_table(&self) -> &[MagicTableEntry<'static>; 64] {
+        &self.bishop_table
+    }
+
+    pub fn debug_rook_table(&self) -> &[MagicTableEntry<'static>; 64] {
+        &self.rook_table
     }
 }

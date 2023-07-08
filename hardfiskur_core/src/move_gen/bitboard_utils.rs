@@ -15,11 +15,10 @@ pub enum Direction {
 }
 
 pub fn knight_attacks(b: Bitboard) -> Bitboard {
-    // have to be written like this to avoid the fact that const traits are not stabilised...
-    const NOT_A_FILE: Bitboard = Bitboard(!Bitboard::A_FILE.0);
-    const NOT_AB_FILE: Bitboard = Bitboard(!Bitboard::A_FILE.0 & !Bitboard::B_FILE.0);
-    const NOT_H_FILE: Bitboard = Bitboard(!Bitboard::H_FILE.0);
-    const NOT_GH_FILE: Bitboard = Bitboard(!Bitboard::G_FILE.0 & !Bitboard::H_FILE.0);
+    const NOT_A_FILE: Bitboard = Bitboard::A_FILE.not();
+    const NOT_AB_FILE: Bitboard = Bitboard::A_FILE.or(Bitboard::B_FILE).not();
+    const NOT_H_FILE: Bitboard = Bitboard::H_FILE.not();
+    const NOT_GH_FILE: Bitboard = Bitboard::G_FILE.or(Bitboard::H_FILE).not();
 
     let mut attacks = Bitboard::EMPTY;
 

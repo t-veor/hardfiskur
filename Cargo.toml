@@ -5,5 +5,5 @@ members = [
     "hardfiskur_ui",
 
     "find_magics",
-    "magic_bitboard_viewer",
+    "bitboard_attack_viewer",
 ]
