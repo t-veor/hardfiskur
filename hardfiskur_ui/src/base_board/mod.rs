@@ -11,12 +11,12 @@ use self::arrow::Arrow;
 
 mod arrow;
 
-#[derive(Default)]
+#[derive(Debug)]
 pub struct BaseBoardData<'a> {
     pub pieces: &'a [Option<Piece>],
     pub possible_moves: &'a [Move],
     pub perspective: Color,
-    pub display_bitboard: Option<Bitboard>,
+    pub display_bitboard: Bitboard,
     pub drag_mask: Bitboard,
     pub allow_arrows: bool,
 }
@@ -24,6 +24,19 @@ pub struct BaseBoardData<'a> {
 impl<'a> BaseBoardData<'a> {
     fn piece_at(&self, square: Square) -> Option<Piece> {
         self.pieces.get(square.index()).copied().flatten()
+    }
+}
+
+impl<'a> Default for BaseBoardData<'a> {
+    fn default() -> Self {
+        Self {
+            pieces: &[],
+            possible_moves: &[],
+            perspective: Color::White,
+            display_bitboard: Bitboard::EMPTY,
+            drag_mask: Bitboard::EMPTY,
+            allow_arrows: true,
+        }
     }
 }
 
@@ -321,12 +334,10 @@ impl BaseBoard {
     }
 
     fn paint_bitboard(&mut self, painter: &Painter, data: &BaseBoardData<'_>) {
-        if let Some(bitboard) = data.display_bitboard {
-            for square in Square::all() {
-                if bitboard.get(square) {
-                    let rect = Self::dst_rect(square, self.board_rect, data.perspective);
-                    painter.rect_filled(rect, 0.0, BOARD_BITBOARD_HIGHLIGHT);
-                }
+        for square in Square::all() {
+            if data.display_bitboard.get(square) {
+                let rect = Self::dst_rect(square, self.board_rect, data.perspective);
+                painter.rect_filled(rect, 0.0, BOARD_BITBOARD_HIGHLIGHT);
             }
         }
     }
