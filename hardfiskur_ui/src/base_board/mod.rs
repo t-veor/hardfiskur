@@ -7,9 +7,13 @@ use crate::constants::{
     BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_WHITE, CHESS_PIECES_SPRITE, SCALE,
 };
 
-use self::arrow::Arrow;
+use self::{
+    arrow::Arrow,
+    promo_ui::{PromotionResult, PromotionUi},
+};
 
 mod arrow;
+mod promo_ui;
 
 #[derive(Debug)]
 pub struct BaseBoardData<'a> {
@@ -19,6 +23,7 @@ pub struct BaseBoardData<'a> {
     pub display_bitboard: Bitboard,
     pub drag_mask: Bitboard,
     pub allow_arrows: bool,
+    pub promotion: Option<(Square, Color)>,
 }
 
 impl<'a> BaseBoardData<'a> {
@@ -36,6 +41,7 @@ impl<'a> Default for BaseBoardData<'a> {
             display_bitboard: Bitboard::EMPTY,
             drag_mask: Bitboard::EMPTY,
             allow_arrows: true,
+            promotion: None,
         }
     }
 }
@@ -45,6 +51,18 @@ pub struct BaseBoardResponse {
     pub egui_response: egui::Response,
     pub dropped: Option<(Square, Square)>,
     pub clicked_square: Option<Square>,
+    pub promotion_result: Option<PromotionResult>,
+}
+
+impl BaseBoardResponse {
+    pub fn new(egui_response: egui::Response) -> Self {
+        Self {
+            egui_response,
+            dropped: None,
+            clicked_square: None,
+            promotion_result: None,
+        }
+    }
 }
 
 pub struct BaseBoard {
@@ -58,6 +76,8 @@ pub struct BaseBoard {
 
     arrow_start: Option<Square>,
     arrows: Vec<Arrow>,
+
+    promotion_ui: Option<PromotionUi>,
 }
 
 impl Default for BaseBoard {
@@ -70,6 +90,7 @@ impl Default for BaseBoard {
             drag_start: None,
             arrow_start: None,
             arrows: Vec::new(),
+            promotion_ui: None,
         }
     }
 }
@@ -95,6 +116,15 @@ impl BaseBoard {
             }
         };
 
+        self.promotion_ui = data.promotion.map(|(promotion_square, for_player)| {
+            PromotionUi::new(
+                promotion_square,
+                for_player,
+                self.board_rect,
+                data.perspective,
+            )
+        });
+
         self.paint_board(&painter, &data);
 
         self.paint_bitboard(&painter, &data);
@@ -103,11 +133,9 @@ impl BaseBoard {
 
         self.paint_arrows(&painter, &data);
 
-        let mut response = BaseBoardResponse {
-            egui_response,
-            dropped: None,
-            clicked_square: None,
-        };
+        self.paint_promotion_ui(ui, &painter);
+
+        let mut response = BaseBoardResponse::new(egui_response);
 
         self.handle_input(&data, &mut response);
 
@@ -182,9 +210,13 @@ impl BaseBoard {
     }
 
     fn handle_input(&mut self, data: &BaseBoardData<'_>, response: &mut BaseBoardResponse) {
-        self.handle_drag_piece(data, response);
-        self.handle_draw_arrows(data, response);
-        self.handle_clicks(response);
+        if let Some(promotion_ui) = self.promotion_ui.as_ref() {
+            response.promotion_result = promotion_ui.handle_input(&response.egui_response);
+        } else {
+            self.handle_drag_piece(data, response);
+            self.handle_draw_arrows(data, response);
+            self.handle_clicks(response);
+        }
     }
 
     fn handle_drag_piece(&mut self, data: &BaseBoardData<'_>, response: &mut BaseBoardResponse) {
@@ -324,7 +356,7 @@ impl BaseBoard {
                     Vec2::splat(SCALE),
                 );
 
-                egui::Image::new(&sprite_handle, Vec2::new(SCALE, SCALE))
+                egui::Image::new(&sprite_handle, Vec2::splat(SCALE))
                     .uv(src_rect)
                     .paint_at(ui, dst_rect);
             } else {
@@ -353,6 +385,13 @@ impl BaseBoard {
                 None => start,
             };
             Arrow { start, end }.draw(painter, self.board_rect, data.perspective, true);
+        }
+    }
+
+    fn paint_promotion_ui(&mut self, ui: &mut Ui, painter: &Painter) {
+        let texture_handle = self.get_piece_sprite(ui.ctx());
+        if let Some(promotion_ui) = self.promotion_ui.as_ref() {
+            promotion_ui.draw(ui, painter, &texture_handle);
         }
     }
 }
