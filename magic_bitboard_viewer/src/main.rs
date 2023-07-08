@@ -3,10 +3,10 @@ use hardfiskur_core::{
     board::{Bitboard, Piece, PieceType, Square},
     move_gen::lookups::Lookups,
 };
-use hardfiskur_ui::ui::{ChessUI, ChessUIData};
+use hardfiskur_ui::base_board::{BaseBoard, BaseBoardData};
 
 struct MagicBitboardViewerUI {
-    chess_ui: ChessUI,
+    chess_ui: BaseBoard,
     piece: PieceType,
     square: Square,
     blockers: Bitboard,
@@ -61,10 +61,11 @@ impl eframe::App for MagicBitboardViewerUI {
                         }
                     }
 
-                    let data = ChessUIData {
+                    let data = BaseBoardData {
                         pieces: &board[..],
                         display_bitboard: Some(bitboard),
                         drag_mask: Bitboard::from_square(self.square),
+                        allow_arrows: true,
                         ..Default::default()
                     };
 

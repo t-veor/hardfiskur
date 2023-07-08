@@ -99,6 +99,11 @@ impl Square {
     pub const fn file(self) -> u8 {
         self.0 % 8
     }
+
+    /// Returns an iterator over every single square.
+    pub fn all() -> impl Iterator<Item = Square> {
+        (0..64).map(Square)
+    }
 }
 
 impl Display for Square {
@@ -214,5 +219,19 @@ mod test {
         assert_eq!("x".parse::<Square>(), Err(()));
         assert_eq!("f23".parse::<Square>(), Err(()));
         assert_eq!("a1 ".parse::<Square>(), Err(()));
+    }
+
+    #[test]
+    fn test_square_all() {
+        let mut expected = Vec::new();
+        for rank in 0..8 {
+            for file in 0..8 {
+                expected.push(Square::new(rank, file).unwrap());
+            }
+        }
+
+        let all = Square::all().collect::<Vec<_>>();
+
+        assert_eq!(all, expected);
     }
 }
