@@ -101,7 +101,7 @@ impl Board {
         }
 
         Ok(Board::new(
-            board,
+            &board,
             to_move,
             castling,
             en_passant,
@@ -221,6 +221,7 @@ fn parse_en_passant(en_passant: &str) -> Result<Option<Square>, FenParseError> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     use crate::board::STARTING_POSITION_FEN;
 

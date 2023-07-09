@@ -297,8 +297,8 @@ impl FromStr for Piece {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
+    use pretty_assertions::assert_eq;
 
     const ALL_PIECE_TYPES: &[PieceType] = &[
         PieceType::Pawn,

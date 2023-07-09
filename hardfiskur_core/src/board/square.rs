@@ -5,8 +5,9 @@ use std::{
 
 /// Represents a square on the chessboard.
 ///
-/// Internally, represents a square as an integer from 0-63, with 0 being a1, 7
-/// being h1, and 63 being h8.
+/// Internally, represents a square as an integer from 0-63, ordered by
+/// increasing file then rank, so that 0 is a1, 1 is b1, 2 is c1... 7 is h1, 8
+/// is a2, 9 is b2, etc.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Square(u8);
 
@@ -137,6 +138,7 @@ impl FromStr for Square {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn square_new() {

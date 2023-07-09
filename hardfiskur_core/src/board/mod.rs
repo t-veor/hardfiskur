@@ -101,7 +101,7 @@ pub struct Board {
 
 impl Board {
     pub fn new(
-        board: [Option<Piece>; 64],
+        board: &[Option<Piece>],
         to_move: Color,
         castling: Castling,
         en_passant: Option<Square>,
@@ -140,6 +140,7 @@ impl Default for Board {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn castling_as_fen_str() {

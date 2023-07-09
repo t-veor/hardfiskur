@@ -5,8 +5,10 @@ use super::Square;
 /// Compact data structure representing some board state. See
 /// <https://www.chessprogramming.org/Bitboards>
 ///
-/// Methods assume that the least significant bit is a1, the 8th least
-/// significant bit is h1, and the most significant bit is h8.
+/// Methods assume that the least significant bit is a1 and the most significant
+/// bit is h8, and squares are indexed by increasing file and then rank (i.e.
+/// index 0 is a1, index 1 is b1, index 2 is c1... index 7 is h1, index 8 is a2,
+/// index 9 is b2, etc.).
 ///
 /// The underlying [`u64`] of a bitboard can simply be accessed via `.0`.
 ///
@@ -436,6 +438,8 @@ impl Iterator for BitIterator {
 
 #[cfg(test)]
 mod test {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     fn b(rank: u8, file: u8) -> Bitboard {
