@@ -443,7 +443,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_boolean_operators() {
+    fn bitboard_boolean_operators() {
         let a = 0b10010111;
         let b = 0b10101100;
 
@@ -458,7 +458,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_bitwise_operators() {
+    fn bitboard_bitwise_operators() {
         let a = 0b10010111;
         let b = 0b10101100;
 
@@ -481,7 +481,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_shift_operators() {
+    fn bitboard_shift_operators() {
         let a = 0b10111111;
 
         assert_eq!(Bitboard(a) << 5, Bitboard(a << 5));
@@ -497,7 +497,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_has_piece_is_empty() {
+    fn bitboard_has_piece_is_empty() {
         assert!(Bitboard::EMPTY.is_empty());
         assert!(!Bitboard::EMPTY.has_piece());
 
@@ -506,7 +506,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_single_step() {
+    fn bitboard_single_step() {
         let board = b(3, 3);
         assert_eq!(board.step_north(), b(4, 3));
         assert_eq!(board.step_north_east(), b(4, 4));
@@ -519,7 +519,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboad_edge_step() {
+    fn bitboard_edge_step() {
         let north_west_corner = b(7, 0);
         assert_eq!(north_west_corner.step_north(), Bitboard::EMPTY);
         assert_eq!(north_west_corner.step_north_east(), Bitboard::EMPTY);
@@ -562,7 +562,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_step_multiple_bits() {
+    fn bitboard_step_multiple_bits() {
         let north_west_corner = b(7, 0);
         let south_east_corner = b(0, 7);
         let center = b(3, 3);
@@ -579,7 +579,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_pop_count() {
+    fn bitboard_pop_count() {
         assert_eq!(Bitboard(0).pop_count(), 0);
         assert_eq!(Bitboard(0b10).pop_count(), 1);
         assert_eq!(Bitboard(0b11010100).pop_count(), 4);
@@ -588,7 +588,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_flip_vertical() {
+    fn bitboard_flip_vertical() {
         assert_eq!(
             Bitboard(0x0A0B0C0_D0E0F1011).flip_vertical(),
             Bitboard(0x11100F0_E0D0C0B0A)
@@ -596,7 +596,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_msb_lsb() {
+    fn bitboard_msb_lsb() {
         let b = Bitboard(0x0FFF0003_8A200000);
         assert_eq!(b.msb(), Some(59));
         assert_eq!(b.lsb(), Some(21));
@@ -606,7 +606,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_to_square() {
+    fn bitboard_to_square() {
         assert_eq!(b(3, 7).to_square(), Square::new(3, 7));
         assert_eq!(b(1, 4).to_square(), Square::new(1, 4));
         assert_eq!(b(2, 5).to_square(), Square::new(2, 5));
@@ -617,7 +617,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_from_numeric() {
+    fn bitboard_from_numeric() {
         assert_eq!(Bitboard::from_index(0), b(0, 0));
         assert_eq!(Bitboard::from_u8(0), b(0, 0));
 
@@ -629,7 +629,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_get() {
+    fn bitboard_get() {
         let x = b(1, 3) | b(5, 6) | b(3, 7);
 
         assert!(x.get(Square::new_unchecked(1, 3)));
@@ -641,7 +641,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_set() {
+    fn bitboard_set() {
         let mut x = Bitboard::EMPTY;
 
         x.set(Square::new_unchecked(3, 3));
@@ -655,7 +655,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_toggle() {
+    fn bitboard_toggle() {
         let mut x = Bitboard::EMPTY;
 
         x.toggle(Square::new_unchecked(3, 3));
@@ -672,7 +672,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_reset() {
+    fn bitboard_reset() {
         let mut x = b(1, 2) | b(5, 5);
 
         x.reset(Square::new_unchecked(1, 2));
@@ -689,7 +689,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_bits() {
+    fn bitboard_bits() {
         assert_eq!(Bitboard::EMPTY.bits().collect::<Vec<_>>(), vec![]);
 
         assert_eq!(
@@ -704,7 +704,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_set_squares() {
+    fn bitboard_set_squares() {
         assert_eq!(Bitboard::EMPTY.set_squares().collect::<Vec<_>>(), vec![]);
 
         assert_eq!(
@@ -726,7 +726,7 @@ mod test {
     }
 
     #[test]
-    fn test_bitboard_from_str() {
+    fn bitboard_from_str() {
         assert_eq!(
             Bitboard::from_str(
                 "

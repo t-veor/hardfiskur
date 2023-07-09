@@ -139,7 +139,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_square_new() {
+    fn square_new() {
         assert_eq!(Square::new(5, 7), Some(Square(47)));
         assert_eq!(Square::new(2, 3), Some(Square(19)));
         assert_eq!(Square::new(7, 1), Some(Square(57)));
@@ -152,7 +152,7 @@ mod test {
     }
 
     #[test]
-    fn test_square_new_unchecked() {
+    fn square_new_unchecked() {
         assert_eq!(Square::new_unchecked(5, 7), Square(47));
         assert_eq!(Square::new_unchecked(2, 3), Square(19));
         assert_eq!(Square::new_unchecked(7, 1), Square(57));
@@ -165,7 +165,7 @@ mod test {
     }
 
     #[test]
-    fn test_square_from_numeric() {
+    fn square_from_numeric() {
         for i in 0..64 {
             assert_eq!(Square::from_index(i as _), Some(Square(i)));
             assert_eq!(Square::from_u8_unchecked(i), Square(i));
@@ -178,7 +178,7 @@ mod test {
     }
 
     #[test]
-    fn test_square_to_numeric() {
+    fn square_to_numeric() {
         for i in 0..64 {
             assert_eq!(Square(i).get(), i);
             assert_eq!(Square(i).index(), i as _);
@@ -186,7 +186,7 @@ mod test {
     }
 
     #[test]
-    fn test_square_rank_and_file() {
+    fn square_rank_and_file() {
         for rank in 0..8 {
             for file in 0..8 {
                 let square = Square::new(rank, file).unwrap();
@@ -197,7 +197,7 @@ mod test {
     }
 
     #[test]
-    fn test_square_display() {
+    fn square_display() {
         let cases = [
             (Square(17), "b3"),
             (Square(63), "h8"),
@@ -211,7 +211,7 @@ mod test {
     }
 
     #[test]
-    fn test_square_from_str() {
+    fn square_from_str() {
         assert_eq!("a7".parse::<Square>(), Ok(Square(48)));
         assert_eq!("f2".parse::<Square>(), Ok(Square(13)));
 
@@ -222,7 +222,7 @@ mod test {
     }
 
     #[test]
-    fn test_square_all() {
+    fn square_all() {
         let mut expected = Vec::new();
         for rank in 0..8 {
             for file in 0..8 {

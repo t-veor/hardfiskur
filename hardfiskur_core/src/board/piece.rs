@@ -334,7 +334,7 @@ mod test {
     ];
 
     #[test]
-    fn test_piece_type_convenience_constructors() {
+    fn piece_type_convenience_constructors() {
         for piece_type in ALL_PIECE_TYPES {
             assert!(piece_type.white().is_white());
         }
@@ -351,7 +351,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_type_as_uppercase() {
+    fn piece_type_as_uppercase() {
         let cases = [
             (PieceType::Pawn, 'P'),
             (PieceType::Knight, 'N'),
@@ -367,7 +367,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_type_as_lowercase() {
+    fn piece_type_as_lowercase() {
         let cases = [
             (PieceType::Pawn, 'p'),
             (PieceType::Knight, 'n'),
@@ -382,7 +382,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_type_is_slider() {
+    fn piece_type_is_slider() {
         for piece_type in SLIDERS {
             assert!(piece_type.is_slider())
         }
@@ -392,12 +392,12 @@ mod test {
     }
 
     #[test]
-    fn test_color_default_is_white() {
+    fn color_default_is_white() {
         assert_eq!(Color::default(), Color::White);
     }
 
     #[test]
-    fn test_color_is_white_and_is_black() {
+    fn color_is_white_and_is_black() {
         assert!(Color::White.is_white());
         assert!(!Color::Black.is_white());
 
@@ -406,13 +406,13 @@ mod test {
     }
 
     #[test]
-    fn test_color_flip() {
+    fn color_flip() {
         assert_eq!(Color::White.flip(), Color::Black);
         assert_eq!(Color::Black.flip(), Color::White);
     }
 
     #[test]
-    fn test_piece_create_and_unpack() {
+    fn piece_create_and_unpack() {
         for &color in ALL_COLORS {
             for &piece_type in ALL_PIECE_TYPES {
                 let piece = Piece::new(color, piece_type);
@@ -423,7 +423,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_convenience_constructors() {
+    fn piece_convenience_constructors() {
         for &piece_type in ALL_PIECE_TYPES {
             let white_piece = Piece::white(piece_type);
             assert_eq!(white_piece.color(), Color::White);
@@ -433,7 +433,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_try_from_u8() {
+    fn piece_try_from_u8() {
         for garbage_upper in 0..16 {
             for &(repr, piece) in PIECES_BY_REPRESENTATIONS {
                 let repr = garbage_upper << 4 | repr;
@@ -443,7 +443,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_is_white_is_black() {
+    fn piece_is_white_is_black() {
         assert!(Piece::WHITE_BISHOP.is_white());
         assert!(Piece::WHITE_QUEEN.is_white());
         assert!(Piece::BLACK_PAWN.is_black());
@@ -451,7 +451,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_get_repr() {
+    fn piece_get_repr() {
         for &(repr, piece) in PIECES_BY_REPRESENTATIONS {
             if let Some(piece) = piece {
                 assert_eq!(piece.get(), repr);
@@ -461,7 +461,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_as_fen_char() {
+    fn piece_as_fen_char() {
         let cases = [
             (Piece::WHITE_PAWN, 'P'),
             (Piece::WHITE_BISHOP, 'B'),
@@ -476,7 +476,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_as_unicode_char() {
+    fn piece_as_unicode_char() {
         let cases = [
             (Piece::WHITE_PAWN, '♙'),
             (Piece::WHITE_BISHOP, '♗'),
@@ -491,7 +491,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_try_from_fen_char() {
+    fn piece_try_from_fen_char() {
         let cases = [
             ('P', Piece::WHITE_PAWN),
             ('B', Piece::WHITE_BISHOP),
@@ -509,7 +509,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_is_slider() {
+    fn piece_is_slider() {
         for piece_type in SLIDERS {
             assert!(piece_type.white().is_slider());
             assert!(piece_type.black().is_slider());
@@ -521,7 +521,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_display() {
+    fn piece_display() {
         for &color in ALL_COLORS {
             for &piece_type in ALL_PIECE_TYPES {
                 let piece = Piece::new(color, piece_type);
@@ -531,7 +531,7 @@ mod test {
     }
 
     #[test]
-    fn test_piece_from_str() {
+    fn piece_from_str() {
         assert_eq!("K".parse(), Ok(Piece::WHITE_KING));
         assert_eq!("n".parse(), Ok(Piece::BLACK_KNIGHT));
         assert_eq!("b".parse(), Ok(Piece::BLACK_BISHOP));

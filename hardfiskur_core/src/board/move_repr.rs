@@ -320,7 +320,7 @@ mod test {
     ];
 
     #[test]
-    fn test_move_create_and_unpack() {
+    fn move_create_and_unpack() {
         let all_test_moves = EN_PASSANT_CAPTURES
             .iter()
             .chain(PROMOTIONS)
@@ -336,7 +336,7 @@ mod test {
     }
 
     #[test]
-    fn test_move_is_capture() {
+    fn move_is_capture() {
         let capture_test_moves = EN_PASSANT_CAPTURES.iter().chain(CAPTURES);
 
         for move_case in capture_test_moves {
@@ -351,7 +351,7 @@ mod test {
     }
 
     #[test]
-    fn test_move_is_double_pawn_push() {
+    fn move_is_double_pawn_push() {
         for move_case in DOUBLE_PAWN_PUSHES {
             let the_move = move_case.create_move();
             assert!(the_move.is_double_pawn_push());
@@ -366,7 +366,7 @@ mod test {
     }
 
     #[test]
-    fn test_move_is_castle() {
+    fn move_is_castle() {
         for move_case in CASTLES {
             let the_move = move_case.create_move();
             assert!(the_move.is_castle());
@@ -381,7 +381,7 @@ mod test {
     }
 
     #[test]
-    fn test_move_is_en_passant() {
+    fn move_is_en_passant() {
         for move_case in EN_PASSANT_CAPTURES {
             let the_move = move_case.create_move();
             assert!(the_move.is_en_passant());

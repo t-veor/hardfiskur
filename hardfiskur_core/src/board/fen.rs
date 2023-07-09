@@ -259,14 +259,14 @@ mod test {
     ];
 
     #[test]
-    fn test_parse_valid_fens() {
+    fn parse_valid_fens() {
         for fen in VALID_FENS {
             assert_eq!(&Board::try_parse_fen(fen).unwrap().fen(), fen);
         }
     }
 
     #[test]
-    fn test_parse_invalid_fens() {
+    fn parse_invalid_fens() {
         for fen in INVALID_FENS {
             assert!(Board::try_parse_fen(fen).is_err());
         }
