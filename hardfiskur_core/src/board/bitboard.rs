@@ -41,6 +41,11 @@ impl Bitboard {
     /// Bitboard with only squares on the H file set.
     pub const H_FILE: Self = Self(0x8080808080808080);
 
+    // TODO: document and test
+    pub const fn rank_mask(rank: u8) -> Self {
+        Self(Self::RANK_1.0 << rank * 8)
+    }
+
     /// Returns whether this bitboard contains anything, i.e. if it is not equal
     /// to 0.
     pub const fn has_piece(self) -> bool {
@@ -264,7 +269,7 @@ impl Bitboard {
 
     /// Returns an [`Iterator<Item = Square>`] where the items are the
     /// [`Square`]s corresponding to set bits, in ascending order.
-    pub fn set_squares(&self) -> impl Iterator<Item = Square> {
+    pub fn squares(&self) -> impl Iterator<Item = Square> {
         BitIterator(self.0).map(Square::from_u8_unchecked)
     }
 }
@@ -709,19 +714,17 @@ mod test {
 
     #[test]
     fn bitboard_set_squares() {
-        assert_eq!(Bitboard::EMPTY.set_squares().collect::<Vec<_>>(), vec![]);
+        assert_eq!(Bitboard::EMPTY.squares().collect::<Vec<_>>(), vec![]);
 
         assert_eq!(
-            Bitboard::ALL.set_squares().collect::<Vec<_>>(),
+            Bitboard::ALL.squares().collect::<Vec<_>>(),
             (0..64)
                 .map(Square::from_index_unchecked)
                 .collect::<Vec<_>>()
         );
 
         assert_eq!(
-            Bitboard(0b10001011_00111100)
-                .set_squares()
-                .collect::<Vec<_>>(),
+            Bitboard(0b10001011_00111100).squares().collect::<Vec<_>>(),
             vec![2, 3, 4, 5, 8, 9, 11, 15]
                 .into_iter()
                 .map(Square::from_index_unchecked)

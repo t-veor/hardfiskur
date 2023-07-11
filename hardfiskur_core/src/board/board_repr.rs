@@ -129,7 +129,7 @@ impl BoardRepr {
     /// squares.
     pub fn pieces(&self) -> impl Iterator<Item = (Piece, Square)> + '_ {
         self.boards()
-            .flat_map(|(piece, board)| board.set_squares().map(move |square| (piece, square)))
+            .flat_map(|(piece, board)| board.squares().map(move |square| (piece, square)))
     }
 
     /// Returns an iterator over bitboards of the given [`Color`].

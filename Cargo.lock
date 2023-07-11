@@ -1196,6 +1196,7 @@ dependencies = [
 name = "hardfiskur_core"
 version = "0.1.0"
 dependencies = [
+ "arrayvec",
  "bitflags 2.3.3",
  "num-derive",
  "num-traits",

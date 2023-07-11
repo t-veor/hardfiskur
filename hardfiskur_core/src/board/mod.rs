@@ -89,6 +89,20 @@ impl Castling {
     }
 }
 
+/// State of play for the board.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoardState {
+    /// The player to move has legal moves available, and the game is not drawn.
+    InPlay,
+    /// The game is drawn.
+    Draw,
+    /// The game is over with a win for the specified player.
+    Win(Color),
+    /// The board is in an invalid state -- e.g. a king can be captured, there
+    /// are no kings/too many kings, etc.
+    Invalid,
+}
+
 #[derive(Debug, Clone)]
 pub struct Board {
     board: BoardRepr,
@@ -128,6 +142,14 @@ impl Board {
 
     pub fn to_move(&self) -> Color {
         self.to_move
+    }
+
+    pub fn pieces(&self) -> impl Iterator<Item = (Piece, Square)> + '_ {
+        self.board.pieces()
+    }
+
+    pub fn get_piece(&self, square: Square) -> Option<Piece> {
+        self.board.piece_at(square)
     }
 }
 

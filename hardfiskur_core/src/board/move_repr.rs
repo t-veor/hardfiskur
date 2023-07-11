@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use bitflags::bitflags;
 
-use super::{Piece, Square};
+use super::{Piece, PieceType, Square};
 
 bitflags! {
     /// Flags representing special kinds of moves that need special handling.
@@ -154,6 +154,21 @@ impl Move {
     pub const fn is_en_passant(self) -> bool {
         MoveFlags::from_bits_retain(self.0).contains(MoveFlags::EN_PASSANT)
     }
+
+    pub const fn builder(from: Square, to: Square, piece: Piece) -> MoveBuilder {
+        MoveBuilder::new(from, to, piece)
+    }
+
+    pub fn into_builder(self) -> MoveBuilder {
+        MoveBuilder {
+            from: self.from_square(),
+            to: self.to_square(),
+            piece: self.piece(),
+            captured_piece: self.captured_piece(),
+            promotion: self.promotion(),
+            flags: self.flags(),
+        }
+    }
 }
 
 impl Debug for Move {
@@ -166,6 +181,76 @@ impl Debug for Move {
             .field("promotion", &self.promotion())
             .field("flags", &self.flags())
             .finish()
+    }
+}
+
+// TODO: Restructure tests with this
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MoveBuilder {
+    pub from: Square,
+    pub to: Square,
+    pub piece: Piece,
+    pub captured_piece: Option<Piece>,
+    pub promotion: Option<Piece>,
+    pub flags: MoveFlags,
+}
+
+impl MoveBuilder {
+    pub const fn new(from: Square, to: Square, piece: Piece) -> Self {
+        Self {
+            from,
+            to,
+            piece,
+            captured_piece: None,
+            promotion: None,
+            flags: MoveFlags::empty(),
+        }
+    }
+
+    pub const fn captures(self, captured_piece: Piece) -> Self {
+        Self {
+            captured_piece: Some(captured_piece),
+            ..self
+        }
+    }
+
+    pub const fn promotes_to(self, promotion: PieceType) -> Self {
+        Self {
+            promotion: Some(promotion.with_color(self.piece.color())),
+            ..self
+        }
+    }
+
+    pub const fn is_double_pawn_push(self) -> Self {
+        Self {
+            flags: MoveFlags::DOUBLE_PAWN_PUSH,
+            ..self
+        }
+    }
+
+    pub const fn is_castle(self) -> Self {
+        Self {
+            flags: MoveFlags::CASTLE,
+            ..self
+        }
+    }
+
+    pub const fn is_en_passant(self) -> Self {
+        Self {
+            flags: MoveFlags::EN_PASSANT,
+            ..self
+        }
+    }
+
+    pub const fn build(self) -> Move {
+        Move::new(
+            self.from,
+            self.to,
+            self.piece,
+            self.captured_piece,
+            self.promotion,
+            self.flags,
+        )
     }
 }
 
