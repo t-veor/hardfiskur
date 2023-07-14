@@ -1,16 +1,16 @@
 use crate::{
-    board::{Bitboard, Color, Move, MoveFlags, PieceType, Square},
+    board::{Bitboard, Color, Move, PieceType, Square},
     move_gen::{MoveGenMasks, MoveGenerator, POSSIBLE_PROMOTIONS},
 };
 
 impl<'board, 'moves> MoveGenerator<'board, 'moves> {
-    pub(super) fn pseudo_legal_pawn_moves(&mut self, masks: &MoveGenMasks) {
+    pub(in crate::move_gen) fn pseudo_legal_pawn_moves(&mut self, masks: &MoveGenMasks) {
         self.pseudo_legal_pawn_pushes(masks);
         self.pseudo_legal_pawn_captures(masks);
         self.pseudo_legal_en_passants(masks);
     }
 
-    fn pseudo_legal_pawn_pushes(&mut self, masks: &MoveGenMasks) {
+    pub(in crate::move_gen) fn pseudo_legal_pawn_pushes(&mut self, masks: &MoveGenMasks) {
         let piece = PieceType::Pawn.with_color(self.to_move);
         let movable_pawns = self.board[piece] & masks.movable;
 
@@ -49,7 +49,7 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
         }
     }
 
-    fn pseudo_legal_pawn_captures(&mut self, masks: &MoveGenMasks) {
+    pub(in crate::move_gen) fn pseudo_legal_pawn_captures(&mut self, masks: &MoveGenMasks) {
         let piece = PieceType::Pawn.with_color(self.to_move);
         let movable_pawns = self.board[piece] & masks.movable;
         let capturable_pieces = self.board[self.to_move.flip()] & masks.capture;
@@ -249,4 +249,12 @@ fn black_pawns_able_to_capture_west(
     capturable_pieces: Bitboard,
 ) -> Bitboard {
     movable_black_pawns & capturable_pieces.step_north_east()
+}
+
+pub fn white_pawn_attacks(white_pawns: Bitboard) -> Bitboard {
+    white_pawns.step_north_east() | white_pawns.step_north_west()
+}
+
+pub fn black_pawn_attacks(black_pawns: Bitboard) -> Bitboard {
+    black_pawns.step_south_east() | black_pawns.step_south_east()
 }
