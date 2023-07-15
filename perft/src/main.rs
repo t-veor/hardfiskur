@@ -37,17 +37,17 @@ struct Args {
     moves: Vec<MoveSpec>,
 
     /// Exact depth to search to.
+    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..), default_value_t = 8)]
+    depth: u8,
+
+    /// Run in divide mode.
     ///
-    /// When not provided, will run a generic test up to depth 7 in the current
-    /// position, printing the number of positions encountered for each depth
-    /// along with the time taken.
-    ///
-    /// When provided, will run perft down to the exact provided depth and list
-    /// each possible move in the current position along with the number of
-    /// nodes found under that move. This is useful for debugging errors by
+    /// When provided, will run perft down to the provided depth and list each
+    /// possible move in the current position along with the number of nodes
+    /// found under that move. This is useful for debugging errors by
     /// identifying the exact sequence of moves under which they occur.
-    #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..))]
-    depth: Option<u8>,
+    #[arg(long)]
+    divide: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -112,6 +112,7 @@ fn parse_position(s: &str) -> Result<Board, String> {
 
 fn generic_perft(mut board: Board, max_depth: usize) {
     let mut total_time = Duration::ZERO;
+    let mut last_depth_time = Duration::ZERO;
     let mut total_nodes = 0;
 
     for depth in 0..max_depth {
@@ -127,12 +128,13 @@ fn generic_perft(mut board: Board, max_depth: usize) {
         );
 
         total_time += time_taken;
+        last_depth_time = time_taken;
         total_nodes += nodes;
     }
 
     println!();
 
-    let nodes_per_second = total_nodes as f64 / total_time.as_secs_f64();
+    let nodes_per_second = total_nodes as f64 / last_depth_time.as_secs_f64();
 
     println!(
         "Total nodes: {total_nodes}\tTotal time: {:.3}s\tNodes per second: {:.3}",
@@ -171,6 +173,7 @@ fn main() -> Result<(), String> {
         position,
         moves,
         depth,
+        divide,
     } = Args::parse();
 
     let mut board = position;
@@ -182,12 +185,11 @@ fn main() -> Result<(), String> {
             ));
         }
     }
-    println!("==========================");
 
-    if let Some(depth) = depth {
+    if divide {
         specific_perft(board, depth as _)
     } else {
-        generic_perft(board, 8);
+        generic_perft(board, depth as _);
     }
 
     Ok(())

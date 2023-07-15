@@ -14,7 +14,7 @@ use super::Square;
 ///
 /// Bitboards have all the bitwise operations defined on them, e.g. `&`, `|`,
 /// `^`, and `!`.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
@@ -41,9 +41,14 @@ impl Bitboard {
     /// Bitboard with only squares on the H file set.
     pub const H_FILE: Self = Self(0x8080808080808080);
 
-    // TODO: document and test
+    /// Returns a bitboard with all of the bits in the given rank set.
     pub const fn rank_mask(rank: u8) -> Self {
         Self(Self::RANK_1.0 << rank * 8)
+    }
+
+    /// Returns a bitboard with all of the bits in the given file set.
+    pub const fn file_mask(file: u8) -> Self {
+        Self(Self::A_FILE.0 << file)
     }
 
     /// Returns whether this bitboard contains anything, i.e. if it is not equal
@@ -449,6 +454,22 @@ mod test {
 
     fn b(rank: u8, file: u8) -> Bitboard {
         Bitboard::from_square(Square::new_unchecked(rank, file))
+    }
+
+    #[test]
+    fn bitboard_rank_mask() {
+        assert_eq!(Bitboard::rank_mask(0), Bitboard::RANK_1);
+        assert_eq!(Bitboard::rank_mask(3), Bitboard::RANK_4);
+        assert_eq!(Bitboard::rank_mask(4), Bitboard::RANK_5);
+        assert_eq!(Bitboard::rank_mask(7), Bitboard::RANK_8);
+    }
+
+    #[test]
+    fn bitboard_file_mask() {
+        assert_eq!(Bitboard::file_mask(0), Bitboard::A_FILE);
+        assert_eq!(Bitboard::file_mask(1), Bitboard::B_FILE);
+        assert_eq!(Bitboard::file_mask(6), Bitboard::G_FILE);
+        assert_eq!(Bitboard::file_mask(7), Bitboard::H_FILE);
     }
 
     #[test]

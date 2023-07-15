@@ -1,14 +1,18 @@
 use std::{
-    fmt::{Display, Write},
+    fmt::{Debug, Display, Write},
     str::FromStr,
 };
+
+use paste::paste;
+use seq_macro::seq;
+use thiserror::Error;
 
 /// Represents a square on the chessboard.
 ///
 /// Internally, represents a square as an integer from 0-63, ordered by
 /// increasing file then rank, so that 0 is a1, 1 is b1, 2 is c1... 7 is h1, 8
 /// is a2, 9 is b2, etc.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Square(u8);
 
 impl Square {
@@ -114,15 +118,19 @@ impl Display for Square {
     }
 }
 
+#[derive(Error, Debug, Copy, Clone, PartialEq, Eq)]
+#[error("invalid square")]
+pub struct ParseSquareError;
+
 impl FromStr for Square {
-    type Err = ();
+    type Err = ParseSquareError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut char_iter = s.chars();
-        let file = char_iter.next().ok_or(())?;
-        let rank = char_iter.next().ok_or(())?;
+        let file = char_iter.next().ok_or(ParseSquareError)?;
+        let rank = char_iter.next().ok_or(ParseSquareError)?;
         if char_iter.next().is_some() {
-            return Err(());
+            return Err(ParseSquareError);
         }
 
         let rank = (rank as i32) - ('1' as i32);
@@ -130,8 +138,29 @@ impl FromStr for Square {
         if (0..8).contains(&rank) && (0..8).contains(&file) {
             Ok(Square::new_unchecked(rank as _, file as _))
         } else {
-            Err(())
+            Err(ParseSquareError)
         }
+    }
+}
+
+/// Board square aliases
+impl Square {
+    seq!(RANK in 1..=8 {
+        seq!(FILE in 'A'..='H' {
+            paste! {
+                pub const [<FILE RANK>]: Square = Square::new_unchecked(RANK - 1, FILE as u8 - b'A');
+            }
+        });
+    });
+}
+
+impl Debug for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "Square::{}{}",
+            (self.file() + b'A') as char,
+            (self.rank() + b'1') as char
+        ))
     }
 }
 
@@ -164,6 +193,14 @@ mod test {
         assert_eq!(Square::new_unchecked(8, 0), Square(0));
         assert_eq!(Square::new_unchecked(20, 1), Square(33));
         assert_eq!(Square::new_unchecked(37, 128), Square(40));
+    }
+
+    #[test]
+    fn square_aliases() {
+        assert_eq!(Square::new_unchecked(5, 7), Square::H6);
+        assert_eq!(Square::new_unchecked(2, 3), Square::D3);
+        assert_eq!(Square::new_unchecked(7, 1), Square::B8);
+        assert_eq!(Square::new_unchecked(6, 0), Square::A7);
     }
 
     #[test]
@@ -217,10 +254,10 @@ mod test {
         assert_eq!("a7".parse::<Square>(), Ok(Square(48)));
         assert_eq!("f2".parse::<Square>(), Ok(Square(13)));
 
-        assert_eq!("".parse::<Square>(), Err(()));
-        assert_eq!("x".parse::<Square>(), Err(()));
-        assert_eq!("f23".parse::<Square>(), Err(()));
-        assert_eq!("a1 ".parse::<Square>(), Err(()));
+        assert_eq!("".parse::<Square>(), Err(ParseSquareError));
+        assert_eq!("x".parse::<Square>(), Err(ParseSquareError));
+        assert_eq!("f23".parse::<Square>(), Err(ParseSquareError));
+        assert_eq!("a1 ".parse::<Square>(), Err(ParseSquareError));
     }
 
     #[test]
