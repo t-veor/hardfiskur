@@ -16,6 +16,8 @@ pub use move_repr::{Move, MoveFlags};
 pub use piece::{Color, Piece, PieceType};
 pub use square::Square;
 
+use crate::move_gen::{MoveGenFlags, MoveGenResult, MoveGenerator, MoveVec};
+
 pub const STARTING_POSITION_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 bitflags! {
@@ -103,6 +105,16 @@ pub enum BoardState {
     Invalid,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct UnmakeData {
+    the_move: Option<Move>,
+    castling: Castling,
+    en_passant: Option<Square>,
+    halfmove_clock: u32,
+    // TODO
+    // zobrist_hash: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct Board {
     board: BoardRepr,
@@ -111,6 +123,8 @@ pub struct Board {
     en_passant: Option<Square>,
     halfmove_clock: u32,
     fullmoves: u32,
+
+    move_history: Vec<UnmakeData>,
 }
 
 impl Board {
@@ -133,6 +147,8 @@ impl Board {
             en_passant,
             halfmove_clock,
             fullmoves,
+
+            move_history: Vec::new(),
         }
     }
 
@@ -150,6 +166,147 @@ impl Board {
 
     pub fn get_piece(&self, square: Square) -> Option<Piece> {
         self.board.piece_at(square)
+    }
+
+    pub fn legal_moves(&self) -> (MoveVec, MoveGenResult) {
+        let mut moves = MoveVec::new();
+        let result = self.legal_moves_ex(MoveGenFlags::default(), &mut moves);
+        (moves, result)
+    }
+
+    pub fn legal_moves_ex(&self, flags: MoveGenFlags, out_moves: &mut MoveVec) -> MoveGenResult {
+        MoveGenerator::new(
+            &self.board,
+            self.to_move,
+            self.en_passant,
+            self.castling,
+            flags,
+            out_moves,
+        )
+        .legal_moves()
+    }
+
+    pub fn push_move(&mut self, from: Square, to: Square, promotion: Option<PieceType>) -> bool {
+        let legal_moves = self.legal_moves().0;
+
+        let the_move = legal_moves.into_iter().find(|m| {
+            m.from_square() == from
+                && m.to_square() == to
+                && m.promotion().map(|piece| piece.piece_type()) == promotion
+        });
+
+        match the_move {
+            Some(the_move) => {
+                self.push_move_unchecked(the_move);
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn push_move_unchecked(&mut self, the_move: Move) {
+        let unmake = self.make_move_unchecked(the_move);
+        self.move_history.push(unmake);
+    }
+
+    pub fn pop_move(&mut self) -> Option<Move> {
+        let unmake_data = self.move_history.pop()?;
+        self.unmake_move(unmake_data);
+        unmake_data.the_move
+    }
+
+    fn castling_rights_removed(&self, the_move: Move) -> Option<Castling> {
+        if the_move.is_move_of(PieceType::King) {
+            Some(match the_move.piece().color() {
+                Color::White => Castling::WHITE,
+                Color::Black => Castling::BLACK,
+            })
+        } else if the_move.is_move_of(PieceType::Rook) {
+            match the_move.from_square() {
+                Square::WHITE_KINGSIDE_ROOK => Some(Castling::WHITE_KINGSIDE),
+                Square::WHITE_QUEENSIDE_ROOK => Some(Castling::WHITE_QUEENSIDE),
+                Square::BLACK_KINGSIDE_ROOK => Some(Castling::BLACK_KINGSIDE),
+                Square::BLACK_QUEENSIDE_ROOK => Some(Castling::BLACK_QUEENSIDE),
+                _ => None,
+            }
+        } else if the_move.is_capture_of(PieceType::Rook) {
+            match the_move.to_square() {
+                Square::WHITE_KINGSIDE_ROOK => Some(Castling::WHITE_KINGSIDE),
+                Square::WHITE_QUEENSIDE_ROOK => Some(Castling::WHITE_QUEENSIDE),
+                Square::BLACK_KINGSIDE_ROOK => Some(Castling::BLACK_KINGSIDE),
+                Square::BLACK_QUEENSIDE_ROOK => Some(Castling::BLACK_QUEENSIDE),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    fn make_move_unchecked(&mut self, the_move: Move) -> UnmakeData {
+        self.to_move = self.to_move.flip();
+        if self.to_move.is_white() {
+            self.fullmoves += 1;
+        }
+
+        self.board.move_unchecked(the_move);
+
+        // Update if the move broke any castling rights
+        let prev_castling = self.castling;
+        if let Some(remove_rights) = self.castling_rights_removed(the_move) {
+            self.castling.remove(remove_rights);
+        }
+
+        // Set the en passant square if applicable
+        let prev_en_passant = self.en_passant;
+        if the_move.is_double_pawn_push() {
+            // Little trick -- due to our square representation, the square
+            // inbetween two squares vertically is simply the average of the
+            // start and end square
+            let en_passant_square = (the_move.from_square().get() + the_move.to_square().get()) / 2;
+            self.en_passant = Some(Square::from_u8_unchecked(en_passant_square));
+        } else {
+            self.en_passant = None;
+        }
+
+        let prev_halfmove_clock = self.halfmove_clock;
+        if the_move.is_capture() || the_move.is_move_of(PieceType::Pawn) {
+            self.halfmove_clock = 0;
+        } else {
+            self.halfmove_clock += 1;
+        }
+
+        // TODO: recalc zobrist hash and repetition table
+
+        UnmakeData {
+            the_move: Some(the_move),
+            castling: prev_castling,
+            en_passant: prev_en_passant,
+            halfmove_clock: prev_halfmove_clock,
+        }
+    }
+
+    fn unmake_move(&mut self, unmake_data: UnmakeData) {
+        let UnmakeData {
+            the_move,
+            castling,
+            en_passant,
+            halfmove_clock,
+        } = unmake_data;
+
+        self.to_move = self.to_move.flip();
+        if self.to_move.is_black() {
+            self.fullmoves -= 1;
+        }
+
+        if let Some(the_move) = the_move {
+            self.board.move_unchecked(the_move);
+        }
+
+        self.castling = castling;
+        self.en_passant = en_passant;
+        self.halfmove_clock = self.halfmove_clock;
+
+        // TODO: reset zobrist hash and repetition table
     }
 }
 

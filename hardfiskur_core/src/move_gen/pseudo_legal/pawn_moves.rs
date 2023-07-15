@@ -256,5 +256,5 @@ pub fn white_pawn_attacks(white_pawns: Bitboard) -> Bitboard {
 }
 
 pub fn black_pawn_attacks(black_pawns: Bitboard) -> Bitboard {
-    black_pawns.step_south_east() | black_pawns.step_south_east()
+    black_pawns.step_south_east() | black_pawns.step_south_west()
 }

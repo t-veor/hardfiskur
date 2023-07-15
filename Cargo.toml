@@ -6,4 +6,5 @@ members = [
 
     "find_magics",
     "bitboard_attack_viewer",
+    "perft"
 ]

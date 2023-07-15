@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, num::NonZeroU32};
 
 use bitflags::bitflags;
 
@@ -54,7 +54,7 @@ bitflags! {
 ///    +----------------------------------- move flags
 /// ```
 #[derive(Clone, Copy)]
-pub struct Move(u32);
+pub struct Move(NonZeroU32);
 
 impl Move {
     /// Constructs a new [`Move`].
@@ -84,24 +84,34 @@ impl Move {
         }) << 24;
         let flags = flags.bits();
 
-        Self(flags | promotion | captured_piece | piece | to | from)
+        unsafe {
+            // Safety: piece cannot be zero, this big OR can't be zero either
+            Self(NonZeroU32::new_unchecked(
+                flags | promotion | captured_piece | piece | to | from,
+            ))
+        }
     }
 
     /// Returns the source square of the moved piece.
     pub const fn from_square(self) -> Square {
-        Square::from_u8_unchecked((self.0 & 0x3F) as u8)
+        Square::from_u8_unchecked((self.0.get() & 0x3F) as u8)
     }
 
     /// Returns the destination square of the moved piece.
     pub const fn to_square(self) -> Square {
-        Square::from_u8_unchecked(((self.0 & 0x3F00) >> 8) as u8)
+        Square::from_u8_unchecked(((self.0.get() & 0x3F00) >> 8) as u8)
     }
 
     // Would really like this to be a const function, but alas
     /// Returns the piece that was moved.
     pub fn piece(self) -> Piece {
-        Piece::try_from_u8(((self.0 & 0x0F0000) >> 16) as u8)
+        Piece::try_from_u8(((self.0.get() & 0x0F0000) >> 16) as u8)
             .expect("invalid move representation encountered")
+    }
+
+    /// Returns if the piece that was moved was of the given type.
+    pub fn is_move_of(self, piece_type: PieceType) -> bool {
+        self.piece().piece_type() == piece_type
     }
 
     /// Returns the piece that was captured, if any.
@@ -121,18 +131,24 @@ impl Move {
     /// }
     /// ```
     pub const fn captured_piece(self) -> Option<Piece> {
-        Piece::try_from_u8(((self.0 & 0xF00000) >> 20) as u8)
+        Piece::try_from_u8(((self.0.get() & 0xF00000) >> 20) as u8)
+    }
+
+    /// Returns if this move captures a piece of the given type.
+    pub fn is_capture_of(self, piece_type: PieceType) -> bool {
+        self.captured_piece()
+            .is_some_and(|piece| piece.piece_type() == piece_type)
     }
 
     /// If this was a pawn move that reached the final rank, returns the
     /// promotion target for this pawn.
     pub const fn promotion(self) -> Option<Piece> {
-        Piece::try_from_u8(((self.0 & 0x0F000000) >> 24) as u8)
+        Piece::try_from_u8(((self.0.get() & 0x0F000000) >> 24) as u8)
     }
 
     /// Returns the special move flags for this move.
     pub const fn flags(self) -> MoveFlags {
-        MoveFlags::from_bits_truncate(self.0)
+        MoveFlags::from_bits_truncate(self.0.get())
     }
 
     /// Returns true if this move is a capture.
@@ -142,17 +158,17 @@ impl Move {
 
     /// Returns true if this move was an initial double-step move of a pawn.
     pub const fn is_double_pawn_push(self) -> bool {
-        MoveFlags::from_bits_retain(self.0).contains(MoveFlags::DOUBLE_PAWN_PUSH)
+        MoveFlags::from_bits_retain(self.0.get()).contains(MoveFlags::DOUBLE_PAWN_PUSH)
     }
 
     /// Returns true if this move was a castling move.
     pub const fn is_castle(self) -> bool {
-        MoveFlags::from_bits_retain(self.0).contains(MoveFlags::CASTLE)
+        MoveFlags::from_bits_retain(self.0.get()).contains(MoveFlags::CASTLE)
     }
 
     /// Returns true if this move was an en passant capture.
     pub const fn is_en_passant(self) -> bool {
-        MoveFlags::from_bits_retain(self.0).contains(MoveFlags::EN_PASSANT)
+        MoveFlags::from_bits_retain(self.0.get()).contains(MoveFlags::EN_PASSANT)
     }
 
     pub const fn builder(from: Square, to: Square, piece: Piece) -> MoveBuilder {
@@ -418,6 +434,19 @@ mod test {
         for move_case in all_test_moves {
             let the_move = move_case.create_move();
             move_case.assert_eq(the_move);
+
+            for piece_type in PieceType::ALL {
+                assert_eq!(
+                    the_move.is_move_of(piece_type),
+                    move_case.piece.piece_type() == piece_type
+                );
+                assert_eq!(
+                    the_move.is_capture_of(piece_type),
+                    move_case
+                        .captured_piece
+                        .is_some_and(|piece| piece.piece_type() == piece_type)
+                );
+            }
         }
     }
 

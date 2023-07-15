@@ -22,6 +22,15 @@ pub enum PieceType {
 }
 
 impl PieceType {
+    pub const ALL: [PieceType; 6] = [
+        Self::Pawn,
+        Self::Knight,
+        Self::Bishop,
+        Self::Rook,
+        Self::Queen,
+        Self::King,
+    ];
+
     /// Convenience method for constructing a white [`Piece`].
     pub const fn white(self) -> Piece {
         Piece::white(self)

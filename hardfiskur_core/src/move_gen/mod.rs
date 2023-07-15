@@ -243,7 +243,7 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
                 | self.board[PieceType::Queen.with_color(opponent)]);
 
         attackers |= self.lookups.get_rook_attacks(self.occupied, king_square)
-            & (self.board[PieceType::Bishop.with_color(opponent)]
+            & (self.board[PieceType::Rook.with_color(opponent)]
                 | self.board[PieceType::Queen.with_color(opponent)]);
 
         // No need to check for king attacks, it's not possible for kings to be
@@ -369,7 +369,7 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
 
             match pinned_piece.piece_type() {
                 // If the pin is diagonal, the pawn may be able to capture
-                PieceType::Pawn => self.pseudo_legal_pawn_pushes(&special_pin_masks),
+                PieceType::Pawn => self.pseudo_legal_pawn_captures(&special_pin_masks),
                 PieceType::Bishop | PieceType::Queen => self.gen_moves_for_pinned_slider(
                     pinned_square,
                     pinned_piece,
@@ -422,7 +422,7 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
                 return;
             }
 
-            let in_between = self.lookups.get_in_between(king_square, to);
+            let in_between = self.lookups.get_in_between(king_square, rook_square);
             // Can't castle if there are pieces between the king and rook
             if (in_between & self.occupied).has_piece() {
                 return;
