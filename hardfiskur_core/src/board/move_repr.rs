@@ -171,10 +171,13 @@ impl Move {
         MoveFlags::from_bits_retain(self.0.get()).contains(MoveFlags::EN_PASSANT)
     }
 
+    /// Convenience alias for [`MoveBuilder::new`].
     pub const fn builder(from: Square, to: Square, piece: Piece) -> MoveBuilder {
         MoveBuilder::new(from, to, piece)
     }
 
+    /// Convert this move into a pre-populated [`MoveBuilder`]. Useful for
+    /// editing just one aspect of the move.
     pub fn into_builder(self) -> MoveBuilder {
         MoveBuilder {
             from: self.from_square(),
@@ -200,8 +203,14 @@ impl Debug for Move {
     }
 }
 
-// TODO: Restructure tests with this
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Builder struct for convenient construction of a [`Move`].
+///
+/// The [`Move`] struct requires all its fields up-front in its constructor,
+/// which may be annoying when in most cases you don't care for specifying the
+/// promotion or the castling state, etc. This struct provides a streaming
+/// interface to incrementally build a move, before calling
+/// [`MoveBuilder::build`] to finalise.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MoveBuilder {
     pub from: Square,
     pub to: Square,
@@ -212,6 +221,10 @@ pub struct MoveBuilder {
 }
 
 impl MoveBuilder {
+    /// Create a new [`MoveBuilder`].
+    ///
+    /// Every move requires a source and destination square, as well as the
+    /// piece being moved, so these are required in this constructor.
     pub const fn new(from: Square, to: Square, piece: Piece) -> Self {
         Self {
             from,
@@ -223,6 +236,7 @@ impl MoveBuilder {
         }
     }
 
+    /// Sets the captured piece of this move.
     pub const fn captures(self, captured_piece: Piece) -> Self {
         Self {
             captured_piece: Some(captured_piece),
@@ -230,6 +244,7 @@ impl MoveBuilder {
         }
     }
 
+    /// Sets the promotion target of this move.
     pub const fn promotes_to(self, promotion: PieceType) -> Self {
         Self {
             promotion: Some(promotion.with_color(self.piece.color())),
@@ -237,6 +252,7 @@ impl MoveBuilder {
         }
     }
 
+    /// Sets the flags to [`MoveFlags::DOUBLE_PAWN_PUSH`].
     pub const fn is_double_pawn_push(self) -> Self {
         Self {
             flags: MoveFlags::DOUBLE_PAWN_PUSH,
@@ -244,6 +260,7 @@ impl MoveBuilder {
         }
     }
 
+    /// Sets the flags to [`MoveFlags::CASTLE`].
     pub const fn is_castle(self) -> Self {
         Self {
             flags: MoveFlags::CASTLE,
@@ -251,6 +268,7 @@ impl MoveBuilder {
         }
     }
 
+    /// Sets the flags to [`MoveFlags::EN_PASSANT`].
     pub const fn is_en_passant(self) -> Self {
         Self {
             flags: MoveFlags::EN_PASSANT,
@@ -258,6 +276,7 @@ impl MoveBuilder {
         }
     }
 
+    /// Finalises and builds the [`Move`].
     pub const fn build(self) -> Move {
         Move::new(
             self.from,
@@ -275,28 +294,7 @@ mod test {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    #[derive(Debug, Clone)]
-    struct ExplodedMove {
-        from: Square,
-        to: Square,
-        piece: Piece,
-        captured_piece: Option<Piece>,
-        promotion: Option<Piece>,
-        flags: MoveFlags,
-    }
-
-    impl ExplodedMove {
-        fn create_move(&self) -> Move {
-            Move::new(
-                self.from,
-                self.to,
-                self.piece,
-                self.captured_piece,
-                self.promotion,
-                self.flags,
-            )
-        }
-
+    impl MoveBuilder {
         fn assert_eq(&self, the_move: Move) {
             assert_eq!(self.from, the_move.from_square());
             assert_eq!(self.to, the_move.to_square());
@@ -307,118 +305,40 @@ mod test {
         }
     }
 
-    const EN_PASSANT_CAPTURES: &[ExplodedMove] = &[
-        ExplodedMove {
-            from: Square::new_unchecked(4, 1),
-            to: Square::new_unchecked(5, 0),
-            piece: Piece::WHITE_PAWN,
-            captured_piece: Some(Piece::BLACK_PAWN),
-            promotion: None,
-            flags: MoveFlags::EN_PASSANT,
-        },
-        ExplodedMove {
-            from: Square::new_unchecked(3, 5),
-            to: Square::new_unchecked(2, 6),
-            piece: Piece::BLACK_PAWN,
-            captured_piece: Some(Piece::WHITE_PAWN),
-            promotion: None,
-            flags: MoveFlags::EN_PASSANT,
-        },
+    const EN_PASSANT_CAPTURES: &[MoveBuilder] = &[
+        MoveBuilder::new(Square::B5, Square::A6, Piece::WHITE_PAWN)
+            .captures(Piece::BLACK_PAWN)
+            .is_en_passant(),
+        MoveBuilder::new(Square::F4, Square::G3, Piece::BLACK_PAWN)
+            .captures(Piece::WHITE_PAWN)
+            .is_en_passant(),
     ];
 
-    const PROMOTIONS: &[ExplodedMove] = &[
-        ExplodedMove {
-            from: Square::new_unchecked(6, 2),
-            to: Square::new_unchecked(7, 2),
-            piece: Piece::WHITE_PAWN,
-            captured_piece: None,
-            promotion: Some(Piece::WHITE_QUEEN),
-            flags: MoveFlags::empty(),
-        },
-        ExplodedMove {
-            from: Square::new_unchecked(1, 7),
-            to: Square::new_unchecked(0, 6),
-            piece: Piece::BLACK_PAWN,
-            captured_piece: Some(Piece::WHITE_BISHOP),
-            promotion: Some(Piece::BLACK_ROOK),
-            flags: MoveFlags::empty(),
-        },
+    const PROMOTIONS: &[MoveBuilder] = &[
+        MoveBuilder::new(Square::C7, Square::C8, Piece::WHITE_PAWN).promotes_to(PieceType::Queen),
+        MoveBuilder::new(Square::H2, Square::G1, Piece::BLACK_PAWN)
+            .captures(Piece::WHITE_BISHOP)
+            .promotes_to(PieceType::Rook),
     ];
 
-    const DOUBLE_PAWN_PUSHES: &[ExplodedMove] = &[
-        ExplodedMove {
-            from: Square::new_unchecked(1, 3),
-            to: Square::new_unchecked(3, 3),
-            piece: Piece::WHITE_PAWN,
-            captured_piece: None,
-            promotion: None,
-            flags: MoveFlags::DOUBLE_PAWN_PUSH,
-        },
-        ExplodedMove {
-            from: Square::new_unchecked(6, 4),
-            to: Square::new_unchecked(4, 4),
-            piece: Piece::BLACK_PAWN,
-            captured_piece: None,
-            promotion: None,
-            flags: MoveFlags::DOUBLE_PAWN_PUSH,
-        },
+    const DOUBLE_PAWN_PUSHES: &[MoveBuilder] = &[
+        MoveBuilder::new(Square::D2, Square::D4, Piece::WHITE_PAWN).is_double_pawn_push(),
+        MoveBuilder::new(Square::E5, Square::E7, Piece::BLACK_PAWN).is_double_pawn_push(),
     ];
 
-    const CASTLES: &[ExplodedMove] = &[
-        ExplodedMove {
-            from: Square::new_unchecked(0, 4),
-            to: Square::new_unchecked(0, 6),
-            piece: Piece::WHITE_KING,
-            captured_piece: None,
-            promotion: None,
-            flags: MoveFlags::CASTLE,
-        },
-        ExplodedMove {
-            from: Square::new_unchecked(7, 4),
-            to: Square::new_unchecked(7, 2),
-            piece: Piece::BLACK_KING,
-            captured_piece: None,
-            promotion: None,
-            flags: MoveFlags::CASTLE,
-        },
+    const CASTLES: &[MoveBuilder] = &[
+        MoveBuilder::new(Square::E1, Square::G1, Piece::WHITE_KING).is_castle(),
+        MoveBuilder::new(Square::E8, Square::C8, Piece::BLACK_KING).is_castle(),
     ];
 
-    const CAPTURES: &[ExplodedMove] = &[
-        ExplodedMove {
-            from: Square::new_unchecked(2, 3),
-            to: Square::new_unchecked(6, 7),
-            piece: Piece::BLACK_BISHOP,
-            captured_piece: Some(Piece::WHITE_QUEEN),
-            promotion: None,
-            flags: MoveFlags::empty(),
-        },
-        ExplodedMove {
-            from: Square::new_unchecked(3, 4),
-            to: Square::new_unchecked(4, 2),
-            piece: Piece::WHITE_KNIGHT,
-            captured_piece: Some(Piece::BLACK_ROOK),
-            promotion: None,
-            flags: MoveFlags::empty(),
-        },
+    const CAPTURES: &[MoveBuilder] = &[
+        MoveBuilder::new(Square::D3, Square::H7, Piece::BLACK_BISHOP).captures(Piece::WHITE_QUEEN),
+        MoveBuilder::new(Square::E4, Square::C5, Piece::WHITE_KNIGHT).captures(Piece::BLACK_ROOK),
     ];
 
-    const QUIET_MOVES: &[ExplodedMove] = &[
-        ExplodedMove {
-            from: Square::new_unchecked(1, 1),
-            to: Square::new_unchecked(4, 1),
-            piece: Piece::BLACK_QUEEN,
-            captured_piece: None,
-            promotion: None,
-            flags: MoveFlags::empty(),
-        },
-        ExplodedMove {
-            from: Square::new_unchecked(5, 2),
-            to: Square::new_unchecked(6, 2),
-            piece: Piece::WHITE_PAWN,
-            captured_piece: None,
-            promotion: None,
-            flags: MoveFlags::empty(),
-        },
+    const QUIET_MOVES: &[MoveBuilder] = &[
+        MoveBuilder::new(Square::B2, Square::B5, Piece::BLACK_QUEEN),
+        MoveBuilder::new(Square::C6, Square::C7, Piece::WHITE_PAWN),
     ];
 
     #[test]
@@ -432,7 +352,7 @@ mod test {
             .chain(QUIET_MOVES);
 
         for move_case in all_test_moves {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             move_case.assert_eq(the_move);
 
             for piece_type in PieceType::ALL {
@@ -455,12 +375,12 @@ mod test {
         let capture_test_moves = EN_PASSANT_CAPTURES.iter().chain(CAPTURES);
 
         for move_case in capture_test_moves {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             assert!(the_move.is_capture());
         }
 
         for move_case in QUIET_MOVES {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             assert!(!the_move.is_capture());
         }
     }
@@ -468,13 +388,13 @@ mod test {
     #[test]
     fn move_is_double_pawn_push() {
         for move_case in DOUBLE_PAWN_PUSHES {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             assert!(the_move.is_double_pawn_push());
             assert!(the_move.flags().contains(MoveFlags::DOUBLE_PAWN_PUSH));
         }
 
         for move_case in QUIET_MOVES {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             assert!(!the_move.is_double_pawn_push());
             assert!(!the_move.flags().contains(MoveFlags::DOUBLE_PAWN_PUSH));
         }
@@ -483,13 +403,13 @@ mod test {
     #[test]
     fn move_is_castle() {
         for move_case in CASTLES {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             assert!(the_move.is_castle());
             assert!(the_move.flags().contains(MoveFlags::CASTLE));
         }
 
         for move_case in QUIET_MOVES {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             assert!(!the_move.is_castle());
             assert!(!the_move.flags().contains(MoveFlags::CASTLE));
         }
@@ -498,15 +418,33 @@ mod test {
     #[test]
     fn move_is_en_passant() {
         for move_case in EN_PASSANT_CAPTURES {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             assert!(the_move.is_en_passant());
             assert!(the_move.flags().contains(MoveFlags::EN_PASSANT));
         }
 
         for move_case in QUIET_MOVES {
-            let the_move = move_case.create_move();
+            let the_move = move_case.build();
             assert!(!the_move.is_en_passant());
             assert!(!the_move.flags().contains(MoveFlags::EN_PASSANT));
+        }
+    }
+
+    #[test]
+    fn move_into_builder() {
+        let all_test_moves = EN_PASSANT_CAPTURES
+            .iter()
+            .chain(PROMOTIONS)
+            .chain(DOUBLE_PAWN_PUSHES)
+            .chain(CASTLES)
+            .chain(CAPTURES)
+            .chain(QUIET_MOVES);
+
+        for move_case in all_test_moves {
+            let the_move = move_case.build();
+            let new_builder = the_move.into_builder();
+
+            assert_eq!(*move_case, new_builder);
         }
     }
 }
