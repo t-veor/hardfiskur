@@ -12,7 +12,7 @@ use bitflags::bitflags;
 pub use bitboard::Bitboard;
 pub use board_repr::BoardRepr;
 pub use fen::FenParseError;
-pub use move_repr::{Move, MoveFlags};
+pub use move_repr::{Move, MoveBuilder, MoveFlags};
 pub use piece::{Color, Piece, PieceType};
 pub use square::Square;
 
@@ -105,16 +105,21 @@ pub enum BoardState {
     Invalid,
 }
 
+/// Holds relevant information needed to undo a move.
 #[derive(Debug, Clone, Copy)]
 struct UnmakeData {
     the_move: Option<Move>,
     castling: Castling,
     en_passant: Option<Square>,
     halfmove_clock: u32,
-    // TODO
+    // TODO:
     // zobrist_hash: u64,
 }
 
+/// Represents the current game state.
+///
+/// Contains a bitboard representation of the board, along with other
+/// information such as move history, castling rights, etc.
 #[derive(Debug, Clone)]
 pub struct Board {
     board: BoardRepr,
@@ -128,6 +133,26 @@ pub struct Board {
 }
 
 impl Board {
+    /// Create a new [`Board`].
+    ///
+    /// # Arguments
+    ///
+    /// * `board` - a slice of [`Option<Piece>`]s, ordered by increasing file
+    ///   and then rank. See [`BoardRepr::new`] for more details.
+    /// * `to_move` - the [`Color`] of the current player.
+    /// * `castling` - castling rights for both players, see [`Castling`]
+    /// * `en_passant` - set if set if a double pawn push was made on the
+    ///    immediate previous ply and the current player has the option to
+    ///    capture en passant.
+    ///
+    ///    In this case, `en_passant` should be `Some(square)`, where `square`
+    ///    is the square behind the double-moved pawn that the current player's
+    ///    pawn will land on if they choose to en passant.
+    /// * `halfmove_clock` - Half-move clock, represents the number of plies
+    ///    since the last capture or pawn-push. This is used for tracking the
+    ///    50-move draw rule.
+    /// * `fullmoves` - Number of full moves (2 plies, a move by white and a
+    ///    move by black) since the start of the game. Starts at 1.
     pub fn new(
         board: &[Option<Piece>],
         to_move: Color,
@@ -152,28 +177,40 @@ impl Board {
         }
     }
 
+    /// Returns a [`Board`] representing the starting position of a standard
+    /// chess game.
     pub fn starting_position() -> Self {
         Self::try_parse_fen(STARTING_POSITION_FEN).unwrap()
     }
 
+    /// Returns the [`Color`] of the current player.
     pub fn to_move(&self) -> Color {
         self.to_move
     }
 
+    /// Returns an iterator over all the pieces on the board and the square
+    /// they're on.
+    ///
+    /// The pieces are not guaranteed to be returned in any particular order.
     pub fn pieces(&self) -> impl Iterator<Item = (Piece, Square)> + '_ {
         self.board.pieces()
     }
 
+    /// Returns the piece that's on a specific square.
     pub fn get_piece(&self, square: Square) -> Option<Piece> {
         self.board.piece_at(square)
     }
 
+    /// Generate all the possible legal moves in the current position.
     pub fn legal_moves(&self) -> (MoveVec, MoveGenResult) {
         let mut moves = MoveVec::new();
         let result = self.legal_moves_ex(MoveGenFlags::default(), &mut moves);
         (moves, result)
     }
 
+    /// More customisable version of [`Self::legal_moves`], allowing you to pass
+    /// in `flags` to control whether captures or pushes should be generated,
+    /// and specify where moves should be output into via `out_moves`.
     pub fn legal_moves_ex(&self, flags: MoveGenFlags, out_moves: &mut MoveVec) -> MoveGenResult {
         MoveGenerator::new(
             &self.board,
@@ -186,6 +223,15 @@ impl Board {
         .legal_moves()
     }
 
+    /// Make a move on the board.
+    ///
+    /// Attempts to find a legal move matching the provided parameters. If one
+    /// is found, the move is made on the board and `true` is returned. If no
+    /// legal moves match the criteria, `false` is returned.
+    ///
+    /// `promotion` should be `None` unless the move involves a pawn moving to
+    /// the back rank, in which case it should be `Some` of a valid promotion
+    /// piece type.
     pub fn push_move(&mut self, from: Square, to: Square, promotion: Option<PieceType>) -> bool {
         let legal_moves = self.legal_moves().0;
 
@@ -204,11 +250,19 @@ impl Board {
         }
     }
 
+    /// Make a move on the board without checking its legality.
+    ///
+    /// Ensure that the move provided is legal, otherwise you will put the board
+    /// into an invalid state.
     pub fn push_move_unchecked(&mut self, the_move: Move) {
         let unmake = self.make_move_unchecked(the_move);
         self.move_history.push(unmake);
     }
 
+    /// Undo the most recently made move on the board.
+    ///
+    /// Does nothing if there are no moves in the move history. Returns the move
+    /// that was undone if any.
     pub fn pop_move(&mut self) -> Option<Move> {
         let unmake_data = self.move_history.pop()?;
         self.unmake_move(unmake_data);
@@ -304,7 +358,7 @@ impl Board {
 
         self.castling = castling;
         self.en_passant = en_passant;
-        self.halfmove_clock = self.halfmove_clock;
+        self.halfmove_clock = halfmove_clock;
 
         // TODO: reset zobrist hash and repetition table
     }
