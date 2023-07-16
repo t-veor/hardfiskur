@@ -185,6 +185,9 @@ fn rank_attacks(occupied: Bitboard, square: Square, ray_attacks: &[[Bitboard; 8]
 /// attacks will include the square the blocker is encountered (but none
 /// after the blocker).
 ///
+/// This should not be used in move generation and should only be used to
+/// calculate lookup tables.
+///
 /// `ray_attacks` should be a valid pre-populated look up table, which can be
 /// obtained from [`crate::move_gen::lookups::gen_ray_attacks`].
 ///
@@ -233,6 +236,9 @@ pub fn rook_attacks(
 /// Note that if the attack is blocked by bits in the `occupied` bitboard, the
 /// attacks will include the square the blocker is encountered (but none
 /// after the blocker).
+///
+/// This should not be used in move generation and should only be used to
+/// calculate lookup tables.
 ///
 /// `ray_attacks` should be a valid pre-populated look up table, which can be
 /// obtained from [`crate::move_gen::lookups::gen_ray_attacks`].
@@ -285,6 +291,9 @@ pub fn bishop_attacks(
 /// Note that if the attack is blocked by bits in the `occupied` bitboard, the
 /// attacks will include the square the blocker is encountered (but none
 /// after the blocker).
+///
+/// This should not be used in move generation and should only be used to
+/// calculate lookup tables.
 ///
 /// `ray_attacks` should be a valid pre-populated look up table, which can be
 /// obtained from [`crate::move_gen::lookups::gen_ray_attacks`].

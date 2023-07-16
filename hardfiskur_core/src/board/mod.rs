@@ -141,9 +141,9 @@ impl Board {
     ///   and then rank. See [`BoardRepr::new`] for more details.
     /// * `to_move` - the [`Color`] of the current player.
     /// * `castling` - castling rights for both players, see [`Castling`]
-    /// * `en_passant` - set if set if a double pawn push was made on the
-    ///    immediate previous ply and the current player has the option to
-    ///    capture en passant.
+    /// * `en_passant` - set if a double pawn push was made on the immediate
+    ///    previous ply and the current player has the option to capture en
+    ///    passant.
     ///
     ///    In this case, `en_passant` should be `Some(square)`, where `square`
     ///    is the square behind the double-moved pawn that the current player's

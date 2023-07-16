@@ -110,7 +110,14 @@ impl Square {
         (0..64).map(Square)
     }
 
-    // TODO: document and test
+    /// Adds an offset to this given square and returns a new square.
+    ///
+    /// For example, to find the square to the north of this one, you can call
+    /// this function with an offset of +8.
+    ///
+    /// No checking is done to make sure that offsetting does not undesirably
+    /// wrap, but the final value is always truncated to between 0..=63 so the
+    /// resulting square is always valid.
     pub const fn offset(self, offset: i8) -> Self {
         Self::from_u8_unchecked((self.0 as i8).wrapping_add(offset) as u8)
     }
@@ -162,7 +169,7 @@ impl Square {
 impl Debug for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "Square::{}{}",
+            "{}{}",
             (self.file() + b'A') as char,
             (self.rank() + b'1') as char
         ))
@@ -277,5 +284,19 @@ mod test {
         let all = Square::all().collect::<Vec<_>>();
 
         assert_eq!(all, expected);
+    }
+
+    #[test]
+    fn square_offset() {
+        assert_eq!(Square::E4.offset(8), Square::E5);
+        assert_eq!(Square::A1.offset(9), Square::B2);
+        assert_eq!(Square::H3.offset(-1), Square::G3);
+        assert_eq!(Square::F6.offset(-7), Square::G5);
+
+        assert_eq!(Square::E4.offset(16), Square::E6);
+        assert_eq!(Square::E4.offset(-16), Square::E2);
+
+        assert_eq!(Square::A1.offset(-8), Square::A8);
+        assert_eq!(Square::H6.offset(9), Square::A8);
     }
 }
