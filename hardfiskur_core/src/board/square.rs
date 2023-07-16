@@ -109,6 +109,11 @@ impl Square {
     pub fn all() -> impl Iterator<Item = Square> {
         (0..64).map(Square)
     }
+
+    // TODO: document and test
+    pub const fn offset(self, offset: i8) -> Self {
+        Self::from_u8_unchecked((self.0 as i8).wrapping_add(offset) as u8)
+    }
 }
 
 impl Display for Square {

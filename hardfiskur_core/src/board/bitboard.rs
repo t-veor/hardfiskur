@@ -434,9 +434,8 @@ impl Iterator for BitIterator {
         if self.0 == 0 {
             None
         } else {
-            let t = self.0 & self.0.wrapping_neg();
             let r = self.0.trailing_zeros();
-            self.0 ^= t;
+            self.0 &= self.0 - 1;
             Some(r as _)
         }
     }

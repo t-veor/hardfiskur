@@ -25,11 +25,10 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
             ),
         };
 
-        let push_dir = if self.to_move.is_white() { 1 } else { -1 };
         let rank_before_promotion = if self.to_move.is_white() { 6 } else { 1 };
 
         for from in single_pushable_pawns.squares() {
-            let to = Square::new_unchecked((from.rank() as i8 + push_dir) as u8, from.file());
+            let to = pawn_push_dest(from, self.to_move);
 
             if from.rank() == rank_before_promotion {
                 for &promo in POSSIBLE_PROMOTIONS {
@@ -42,7 +41,7 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
         }
 
         for from in double_pushable_pawns.squares() {
-            let to = Square::new_unchecked((from.rank() as i8 + push_dir * 2) as u8, from.file());
+            let to = pawn_double_push_dest(from, self.to_move);
 
             self.out_moves
                 .push(Move::builder(from, to, piece).is_double_pawn_push().build());
@@ -65,7 +64,6 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
             ),
         };
 
-        let push_dir = if self.to_move.is_white() { 1 } else { -1 };
         let rank_before_promotion = if self.to_move.is_white() { 6 } else { 1 };
 
         let mut push_capture = |from: Square, to: Square| {
@@ -93,17 +91,11 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
         };
 
         for from in east_captures.squares() {
-            push_capture(
-                from,
-                Square::new_unchecked((from.rank() as i8 + push_dir) as u8, from.file() + 1),
-            );
+            push_capture(from, pawn_east_capture_dest(from, self.to_move));
         }
 
         for from in west_captures.squares() {
-            push_capture(
-                from,
-                Square::new_unchecked((from.rank() as i8 + push_dir) as u8, from.file() - 1),
-            );
+            push_capture(from, pawn_west_capture_dest(from, self.to_move));
         }
     }
 
@@ -134,8 +126,6 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
                 black_pawns_able_to_capture_west(movable_pawns, en_passant_bb),
             ),
         };
-
-        let push_dir = if self.to_move.is_white() { 1 } else { -1 };
 
         let mut try_en_passant = |from: Square, to: Square| {
             let captured_pawn_square = Square::new_unchecked(from.rank(), to.file());
@@ -182,19 +172,41 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
         };
 
         for from in east_captures.squares() {
-            try_en_passant(
-                from,
-                Square::new_unchecked((from.rank() as i8 + push_dir) as u8, from.file() + 1),
-            );
+            try_en_passant(from, en_passant);
         }
 
         for from in west_captures.squares() {
-            try_en_passant(
-                from,
-                Square::new_unchecked((from.rank() as i8 + push_dir) as u8, from.file() - 1),
-            );
+            try_en_passant(from, en_passant);
         }
     }
+}
+
+fn pawn_push_dest(square: Square, color: Color) -> Square {
+    square.offset(match color {
+        Color::White => 8,
+        Color::Black => -8,
+    })
+}
+
+fn pawn_double_push_dest(square: Square, color: Color) -> Square {
+    square.offset(match color {
+        Color::White => 16,
+        Color::Black => -16,
+    })
+}
+
+fn pawn_east_capture_dest(square: Square, color: Color) -> Square {
+    square.offset(match color {
+        Color::White => 9,
+        Color::Black => -7,
+    })
+}
+
+fn pawn_west_capture_dest(square: Square, color: Color) -> Square {
+    square.offset(match color {
+        Color::White => 7,
+        Color::Black => -9,
+    })
 }
 
 fn white_pawns_able_to_push(movable_white_pawns: Bitboard, can_push_into: Bitboard) -> Bitboard {

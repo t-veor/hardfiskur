@@ -1,3 +1,5 @@
+//! Move generation and lookup tables.
+
 use arrayvec::ArrayVec;
 use bitflags::bitflags;
 
@@ -62,11 +64,11 @@ pub struct MoveGenResult {
 ///
 /// The reason the capture and push masks are separate is due to en passant --
 /// it may have sufficed to have a single "push" mask represent both squares
-/// that can be moved onto, except in the case of en passant, the square that
-/// the capturing piece lands on is different to the square that the captured
-/// piece is on. Two different masks are needed to handle the two situations
-/// where a pawn which can be en passant captured is giving check, and where
-/// capturing a pawn via en passant also blocks a check.
+/// that can be moved onto and pieces that must be captured, except in the case
+/// of en passant, the square that the capturing piece lands on is different to
+/// the square that the captured piece is on. Two different masks are needed to
+/// handle the two situations where a pawn which can be en passant captured is
+/// giving check, and where capturing a pawn via en passant also blocks a check.
 ///
 /// Inspiration for this style of move generation comes from
 /// <https://peterellisjones.com/posts/generating-legal-chess-moves-efficiently/>.
@@ -482,17 +484,16 @@ pub fn attacked_squares(
         lookups.get_knight_moves(square)
     });
 
-    attacked_squares |= get_all_attacks(board[PieceType::Bishop.with_color(opponent)], |square| {
-        lookups.get_bishop_attacks(occupied, square)
-    });
+    attacked_squares |= get_all_attacks(
+        board[PieceType::Bishop.with_color(opponent)]
+            | board[PieceType::Queen.with_color(opponent)],
+        |square| lookups.get_bishop_attacks(occupied, square),
+    );
 
-    attacked_squares |= get_all_attacks(board[PieceType::Rook.with_color(opponent)], |square| {
-        lookups.get_rook_attacks(occupied, square)
-    });
-
-    attacked_squares |= get_all_attacks(board[PieceType::Queen.with_color(opponent)], |square| {
-        lookups.get_queen_attacks(occupied, square)
-    });
+    attacked_squares |= get_all_attacks(
+        board[PieceType::Rook.with_color(opponent)] | board[PieceType::Queen.with_color(opponent)],
+        |square| lookups.get_rook_attacks(occupied, square),
+    );
 
     attacked_squares |= get_all_attacks(board[PieceType::King.with_color(opponent)], |square| {
         lookups.get_king_moves(square)

@@ -1,3 +1,6 @@
+//! Bitboard utility functions, primarily for generating lookup and magic
+//! tables.
+
 use num_derive::{FromPrimitive, ToPrimitive};
 
 use crate::board::{Bitboard, Square};

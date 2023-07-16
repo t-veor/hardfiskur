@@ -9,6 +9,10 @@ pub fn perft(board: &mut Board, depth: usize) -> u64 {
     let mut nodes = 0;
 
     board.legal_moves_ex(Default::default(), &mut moves);
+    if depth == 1 {
+        return moves.len() as _;
+    }
+
     for m in moves.into_iter() {
         board.push_move_unchecked(m);
         nodes += perft(board, depth - 1);
