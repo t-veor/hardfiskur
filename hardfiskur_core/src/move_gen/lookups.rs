@@ -268,7 +268,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_lookups_get_knight_moves() {
+    fn lookups_get_knight_moves() {
         let lookups = Lookups::get_instance();
 
         assert_eq!(
@@ -289,7 +289,7 @@ mod test {
     }
 
     #[test]
-    fn test_lookups_get_king_moves() {
+    fn lookups_get_king_moves() {
         let lookups = Lookups::get_instance();
 
         assert_eq!(
@@ -310,7 +310,7 @@ mod test {
     }
 
     #[test]
-    fn test_lookups_get_rook_attacks() {
+    fn lookups_get_rook_attacks() {
         let lookups = Lookups::get_instance();
         let occupied = "
                 . . . . . . . .
@@ -342,7 +342,7 @@ mod test {
     }
 
     #[test]
-    fn test_lookups_get_bishop_attacks() {
+    fn lookups_get_bishop_attacks() {
         let lookups = Lookups::get_instance();
         let occupied = "
                 . . . . . . . .
@@ -374,7 +374,7 @@ mod test {
     }
 
     #[test]
-    fn test_lookups_get_queen_attacks() {
+    fn lookups_get_queen_attacks() {
         let lookups = Lookups::get_instance();
         let occupied = "
                 . . . . . . . .
@@ -406,7 +406,7 @@ mod test {
     }
 
     #[test]
-    fn test_lookups_get_in_between() {
+    fn lookups_get_in_between() {
         let lookups = Lookups::get_instance();
 
         assert_eq!(

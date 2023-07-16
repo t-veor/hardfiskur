@@ -1,3 +1,85 @@
+//! Magic bitboards implementation.
+//!
+//! Magic bitboards are a fast perfect hashing algorithm intended to very
+//! quickly retrieve the allowed attack pattern for sliding pieces, taking into
+//! account any blocking pieces along the way.
+//!
+//! A naive approach to calculating the attack pattern for a sliding piece may
+//! be to loop moving away from the piece in a direction until another blocking
+//! piece is found, and return the squares which were iterated over as the
+//! allowed attack pattern for this piece. This is however very slow.
+//!
+//! The classical approach in contrast attempts to speed this up using a
+//! pre-computed table of rays in every direction from every starting square.
+//! Calculating the allowed attacks in any direction amounts to two lookups and
+//! a bitscan:
+//! 1. Get the ray attack in the desired direction from the starting square.
+//! 2. Mask off the occupied set with the ray attack.
+//! 3. Perform a bitscan to find the first blocker the ray will encounter in the
+//!    masked occupied set.
+//! 4. Get the ray starting from the first blocker in the same direction, and
+//!    remove it from the initial ray attack.
+//! This will return truncated ray stopping after the first blocker. Note that
+//! the direction of the bitscan will depend on the direction of the ray -- for
+//! "positive" directions where the square indices increase as you move along a
+//! ray, a forward bitscan is needed, and a reverse bitscan is needed for
+//! "negative" directions.
+//!
+//! Magic bitboards however can do this with only one table lookup and no need
+//! for bitscanning. The idea is this: suppose a rook is on E4. Its attack
+//! pattern will be affected by potential blocking pieces, but for this rook
+//! only blocking pieces on the E file and the 4th rank will matter. Since
+//! attack patterns include the first blocker in any direction, blockers on the
+//! last square in any direction in fact do not affect the attack pattern at
+//! all. This means that the squares that may affect the attack pattern of our
+//! E4 rook (which we will call the blocker mask) looks like this:
+//!
+//! ```txt
+//! . . . . . . . .
+//! . . . . # . . .
+//! . . . . # . . .
+//! . . . . # . . .
+//! . # # # . # # .
+//! . . . . # . . .
+//! . . . . # . . .
+//! . . . . . . . .
+//! ```
+//!
+//! This means given a blocker bitboard, there are only 10 bits that actually
+//! matter for the attack pattern of our rook (on E4. Other squares have
+//! different numbers of bits; e.g. A1 has 12 bits in its blocker mask). We
+//! could collect these 10 bits off the blocker bitboard and flatten them into a
+//! 10-bit number, and use them in a size-1024 lookup table which contains
+//! pre-computed attack patterns for each of these blocker arrangements.
+//! Attempting to gather these bits would require more slow iteration however,
+//! but here's where the magic part comes in.
+//!
+//! For every square we will have a "magic number", which has the following
+//! special property: multiplying any blocker arrangement for this square will
+//! result in a number that has the blocker bits in some order, consecutively,
+//! in the most significant bits. It will also have some garbage bits in the
+//! less sigificant bits, but we don't care about those -- since the blocker
+//! bits were effectively moved to the front and packed together, we'll simply
+//! right shift the product to discard the garbage bits and extract resulting
+//! blocker bits. We can then immediately use this as an index in a lookup
+//! table.
+//!
+//! So, calculating the attack patterns for a rook/bishop simply amounts to
+//! this:
+//! 1. Mask the occupied set by the blocker mask for this square.
+//! 2. Multiply the resulting bitboard by the magic number for this square.
+//! 3. Right shift the product by some amount (depending on the magic number) to
+//!    extract an index.
+//! 4. Use the index to lookup the pre-computed attack pattern.
+//! This is much faster and requires no iteration or bitscanning.
+//!
+//! We don't actually know of a way of finding these "magic" numbers
+//! mathematically, or even if they exist, but in practice we can simply check
+//! random numbers until we stumble across ones that work.
+//!
+//! More details about magic bitboards can be found here:
+//! <https://www.chessprogramming.org/Magic_Bitboards>
+
 use std::{ops::Range, sync::OnceLock};
 
 use crate::board::{Bitboard, Square};
@@ -7,6 +89,7 @@ use super::bitboard_utils::{
     rook_attack_blocker_mask, rook_attacks,
 };
 
+// Rook magic numbers, found by the find_magics binary.
 const ROOK_MAGICS: [(u64, u32); 64] = [
     (0x0480003020400580, 12),
     (0x8040042000100040, 11),
@@ -74,6 +157,7 @@ const ROOK_MAGICS: [(u64, u32); 64] = [
     (0x0440040221124082, 12),
 ];
 
+// Bishop magic numbers, found by the find_magics binary.
 const BISHOP_MAGICS: [(u64, u32); 64] = [
     (0x184004c094010060, 6),
     (0x0822020849110002, 5),
@@ -322,5 +406,86 @@ impl MagicTables {
 
     pub fn debug_rook_table(&self) -> &[MagicTableEntry<'static>; 64] {
         &self.rook_table
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::move_gen::lookups::gen_ray_attacks;
+
+    use super::*;
+
+    #[test]
+    fn test_magic_bishop_tables() {
+        let ray_attacks = gen_ray_attacks();
+        let tables = MagicTables::get(&ray_attacks);
+
+        for square in Square::all() {
+            let mask = bishop_attack_blocker_mask(square, &ray_attacks);
+            let num_bits = mask.pop_count();
+
+            for n in 0..1 << num_bits {
+                let occupied = nth_blocker_arrangement_for_mask(n, mask);
+
+                assert_eq!(
+                    tables.bishop_attacks(occupied, square),
+                    bishop_attacks(occupied, square, &ray_attacks)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_magic_rook_tables() {
+        let ray_attacks = gen_ray_attacks();
+        let tables = MagicTables::get(&ray_attacks);
+
+        for square in Square::all() {
+            let mask = rook_attack_blocker_mask(square, &ray_attacks);
+            let num_bits = mask.pop_count();
+
+            for n in 0..1 << num_bits {
+                let occupied = nth_blocker_arrangement_for_mask(n, mask);
+
+                assert_eq!(
+                    tables.rook_attacks(occupied, square),
+                    rook_attacks(occupied, square, &ray_attacks)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_magic_masking() {
+        let ray_attacks = gen_ray_attacks();
+        let tables = MagicTables::get(&ray_attacks);
+
+        let occupied = "
+                . . . . . . . .
+                . . . . # . . .
+                . . . . . . . .
+                . . . . # . . .
+                . . # . # . . .
+                . . . . . . . .
+                . . . # . . . .
+                . . . . # . . .
+        "
+        .parse()
+        .unwrap();
+        assert_eq!(
+            tables.rook_attacks(occupied, Square::E4),
+            "
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . # . . .
+                . . # # . # # #
+                . . . . # . . .
+                . . . . # . . .
+                . . . . # . . .
+            "
+            .parse()
+            .unwrap(),
+        );
     }
 }
