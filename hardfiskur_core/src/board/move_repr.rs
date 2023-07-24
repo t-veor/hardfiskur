@@ -53,8 +53,18 @@ bitflags! {
 ///    |    +------------------------------ promoted to piece (0 if none)
 ///    +----------------------------------- move flags
 /// ```
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord)]
 pub struct Move(NonZeroU32);
+
+impl PartialOrd for Move {
+    // Used for testing
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0
+            .get()
+            .swap_bytes()
+            .partial_cmp(&other.0.get().swap_bytes())
+    }
+}
 
 impl Move {
     /// Constructs a new [`Move`].

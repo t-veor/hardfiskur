@@ -270,3 +270,646 @@ pub fn white_pawn_attacks(white_pawns: Bitboard) -> Bitboard {
 pub fn black_pawn_attacks(black_pawns: Bitboard) -> Bitboard {
     black_pawns.step_south_east() | black_pawns.step_south_west()
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        board::{BoardRepr, Piece},
+        move_gen::MoveVec,
+        test_utils::assert_in_any_order,
+    };
+
+    use super::*;
+
+    fn pawn_test_board() -> BoardRepr {
+        "
+            r...k.n.
+            pPp...Pp
+            .N.....B
+            .NbpPp..
+            QpPP....
+            ......qP
+            P..p.PpP
+            .K.R.B.R
+        "
+        .parse()
+        .unwrap()
+    }
+
+    fn expected_white_pawn_pushes() -> Vec<Move> {
+        vec![
+            Move::builder(Square::A2, Square::A3, Piece::WHITE_PAWN).build(),
+            Move::builder(Square::B7, Square::B8, Piece::WHITE_PAWN)
+                .promotes_to(PieceType::Queen)
+                .build(),
+            Move::builder(Square::B7, Square::B8, Piece::WHITE_PAWN)
+                .promotes_to(PieceType::Knight)
+                .build(),
+            Move::builder(Square::B7, Square::B8, Piece::WHITE_PAWN)
+                .promotes_to(PieceType::Rook)
+                .build(),
+            Move::builder(Square::B7, Square::B8, Piece::WHITE_PAWN)
+                .promotes_to(PieceType::Bishop)
+                .build(),
+            Move::builder(Square::E5, Square::E6, Piece::WHITE_PAWN).build(),
+            Move::builder(Square::F2, Square::F3, Piece::WHITE_PAWN).build(),
+            Move::builder(Square::F2, Square::F4, Piece::WHITE_PAWN)
+                .is_double_pawn_push()
+                .build(),
+            Move::builder(Square::H3, Square::H4, Piece::WHITE_PAWN).build(),
+        ]
+    }
+
+    fn expected_white_pawn_captures() -> Vec<Move> {
+        vec![
+            Move::builder(Square::B7, Square::A8, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_ROOK)
+                .promotes_to(PieceType::Queen)
+                .build(),
+            Move::builder(Square::B7, Square::A8, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_ROOK)
+                .promotes_to(PieceType::Knight)
+                .build(),
+            Move::builder(Square::B7, Square::A8, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_ROOK)
+                .promotes_to(PieceType::Rook)
+                .build(),
+            Move::builder(Square::B7, Square::A8, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_ROOK)
+                .promotes_to(PieceType::Bishop)
+                .build(),
+            Move::builder(Square::C4, Square::D5, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_PAWN)
+                .build(),
+            Move::builder(Square::D4, Square::C5, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_BISHOP)
+                .build(),
+            Move::builder(Square::F2, Square::G3, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_QUEEN)
+                .build(),
+            Move::builder(Square::H2, Square::G3, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_QUEEN)
+                .build(),
+        ]
+    }
+
+    fn expected_white_pawn_en_passants() -> Vec<Move> {
+        vec![Move::builder(Square::E5, Square::D6, Piece::WHITE_PAWN)
+            .captures(Piece::BLACK_PAWN)
+            .is_en_passant()
+            .build()]
+    }
+
+    fn expected_white_pawn_moves() -> Vec<Move> {
+        vec![
+            expected_white_pawn_pushes(),
+            expected_white_pawn_captures(),
+            expected_white_pawn_en_passants(),
+        ]
+        .concat()
+    }
+
+    fn expected_black_pawn_pushes() -> Vec<Move> {
+        vec![
+            Move::builder(Square::A7, Square::A6, Piece::BLACK_PAWN).build(),
+            Move::builder(Square::A7, Square::A5, Piece::BLACK_PAWN)
+                .is_double_pawn_push()
+                .build(),
+            Move::builder(Square::B4, Square::B3, Piece::BLACK_PAWN).build(),
+            Move::builder(Square::C7, Square::C6, Piece::BLACK_PAWN).build(),
+            Move::builder(Square::F5, Square::F4, Piece::BLACK_PAWN).build(),
+            Move::builder(Square::G2, Square::G1, Piece::BLACK_PAWN)
+                .promotes_to(PieceType::Queen)
+                .build(),
+            Move::builder(Square::G2, Square::G1, Piece::BLACK_PAWN)
+                .promotes_to(PieceType::Knight)
+                .build(),
+            Move::builder(Square::G2, Square::G1, Piece::BLACK_PAWN)
+                .promotes_to(PieceType::Rook)
+                .build(),
+            Move::builder(Square::G2, Square::G1, Piece::BLACK_PAWN)
+                .promotes_to(PieceType::Bishop)
+                .build(),
+        ]
+    }
+
+    fn expected_black_pawn_captures() -> Vec<Move> {
+        vec![
+            Move::builder(Square::A7, Square::B6, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_KNIGHT)
+                .build(),
+            Move::builder(Square::C7, Square::B6, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_KNIGHT)
+                .build(),
+            Move::builder(Square::D5, Square::C4, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_PAWN)
+                .build(),
+            Move::builder(Square::G2, Square::F1, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_BISHOP)
+                .promotes_to(PieceType::Queen)
+                .build(),
+            Move::builder(Square::G2, Square::F1, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_BISHOP)
+                .promotes_to(PieceType::Knight)
+                .build(),
+            Move::builder(Square::G2, Square::F1, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_BISHOP)
+                .promotes_to(PieceType::Rook)
+                .build(),
+            Move::builder(Square::G2, Square::F1, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_BISHOP)
+                .promotes_to(PieceType::Bishop)
+                .build(),
+            Move::builder(Square::G2, Square::H1, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_ROOK)
+                .promotes_to(PieceType::Queen)
+                .build(),
+            Move::builder(Square::G2, Square::H1, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_ROOK)
+                .promotes_to(PieceType::Knight)
+                .build(),
+            Move::builder(Square::G2, Square::H1, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_ROOK)
+                .promotes_to(PieceType::Rook)
+                .build(),
+            Move::builder(Square::G2, Square::H1, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_ROOK)
+                .promotes_to(PieceType::Bishop)
+                .build(),
+        ]
+    }
+
+    fn expected_black_pawn_en_passants() -> Vec<Move> {
+        vec![Move::builder(Square::B4, Square::C3, Piece::BLACK_PAWN)
+            .captures(Piece::WHITE_PAWN)
+            .is_en_passant()
+            .build()]
+    }
+
+    fn expected_black_pawn_moves() -> Vec<Move> {
+        vec![
+            expected_black_pawn_pushes(),
+            expected_black_pawn_captures(),
+            expected_black_pawn_en_passants(),
+        ]
+        .concat()
+    }
+
+    #[test]
+    fn white_pawn_pushes() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_pushes(&Default::default());
+
+        assert_in_any_order(moves, expected_white_pawn_pushes());
+    }
+
+    #[test]
+    fn white_pawn_captures() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_captures(&Default::default());
+
+        assert_in_any_order(moves, expected_white_pawn_captures());
+    }
+
+    #[test]
+    fn white_pawn_en_passants() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::D6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_en_passants(&Default::default());
+
+        assert_in_any_order(moves, expected_white_pawn_en_passants());
+    }
+
+    #[test]
+    fn white_pawn_moves() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::D6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_moves(&Default::default());
+
+        assert_in_any_order(moves, expected_white_pawn_moves());
+    }
+
+    #[test]
+    fn white_pawn_push_mask() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+            capture: Bitboard::EMPTY,
+            push: Bitboard::from_square(Square::F4) | Bitboard::from_square(Square::H4),
+            movable: Bitboard::ALL,
+        });
+
+        assert_in_any_order(
+            moves,
+            expected_white_pawn_moves()
+                .into_iter()
+                .filter(|m| m.to_square() == Square::F4 || m.to_square() == Square::H4),
+        )
+    }
+
+    #[test]
+    fn white_pawn_capture_mask() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+            capture: Bitboard::from_square(Square::A8) | Bitboard::from_square(Square::G3),
+            push: Bitboard::EMPTY,
+            movable: Bitboard::ALL,
+        });
+
+        assert_in_any_order(
+            moves,
+            expected_white_pawn_moves()
+                .into_iter()
+                .filter(|m| m.to_square() == Square::A8 || m.to_square() == Square::G3),
+        )
+    }
+
+    #[test]
+    fn white_pawn_movable_mask() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+            capture: Bitboard::ALL,
+            push: Bitboard::ALL,
+            movable: Bitboard::from_square(Square::F3),
+        });
+
+        assert_in_any_order(
+            moves,
+            expected_white_pawn_moves()
+                .into_iter()
+                .filter(|m| m.from_square() == Square::F3),
+        )
+    }
+
+    #[test]
+    fn black_pawn_pushes() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::Black,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_pushes(&Default::default());
+
+        assert_in_any_order(moves, expected_black_pawn_pushes());
+    }
+
+    #[test]
+    fn black_pawn_captures() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::Black,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_captures(&Default::default());
+
+        assert_in_any_order(moves, expected_black_pawn_captures());
+    }
+
+    #[test]
+    fn black_pawn_en_passants() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::Black,
+            Some(Square::C3),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_en_passants(&Default::default());
+
+        assert_in_any_order(moves, expected_black_pawn_en_passants());
+    }
+
+    #[test]
+    fn black_pawn_moves() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::Black,
+            Some(Square::C3),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_moves(&Default::default());
+
+        assert_in_any_order(moves, expected_black_pawn_moves());
+    }
+
+    #[test]
+    fn black_pawn_push_mask() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::Black,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+            capture: Bitboard::EMPTY,
+            push: Bitboard::from_square(Square::A5) | Bitboard::from_square(Square::C6),
+            movable: Bitboard::ALL,
+        });
+
+        assert_in_any_order(
+            moves,
+            expected_black_pawn_moves()
+                .into_iter()
+                .filter(|m| m.to_square() == Square::A5 || m.to_square() == Square::C6),
+        )
+    }
+
+    #[test]
+    fn black_pawn_capture_mask() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::Black,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+            capture: Bitboard::from_square(Square::F1),
+            push: Bitboard::EMPTY,
+            movable: Bitboard::ALL,
+        });
+
+        assert_in_any_order(
+            moves,
+            expected_black_pawn_moves()
+                .into_iter()
+                .filter(|m| m.to_square() == Square::F1),
+        )
+    }
+
+    #[test]
+    fn black_pawn_movable_mask() {
+        let board = pawn_test_board();
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::Black,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+            capture: Bitboard::ALL,
+            push: Bitboard::ALL,
+            movable: Bitboard::from_square(Square::G2),
+        });
+
+        assert_in_any_order(
+            moves,
+            expected_black_pawn_moves()
+                .into_iter()
+                .filter(|m| m.from_square() == Square::G2),
+        )
+    }
+
+    #[test]
+    fn en_passant_blocks_check() {
+        let board = "
+            ...b..k.
+            ........
+            ........
+            ....PpK.
+            ........
+            ........
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::F6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_en_passants(&MoveGenMasks {
+            capture: Bitboard::from_square(Square::D8),
+            push: Bitboard::from_square(Square::E7) | Bitboard::from_square(Square::F6),
+            movable: Bitboard::ALL,
+        });
+
+        assert_in_any_order(
+            moves,
+            vec![Move::builder(Square::E5, Square::F6, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_PAWN)
+                .is_en_passant()
+                .build()],
+        );
+    }
+
+    #[test]
+    fn en_passant_captures_attacking_pawn() {
+        let board = "
+            ......k.
+            ........
+            ........
+            ....Pp..
+            ....K...
+            ........
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::F6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_en_passants(&MoveGenMasks {
+            capture: Bitboard::from_square(Square::F5),
+            push: Bitboard::EMPTY,
+            movable: Bitboard::ALL,
+        });
+
+        assert_in_any_order(
+            moves,
+            vec![Move::builder(Square::E5, Square::F6, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_PAWN)
+                .is_en_passant()
+                .build()],
+        );
+    }
+
+    #[test]
+    fn en_passant_not_possible_due_to_double_pin() {
+        let board = "
+            ......k.
+            ........
+            ........
+            .r..Pp.K
+            ........
+            ........
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::F6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_en_passants(&Default::default());
+
+        assert!(moves.is_empty());
+    }
+
+    #[test]
+    fn en_passant_multiple_options() {
+        let board = "
+            ......k.
+            ........
+            ........
+            ....PpP.
+            ........
+            .....K..
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::F6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_en_passants(&Default::default());
+
+        assert_in_any_order(
+            moves,
+            vec![
+                Move::builder(Square::E5, Square::F6, Piece::WHITE_PAWN)
+                    .captures(Piece::BLACK_PAWN)
+                    .is_en_passant()
+                    .build(),
+                Move::builder(Square::G5, Square::F6, Piece::WHITE_PAWN)
+                    .captures(Piece::BLACK_PAWN)
+                    .is_en_passant()
+                    .build(),
+            ],
+        );
+    }
+}

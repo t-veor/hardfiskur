@@ -61,6 +61,12 @@ bitflags! {
     }
 }
 
+impl Default for Castling {
+    fn default() -> Self {
+        Self::all()
+    }
+}
+
 impl Castling {
     /// Returns the castling state as the 3rd field in [Forsyth-Edwards
     /// Notation](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation).
