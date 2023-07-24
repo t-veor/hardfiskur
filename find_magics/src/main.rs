@@ -119,9 +119,8 @@ fn main() {
     let mut rng = thread_rng();
 
     println!("const ROOK_MAGICS: [(u64, u32); 64] = [");
-    for i in 0..64 {
+    for (i, &target_bits) in ROOK_TARGET_BITS.iter().enumerate() {
         let square = Square::from_index_unchecked(i);
-        let target_bits = ROOK_TARGET_BITS[i];
         let magic = find_magic(
             square,
             MagicType::Rook,
@@ -138,9 +137,8 @@ fn main() {
     println!();
 
     println!("const BISHOP_MAGICS: [(u64, u32); 64] = [");
-    for i in 0..64 {
+    for (i, &target_bits) in BISHOP_TARGET_BITS.iter().enumerate() {
         let square = Square::from_index_unchecked(i);
-        let target_bits = BISHOP_TARGET_BITS[i];
         let magic = find_magic(
             square,
             MagicType::Bishop,

@@ -331,7 +331,7 @@ fn create_full_attack_table(
                 num_bits,
                 square,
                 MagicTableType::Bishop,
-                &ray_attacks,
+                ray_attacks,
                 &mut attack_table,
             )
         })
@@ -347,7 +347,7 @@ fn create_full_attack_table(
                 num_bits,
                 square,
                 MagicTableType::Rook,
-                &ray_attacks,
+                ray_attacks,
                 &mut attack_table,
             )
         })

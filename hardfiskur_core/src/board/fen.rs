@@ -51,7 +51,7 @@ impl Board {
     pub fn fen(&self) -> String {
         let mut result = String::new();
 
-        push_placement(&self, &mut result);
+        push_placement(self, &mut result);
         result.push(' ');
 
         result.push(if self.to_move.is_white() { 'w' } else { 'b' });
@@ -96,7 +96,7 @@ impl Board {
         let fullmoves = fields[5]
             .parse()
             .map_err(|_| FenParseError::InvalidMoveCount)?;
-        if fullmoves <= 0 {
+        if fullmoves == 0 {
             return Err(FenParseError::InvalidMoveCount);
         }
 

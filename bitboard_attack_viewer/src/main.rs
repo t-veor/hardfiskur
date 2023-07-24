@@ -234,7 +234,7 @@ impl eframe::App for MagicBitboardViewerUI {
                         pieces: &board[..],
                         display_bitboard: attack_pattern,
                         drag_mask: Bitboard::from_square(self.square),
-                        promotion: self.should_promote.then(|| (self.square, Color::White)),
+                        promotion: self.should_promote.then_some((self.square, Color::White)),
                         ..Default::default()
                     };
 

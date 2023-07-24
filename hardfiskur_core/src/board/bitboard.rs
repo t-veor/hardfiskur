@@ -43,7 +43,7 @@ impl Bitboard {
 
     /// Returns a bitboard with all of the bits in the given rank set.
     pub const fn rank_mask(rank: u8) -> Self {
-        Self(Self::RANK_1.0 << rank * 8)
+        Self(Self::RANK_1.0 << (rank * 8))
     }
 
     /// Returns a bitboard with all of the bits in the given file set.
@@ -317,8 +317,8 @@ impl FromStr for Bitboard {
     /// by file and then by rank.
     ///
     /// The parsing is very permissive:
-    /// * All whitespace is ignored.
-    /// * `.` and `0` are interpreted as 0.
+    /// * `.`, `0`, and `\u{00a0}` (non-breaking space) are interpreted as 0.
+    /// * All other whitespace is ignored.
     /// * Any other character encountered is interpreted as 1.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut square_iter = (0..8)
@@ -328,7 +328,7 @@ impl FromStr for Bitboard {
         let mut bitboard = Bitboard::EMPTY;
         for c in s.chars() {
             match c {
-                '.' | '0' => {
+                '.' | '0' | '\u{00a0}' => {
                     let _ = square_iter.next().ok_or(())?;
                 }
                 c if c.is_whitespace() => (),

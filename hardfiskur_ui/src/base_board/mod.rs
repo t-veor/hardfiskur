@@ -310,7 +310,7 @@ impl BaseBoard {
                 painter.text(
                     rect.left_bottom() + Vec2::new(2.0, -2.0),
                     Align2::LEFT_BOTTOM,
-                    (b'a' + file as u8) as char,
+                    (b'a' + file) as char,
                     Default::default(),
                     text_color,
                 );
@@ -320,7 +320,7 @@ impl BaseBoard {
                 painter.text(
                     rect.right_top() + Vec2::new(-2.0, 2.0),
                     Align2::RIGHT_TOP,
-                    (b'1' + rank as u8) as char,
+                    (b'1' + rank) as char,
                     Default::default(),
                     text_color,
                 );

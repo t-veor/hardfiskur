@@ -83,8 +83,9 @@ impl PieceType {
 /// Used for representing who a [`Piece`] belongs to. Uses 0 for white and 8 for
 /// black, such that the [`Piece`] representation can simply be formed from a
 /// bitwise or of the [`Color`] and [`PieceType`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
+    #[default]
     White = 0,
     Black = 8,
 }
@@ -110,12 +111,6 @@ impl Color {
             Color::White => Color::Black,
             Color::Black => Color::White,
         }
-    }
-}
-
-impl Default for Color {
-    fn default() -> Self {
-        Color::White
     }
 }
 

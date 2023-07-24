@@ -350,8 +350,8 @@ pub fn rook_attack_blocker_mask(square: Square, ray_attacks: &[[Bitboard; 8]; 64
     vertical_mask | horizontal_mask
 }
 
-/// For a bishop on the given square, returns a bitboard of the squares from which
-/// pieces may block the rook.
+/// For a bishop on the given square, returns a bitboard of the squares from
+/// which pieces may block the bishop.
 ///
 /// Note since that attacks always include the first blocker in a direction, the
 /// last square in each direction does not affect attacks and is left out of

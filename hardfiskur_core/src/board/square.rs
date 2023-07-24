@@ -156,6 +156,7 @@ impl FromStr for Square {
 }
 
 /// Board square aliases
+#[allow(clippy::eq_op, clippy::char_lit_as_u8)]
 impl Square {
     seq!(RANK in 1..=8 {
         seq!(FILE in 'A'..='H' {

@@ -1,4 +1,8 @@
-use std::ops::{Index, IndexMut, Range};
+use std::{
+    fmt::{Display, Write},
+    ops::{Index, IndexMut, Range},
+    str::FromStr,
+};
 
 use super::{Bitboard, Color, Move, Piece, PieceType, Square};
 
@@ -205,6 +209,44 @@ impl BoardRepr {
             }
         }
     }
+
+    // Used for testing
+    #[allow(dead_code)]
+    fn consistency_check(&self) {
+        let check = || {
+            let mut white_pieces = Bitboard::EMPTY;
+
+            for (_, board) in self.boards_colored(Color::White) {
+                if (white_pieces & board).has_piece() {
+                    return false;
+                }
+
+                white_pieces |= board;
+            }
+
+            if white_pieces != self[Color::White] {
+                return false;
+            }
+
+            let mut black_pieces = Bitboard::EMPTY;
+
+            for (_, board) in self.boards_colored(Color::Black) {
+                if (black_pieces & board).has_piece() {
+                    return false;
+                }
+
+                black_pieces |= board;
+            }
+
+            if black_pieces != self[Color::Black] {
+                return false;
+            }
+
+            (white_pieces & black_pieces).is_empty()
+        };
+
+        assert!(check(), "BoardRepr became inconsistent, {self:?}");
+    }
 }
 
 impl Index<Piece> for BoardRepr {
@@ -239,12 +281,101 @@ impl IndexMut<Color> for BoardRepr {
     }
 }
 
+impl FromStr for BoardRepr {
+    type Err = std::convert::Infallible;
+
+    /// Parses a string into a [`BoardRepr`]. This is intended to make
+    /// specifying boards easier for tests.
+    ///
+    /// Boards should look something like the following:
+    /// ```txt
+    /// r n b q k b n r
+    /// p p p p p p p p
+    /// . . . . . . . .
+    /// . . . . . . . .
+    /// . . . . P . . .
+    /// . . . . . . . .
+    /// P P P P . P P P
+    /// R N B Q K B N R
+    /// ```
+    ///
+    /// Characters are interpreted as squares starting from the top left (a8),
+    /// by file and then by rank.
+    ///
+    /// The parsing is very permissive:
+    /// * `.` and `\u{00a0}` (non-breaking space) are interpreted as an empty
+    ///   square.
+    /// * FEN characters (`PNBRQKpnbrqk`) are interpreted as the corresponding
+    ///   piece.
+    /// * All other characters are ignored.
+    ///
+    /// If less than 64 empty squares/pieces are encountered, the remaining
+    /// squares are assumed empty. If more are encountered, the extra squares
+    /// are ignored.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut board = vec![None; 64];
+
+        let mut square_iter = (0..8)
+            .rev()
+            .flat_map(|rank| (0..8).map(move |file| Square::new(rank, file).unwrap()))
+            .peekable();
+
+        for c in s.chars() {
+            if c == '.' || c == '\u{00a0}' {
+                square_iter.next();
+            } else if let (Some(square), Some(piece)) =
+                (square_iter.peek(), Piece::try_from_fen_char(c))
+            {
+                board[square.index()] = Some(piece);
+                square_iter.next();
+            }
+        }
+
+        Ok(Self::new(&board))
+    }
+}
+
+impl Display for BoardRepr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for rank in (0..8).rev() {
+            f.write_str("+---+---+---+---+---+---+---+---+\n")?;
+
+            for file in 0..8 {
+                let piece = self.piece_at(Square::new_unchecked(rank, file));
+                let fill_char = if (rank + file) % 2 == 0 {
+                    '.'
+                } else {
+                    '\u{00a0}'
+                };
+
+                f.write_char('|')?;
+                if let Some(piece) = piece {
+                    if piece.is_black() {
+                        f.write_char('*')?;
+                    } else {
+                        f.write_char(' ')?;
+                    }
+
+                    f.write_fmt(format_args!("{} ", piece.as_fen_char()))?;
+                } else {
+                    f.write_fmt(format_args!(" {fill_char} "))?;
+                }
+            }
+
+            f.write_fmt(format_args!("| {}\n", rank + 1))?;
+        }
+
+        f.write_str("+---+---+---+---+---+---+---+---+\n")?;
+        f.write_str("  a   b   c   d   e   f   g   h")?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use pretty_assertions::assert_eq;
     use std::str::FromStr;
-
-    use crate::board::MoveFlags;
 
     use super::*;
 
@@ -252,43 +383,19 @@ mod test {
         Bitboard::from_square(sq.parse().unwrap())
     }
 
-    fn simple_parse_board(spec: &str) -> Vec<Option<Piece>> {
-        let mut board = vec![None; 64];
-
-        let mut square_iter = (0..8)
-            .rev()
-            .flat_map(|rank| (0..8).map(move |file| Square::new(rank, file).unwrap()));
-
-        for c in spec.chars() {
-            if c.is_whitespace() {
-                continue;
-            } else if c == '.' {
-                square_iter.next();
-            } else if let (Some(square), Some(piece)) =
-                (square_iter.next(), Piece::try_from_fen_char(c))
-            {
-                board[square.index()] = Some(piece);
-            } else {
-                panic!()
-            }
-        }
-
-        board
-    }
-
-    fn starting_position() -> Vec<Option<Piece>> {
-        simple_parse_board(
-            "
-                rnbqkbnr
-                pppppppp
-                ........
-                ........
-                ........
-                ........
-                PPPPPPPP
-                RNBQKBNR
-        ",
-        )
+    fn starting_position() -> BoardRepr {
+        "
+            rnbqkbnr
+            pppppppp
+            ........
+            ........
+            ........
+            ........
+            PPPPPPPP
+            RNBQKBNR
+        "
+        .parse()
+        .unwrap()
     }
 
     #[test]
@@ -338,7 +445,7 @@ mod test {
 
     #[test]
     fn board_repr_piece_at() {
-        let board = BoardRepr::new(&starting_position());
+        let board = starting_position();
 
         assert_eq!(
             board.piece_at("d1".parse().unwrap()),
@@ -374,7 +481,7 @@ mod test {
 
     #[test]
     fn board_repr_piece_with_color_at() {
-        let board = BoardRepr::new(&starting_position());
+        let board = starting_position();
 
         assert_eq!(
             board.piece_with_color_at(Color::White, "d1".parse().unwrap()),
@@ -406,7 +513,7 @@ mod test {
 
     #[test]
     pub fn board_repr_piece_count() {
-        let board = BoardRepr::new(&simple_parse_board(
+        let board = BoardRepr::from_str(
             "
                 .....B..
                 ......P.
@@ -416,7 +523,8 @@ mod test {
                 kP......
                 ..K.....
                 ........",
-        ));
+        )
+        .unwrap();
 
         assert_eq!(board.piece_count(PieceType::Pawn), (2, 1));
         assert_eq!(board.piece_count(PieceType::Knight), (1, 0));
@@ -441,7 +549,7 @@ mod test {
         let expected_occupied = Bitboard::from_str(test_str).unwrap();
         let expected_empty = !expected_occupied;
 
-        let board = BoardRepr::new(&simple_parse_board(test_str));
+        let board = BoardRepr::from_str(test_str).unwrap();
 
         assert_eq!(board.occupied(), expected_occupied);
         assert_eq!(board.empty(), expected_empty);
@@ -459,7 +567,7 @@ mod test {
             PPP.B.PP
             R..Q.RK.";
 
-        let board = BoardRepr::new(&simple_parse_board(test_str));
+        let board = BoardRepr::from_str(test_str).unwrap();
         let boards = board.boards().collect::<Vec<_>>();
 
         assert_eq!(
@@ -499,7 +607,7 @@ mod test {
             ..K.....
             ........";
 
-        let board = BoardRepr::new(&simple_parse_board(test_str));
+        let board = BoardRepr::from_str(test_str).unwrap();
 
         let mut pieces = board.pieces().collect::<Vec<_>>();
         pieces.sort_by_key(|&(_piece, square)| square);
@@ -531,7 +639,7 @@ mod test {
             PPP.B.PP
             R..Q.RK.";
 
-        let board = BoardRepr::new(&simple_parse_board(test_str));
+        let board = BoardRepr::from_str(test_str).unwrap();
 
         assert_eq!(
             board.boards_colored(Color::White).collect::<Vec<_>>(),
@@ -576,7 +684,7 @@ mod test {
             PPP.B.PP
             R..Q.RK.";
 
-        let board = BoardRepr::new(&simple_parse_board(test_str));
+        let board = BoardRepr::from_str(test_str).unwrap();
 
         assert_eq!(
             board[Piece::WHITE_PAWN],
@@ -643,35 +751,16 @@ mod test {
     ";
 
     const QUIET_MOVES: &[Move] = &[
-        Move::new(
-            Square::new_unchecked(5, 0),
-            Square::new_unchecked(2, 3),
-            Piece::BLACK_BISHOP,
-            None,
-            None,
-            MoveFlags::empty(),
-        ),
-        Move::new(
-            Square::new_unchecked(2, 5),
-            Square::new_unchecked(2, 6),
-            Piece::WHITE_QUEEN,
-            None,
-            None,
-            MoveFlags::empty(),
-        ),
-        Move::new(
-            Square::new_unchecked(1, 6),
-            Square::new_unchecked(3, 6),
-            Piece::WHITE_PAWN,
-            None,
-            None,
-            MoveFlags::DOUBLE_PAWN_PUSH,
-        ),
+        Move::builder(Square::A6, Square::D3, Piece::BLACK_BISHOP).build(),
+        Move::builder(Square::F3, Square::G3, Piece::WHITE_QUEEN).build(),
+        Move::builder(Square::G2, Square::G4, Piece::WHITE_PAWN)
+            .is_double_pawn_push()
+            .build(),
     ];
 
     #[test]
     fn board_move_unchecked_quiet_moves() {
-        let board = BoardRepr::new(&simple_parse_board(MODIFIED_KIWIPETE));
+        let board = BoardRepr::from_str(MODIFIED_KIWIPETE).unwrap();
 
         for &the_move in QUIET_MOVES {
             let mut moved_board = board.clone();
@@ -690,6 +779,8 @@ mod test {
                     .or(Bitboard::from_square(the_move.to_square()))
             );
 
+            moved_board.consistency_check();
+
             moved_board.move_unchecked(the_move);
 
             assert_eq!(moved_board, board);
@@ -697,27 +788,17 @@ mod test {
     }
 
     const REGULAR_CAPTURES: &[Move] = &[
-        Move::new(
-            Square::new_unchecked(3, 1),
-            Square::new_unchecked(2, 2),
-            Piece::BLACK_PAWN,
-            Some(Piece::WHITE_KNIGHT),
-            None,
-            MoveFlags::empty(),
-        ),
-        Move::new(
-            Square::new_unchecked(4, 4),
-            Square::new_unchecked(6, 3),
-            Piece::WHITE_KNIGHT,
-            Some(Piece::BLACK_PAWN),
-            None,
-            MoveFlags::empty(),
-        ),
+        Move::builder(Square::B4, Square::C3, Piece::BLACK_PAWN)
+            .captures(Piece::WHITE_KNIGHT)
+            .build(),
+        Move::builder(Square::E5, Square::D7, Piece::WHITE_KNIGHT)
+            .captures(Piece::BLACK_PAWN)
+            .build(),
     ];
 
     #[test]
     fn board_move_unchecked_regular_captures() {
-        let board = BoardRepr::new(&simple_parse_board(MODIFIED_KIWIPETE));
+        let board = BoardRepr::from_str(MODIFIED_KIWIPETE).unwrap();
 
         for &the_move in REGULAR_CAPTURES {
             let mut moved_board = board.clone();
@@ -747,6 +828,8 @@ mod test {
                     .without(Bitboard::from_square(the_move.to_square()))
             );
 
+            moved_board.consistency_check();
+
             moved_board.move_unchecked(the_move);
 
             assert_eq!(moved_board, board);
@@ -754,27 +837,18 @@ mod test {
     }
 
     const PROMOTIONS: &[Move] = &[
-        Move::new(
-            Square::new_unchecked(6, 6),
-            Square::new_unchecked(7, 6),
-            Piece::WHITE_PAWN,
-            None,
-            Some(Piece::WHITE_KNIGHT),
-            MoveFlags::empty(),
-        ),
-        Move::new(
-            Square::new_unchecked(6, 6),
-            Square::new_unchecked(7, 7),
-            Piece::WHITE_PAWN,
-            Some(Piece::BLACK_ROOK),
-            Some(Piece::WHITE_QUEEN),
-            MoveFlags::empty(),
-        ),
+        Move::builder(Square::G7, Square::G8, Piece::WHITE_PAWN)
+            .promotes_to(PieceType::Knight)
+            .build(),
+        Move::builder(Square::G7, Square::H8, Piece::WHITE_PAWN)
+            .captures(Piece::BLACK_ROOK)
+            .promotes_to(PieceType::Queen)
+            .build(),
     ];
 
     #[test]
     fn board_move_unchecked_promotions() {
-        let board = BoardRepr::new(&simple_parse_board(MODIFIED_KIWIPETE));
+        let board = BoardRepr::from_str(MODIFIED_KIWIPETE).unwrap();
 
         for &the_move in PROMOTIONS {
             let mut moved_board = board.clone();
@@ -808,6 +882,8 @@ mod test {
                 );
             }
 
+            moved_board.consistency_check();
+
             moved_board.move_unchecked(the_move);
 
             assert_eq!(moved_board, board);
@@ -816,58 +892,38 @@ mod test {
 
     const CASTLES: &[(Move, Square, Square)] = &[
         (
-            Move::new(
-                Square::new_unchecked(0, 4),
-                Square::new_unchecked(0, 6),
-                Piece::WHITE_KING,
-                None,
-                None,
-                MoveFlags::CASTLE,
-            ),
+            Move::builder(Square::E1, Square::G1, Piece::WHITE_KING)
+                .is_castle()
+                .build(),
             Square::WHITE_KINGSIDE_ROOK,
-            Square::new_unchecked(0, 5),
+            Square::F1,
         ),
         (
-            Move::new(
-                Square::new_unchecked(0, 4),
-                Square::new_unchecked(0, 2),
-                Piece::WHITE_KING,
-                None,
-                None,
-                MoveFlags::CASTLE,
-            ),
+            Move::builder(Square::E1, Square::C1, Piece::WHITE_KING)
+                .is_castle()
+                .build(),
             Square::WHITE_QUEENSIDE_ROOK,
-            Square::new_unchecked(0, 3),
+            Square::D1,
         ),
         (
-            Move::new(
-                Square::new_unchecked(7, 4),
-                Square::new_unchecked(7, 6),
-                Piece::BLACK_KING,
-                None,
-                None,
-                MoveFlags::CASTLE,
-            ),
+            Move::builder(Square::E8, Square::G8, Piece::BLACK_KING)
+                .is_castle()
+                .build(),
             Square::BLACK_KINGSIDE_ROOK,
-            Square::new_unchecked(7, 5),
+            Square::F8,
         ),
         (
-            Move::new(
-                Square::new_unchecked(7, 4),
-                Square::new_unchecked(7, 2),
-                Piece::BLACK_KING,
-                None,
-                None,
-                MoveFlags::CASTLE,
-            ),
+            Move::builder(Square::E8, Square::C8, Piece::BLACK_KING)
+                .is_castle()
+                .build(),
             Square::BLACK_QUEENSIDE_ROOK,
-            Square::new_unchecked(7, 3),
+            Square::D8,
         ),
     ];
 
     #[test]
     fn board_move_unchecked_castles() {
-        let board = BoardRepr::new(&simple_parse_board(MODIFIED_KIWIPETE));
+        let board = BoardRepr::from_str(MODIFIED_KIWIPETE).unwrap();
 
         for &(the_move, rook_from, rook_to) in CASTLES {
             let mut moved_board = board.clone();
@@ -898,6 +954,8 @@ mod test {
                         | Bitboard::from_square(rook_to))
             );
 
+            moved_board.consistency_check();
+
             moved_board.move_unchecked(the_move);
 
             assert_eq!(moved_board, board);
@@ -906,32 +964,24 @@ mod test {
 
     const EN_PASSANT_CAPTURES: &[(Move, Square)] = &[
         (
-            Move::new(
-                Square::new_unchecked(4, 3),
-                Square::new_unchecked(5, 2),
-                Piece::WHITE_PAWN,
-                Some(Piece::BLACK_PAWN),
-                None,
-                MoveFlags::EN_PASSANT,
-            ),
-            Square::new_unchecked(4, 2),
+            Move::builder(Square::D5, Square::C6, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_PAWN)
+                .is_en_passant()
+                .build(),
+            Square::C5,
         ),
         (
-            Move::new(
-                Square::new_unchecked(3, 1),
-                Square::new_unchecked(2, 0),
-                Piece::BLACK_PAWN,
-                Some(Piece::WHITE_PAWN),
-                None,
-                MoveFlags::EN_PASSANT,
-            ),
-            Square::new_unchecked(3, 0),
+            Move::builder(Square::B4, Square::A3, Piece::BLACK_PAWN)
+                .captures(Piece::WHITE_PAWN)
+                .is_en_passant()
+                .build(),
+            Square::A4,
         ),
     ];
 
     #[test]
     fn board_move_unchecked_en_passant() {
-        let board = BoardRepr::new(&simple_parse_board(MODIFIED_KIWIPETE));
+        let board = BoardRepr::from_str(MODIFIED_KIWIPETE).unwrap();
 
         for &(the_move, captured_pawn_square) in EN_PASSANT_CAPTURES {
             let mut moved_board = board.clone();
@@ -961,9 +1011,19 @@ mod test {
                     .without(Bitboard::from_square(captured_pawn_square))
             );
 
+            moved_board.consistency_check();
+
             moved_board.move_unchecked(the_move);
 
             assert_eq!(moved_board, board);
         }
+    }
+
+    #[test]
+    fn board_repr_display_from_str() {
+        let board = starting_position();
+        let parsed = format!("{board}").parse().unwrap();
+
+        assert_eq!(board, parsed);
     }
 }

@@ -333,6 +333,10 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
                 .piece_with_color_at(self.to_move, pinned_square)
                 .unwrap();
 
+            // Generate special moves for pieces pinned orthogonally, by
+            // creating special pin masks which only allow the pinner to be
+            // captured and the pinned piece to move on all squares between the
+            // king and the pinner
             let special_pin_masks = MoveGenMasks {
                 capture: capture_mask & Bitboard::from_square(rook_pinner),
                 push: push_mask & (in_between ^ pinned),
@@ -340,8 +344,12 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
             };
 
             match pinned_piece.piece_type() {
-                // If the pin is orthogonal, the pawn may be able to push forwards
+                // If the pin is orthogonal, a pinned pawn may be able to push
+                // forwards
                 PieceType::Pawn => self.pseudo_legal_pawn_pushes(&special_pin_masks),
+                // If the pinned piece is a piece that can move orthogonally, it
+                // can move to all spaces between the pinner and the king, and
+                // also capture the pinner
                 PieceType::Rook | PieceType::Queen => self.gen_moves_for_pinned_slider(
                     pinned_square,
                     pinned_piece,
@@ -363,6 +371,8 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
                 .piece_with_color_at(self.to_move, pinned_square)
                 .unwrap();
 
+            // Similar logic to orthogonal pins as above, but for diagonal pins
+            // instead
             let special_pin_masks = MoveGenMasks {
                 capture: capture_mask & Bitboard::from_square(bishop_pinner),
                 push: push_mask & (in_between ^ pinned),
@@ -370,8 +380,12 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
             };
 
             match pinned_piece.piece_type() {
-                // If the pin is diagonal, the pawn may be able to capture
+                // If the pin is diagonal, a pinned pawn may be able to capture
+                // the pinner
                 PieceType::Pawn => self.pseudo_legal_pawn_captures(&special_pin_masks),
+                // If the pinned piece is a piece that can move diagonally, it
+                // can move to all the spaces between the pinner and the king,
+                // and also capture the pinner
                 PieceType::Bishop | PieceType::Queen => self.gen_moves_for_pinned_slider(
                     pinned_square,
                     pinned_piece,
