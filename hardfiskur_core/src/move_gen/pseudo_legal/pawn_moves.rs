@@ -263,16 +263,20 @@ fn black_pawns_able_to_capture_west(
     movable_black_pawns & capturable_pieces.step_north_east()
 }
 
+/// Calculate squares attacked by white pawns.
 pub fn white_pawn_attacks(white_pawns: Bitboard) -> Bitboard {
     white_pawns.step_north_east() | white_pawns.step_north_west()
 }
 
+/// Calculate squares attacked by black pawns.
 pub fn black_pawn_attacks(black_pawns: Bitboard) -> Bitboard {
     black_pawns.step_south_east() | black_pawns.step_south_west()
 }
 
 #[cfg(test)]
 mod test {
+    use pretty_assertions::assert_eq;
+
     use crate::{
         board::{BoardRepr, Piece},
         move_gen::MoveVec,
@@ -945,5 +949,45 @@ mod test {
                     .build(),
             ],
         );
+    }
+
+    #[test]
+    fn test_white_pawn_attacks() {
+        let board = pawn_test_board();
+        assert_eq!(
+            white_pawn_attacks(board[Piece::WHITE_PAWN]),
+            "
+                #.#..#.#
+                ........
+                ...#.#..
+                .####...
+                ......#.
+                .#..#.#.
+                ........
+                ........
+        "
+            .parse()
+            .unwrap()
+        )
+    }
+
+    #[test]
+    fn test_black_pawn_attacks() {
+        let board = pawn_test_board();
+        assert_eq!(
+            black_pawn_attacks(board[Piece::BLACK_PAWN]),
+            "
+                ........
+                ........
+                .#.#..#.
+                ........
+                ..#.#.#.
+                #.#.....
+                ........
+                ..#.##.#
+        "
+            .parse()
+            .unwrap()
+        )
     }
 }
