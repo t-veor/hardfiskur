@@ -99,7 +99,7 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
         }
     }
 
-    fn pseudo_legal_en_passants(&mut self, masks: &MoveGenMasks) {
+    pub(in crate::move_gen) fn pseudo_legal_en_passants(&mut self, masks: &MoveGenMasks) {
         let en_passant = match self.en_passant {
             Some(en_passant) => en_passant,
             None => return,

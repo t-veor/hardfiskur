@@ -380,9 +380,13 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
             };
 
             match pinned_piece.piece_type() {
-                // If the pin is diagonal, a pinned pawn may be able to capture
-                // the pinner
-                PieceType::Pawn => self.pseudo_legal_pawn_captures(&special_pin_masks),
+                PieceType::Pawn => {
+                    // If the pin is diagonal, a pinned pawn may be able to
+                    // capture the pinner...
+                    self.pseudo_legal_pawn_captures(&special_pin_masks);
+                    // ...or move towards the pinner in an en passant capture
+                    self.pseudo_legal_en_passants(&special_pin_masks);
+                }
                 // If the pinned piece is a piece that can move diagonally, it
                 // can move to all the spaces between the pinner and the king,
                 // and also capture the pinner
