@@ -842,6 +842,40 @@ mod test {
     }
 
     #[test]
+    fn en_passant_not_possible_in_discovered_check() {
+        let board = "
+            ..k.....
+            ....r..K
+            ........
+            ....Pp..
+            ........
+            ........
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::F6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.pseudo_legal_en_passants(&MoveGenMasks {
+            capture: Bitboard::from_square(Square::E7),
+            push: Bitboard::from_square(Square::F7) | Bitboard::from_square(Square::G7),
+            movable: Bitboard::ALL,
+        });
+
+        assert!(moves.is_empty());
+    }
+
+    #[test]
     fn en_passant_not_possible_due_to_double_pin() {
         let board = "
             ......k.
