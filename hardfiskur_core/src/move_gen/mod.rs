@@ -541,3 +541,188 @@ fn xray_rook_attacks(
     let pieces_to_remove = xrayable_pieces & attacks;
     attacks ^ lookups.get_rook_attacks(occupied ^ pieces_to_remove, square)
 }
+
+#[cfg(test)]
+mod test {
+    use crate::test_utils::assert_in_any_order;
+
+    use super::*;
+
+    fn legal_moves_default_settings(board: &BoardRepr, color: Color) -> MoveVec {
+        let mut moves = MoveVec::new();
+
+        let mut move_gen = MoveGenerator::new(
+            board,
+            color,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.legal_moves();
+
+        moves
+    }
+
+    #[test]
+    fn normal_king_moves() {
+        let board = "
+            .....k..
+            ........
+            ........
+            ........
+            ........
+            ........
+            ..K.....
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let white_moves = legal_moves_default_settings(&board, Color::White);
+        let black_moves = legal_moves_default_settings(&board, Color::Black);
+
+        assert_in_any_order(
+            white_moves,
+            vec![
+                Move::builder(Square::C2, Square::B2, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::B3, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::C3, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::D3, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::D2, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::D1, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::C1, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::B1, Piece::WHITE_KING).build(),
+            ],
+        );
+
+        assert_in_any_order(
+            black_moves,
+            vec![
+                Move::builder(Square::F8, Square::E8, Piece::BLACK_KING).build(),
+                Move::builder(Square::F8, Square::G8, Piece::BLACK_KING).build(),
+                Move::builder(Square::F8, Square::G7, Piece::BLACK_KING).build(),
+                Move::builder(Square::F8, Square::F7, Piece::BLACK_KING).build(),
+                Move::builder(Square::F8, Square::E7, Piece::BLACK_KING).build(),
+            ],
+        );
+    }
+
+    #[test]
+    fn king_moves_in_check() {
+        let board = "
+            .....k..
+            ........
+            ..r.....
+            ........
+            ....n...
+            .p......
+            ..K.....
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves,
+            vec![
+                Move::builder(Square::C2, Square::B1, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::B2, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::B3, Piece::WHITE_KING)
+                    .captures(Piece::BLACK_PAWN)
+                    .build(),
+                Move::builder(Square::C2, Square::D3, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::D1, Piece::WHITE_KING).build(),
+            ],
+        )
+    }
+
+    #[test]
+    fn double_check_generates_only_king_moves() {
+        let board = "
+            .....k..
+            ........
+            ..r.....
+            ......R.
+            ....n...
+            .p......
+            ..K.....
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves,
+            vec![
+                Move::builder(Square::C2, Square::B1, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::B2, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::B3, Piece::WHITE_KING)
+                    .captures(Piece::BLACK_PAWN)
+                    .build(),
+                Move::builder(Square::C2, Square::D3, Piece::WHITE_KING).build(),
+                Move::builder(Square::C2, Square::D1, Piece::WHITE_KING).build(),
+            ],
+        )
+    }
+
+    #[test]
+    fn single_check_generates_blocking_moves() {
+        let board = "
+            r....k..
+            ........
+            ..N.....
+            ....R...
+            .P......
+            KP..B...
+            .P......
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves,
+            vec![
+                Move::builder(Square::C6, Square::A7, Piece::WHITE_KNIGHT).build(),
+                Move::builder(Square::C6, Square::A5, Piece::WHITE_KNIGHT).build(),
+                Move::builder(Square::E5, Square::A5, Piece::WHITE_ROOK).build(),
+                Move::builder(Square::E3, Square::A7, Piece::WHITE_BISHOP).build(),
+            ],
+        )
+    }
+
+    #[test]
+    fn single_check_generates_capturing_moves() {
+        let board = "
+            r....k..
+            ........
+            ..B.....
+            .P......
+            KP......
+            .P......
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves,
+            vec![Move::builder(Square::C6, Square::A8, Piece::WHITE_BISHOP)
+                .captures(Piece::BLACK_ROOK)
+                .build()],
+        );
+    }
+
+    // TODO: pinned pieces and castling
+}

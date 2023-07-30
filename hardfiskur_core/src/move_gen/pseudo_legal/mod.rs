@@ -90,6 +90,25 @@ mod test {
 
     use super::*;
 
+    fn call_and_get_moves(
+        board: &BoardRepr,
+        color: Color,
+        f: impl FnOnce(&mut MoveGenerator),
+    ) -> MoveVec {
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            color,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+        f(&mut move_gen);
+
+        moves
+    }
+
     fn test_position() -> BoardRepr {
         "
             ...qk...
@@ -347,17 +366,10 @@ mod test {
     #[test]
     fn test_white_knight_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_knight_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_knight_moves(&Default::default())
+        });
 
         assert_in_any_order(moves, white_knight_moves());
     }
@@ -365,17 +377,10 @@ mod test {
     #[test]
     fn test_black_knight_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_knight_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_knight_moves(&Default::default())
+        });
 
         assert_in_any_order(moves, black_knight_moves());
     }
@@ -383,17 +388,10 @@ mod test {
     #[test]
     fn test_white_bishop_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_bishop_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_bishop_moves(&Default::default())
+        });
 
         assert_in_any_order(moves, white_bishop_moves());
     }
@@ -401,17 +399,10 @@ mod test {
     #[test]
     fn test_black_bishop_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_bishop_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_bishop_moves(&Default::default())
+        });
 
         assert_in_any_order(moves, black_bishop_moves());
     }
@@ -419,17 +410,10 @@ mod test {
     #[test]
     fn test_white_rook_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_rook_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_rook_moves(&Default::default())
+        });
 
         assert_in_any_order(moves, white_rook_moves());
     }
@@ -437,17 +421,10 @@ mod test {
     #[test]
     fn test_black_rook_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_rook_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_rook_moves(&Default::default())
+        });
 
         assert_in_any_order(moves, black_rook_moves());
     }
@@ -455,17 +432,10 @@ mod test {
     #[test]
     fn test_white_queen_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_queen_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_queen_moves(&Default::default())
+        });
 
         assert_in_any_order(moves, white_queen_moves());
     }
@@ -473,17 +443,10 @@ mod test {
     #[test]
     fn test_black_queen_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_queen_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_queen_moves(&Default::default())
+        });
 
         assert_in_any_order(moves, black_queen_moves());
     }
@@ -491,17 +454,10 @@ mod test {
     #[test]
     fn test_white_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_moves(&Default::default());
+        });
 
         assert_in_any_order(moves, white_moves());
     }
@@ -509,17 +465,10 @@ mod test {
     #[test]
     fn test_black_moves() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_moves(&Default::default());
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_moves(&Default::default());
+        });
 
         assert_in_any_order(moves, black_moves());
     }
@@ -527,20 +476,13 @@ mod test {
     #[test]
     fn test_push_mask() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_moves(&MoveGenMasks {
-            capture: Bitboard::EMPTY,
-            push: Bitboard::from_square(Square::H4),
-            movable: Bitboard::ALL,
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_moves(&MoveGenMasks {
+                capture: Bitboard::EMPTY,
+                push: Bitboard::from_square(Square::H4),
+                movable: Bitboard::ALL,
+            });
         });
 
         assert_in_any_order(
@@ -554,20 +496,13 @@ mod test {
     #[test]
     fn test_capture_mask() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_moves(&MoveGenMasks {
-            capture: Bitboard::from_square(Square::E5),
-            push: Bitboard::EMPTY,
-            movable: Bitboard::ALL,
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_moves(&MoveGenMasks {
+                capture: Bitboard::from_square(Square::E5),
+                push: Bitboard::EMPTY,
+                movable: Bitboard::ALL,
+            });
         });
 
         assert_in_any_order(
@@ -581,20 +516,13 @@ mod test {
     #[test]
     fn test_movable_mask() {
         let board = test_position();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_moves(&MoveGenMasks {
-            capture: Bitboard::ALL,
-            push: Bitboard::ALL,
-            movable: Bitboard::from_square(Square::G4),
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_moves(&MoveGenMasks {
+                capture: Bitboard::ALL,
+                push: Bitboard::ALL,
+                movable: Bitboard::from_square(Square::G4),
+            });
         });
 
         assert_in_any_order(moves, white_queen_moves());

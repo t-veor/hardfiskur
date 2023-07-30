@@ -285,6 +285,25 @@ mod test {
 
     use super::*;
 
+    fn call_and_get_moves(
+        board: &BoardRepr,
+        color: Color,
+        f: impl FnOnce(&mut MoveGenerator),
+    ) -> MoveVec {
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            color,
+            None,
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+        f(&mut move_gen);
+
+        moves
+    }
+
     fn pawn_test_board() -> BoardRepr {
         "
             r...k.n.
@@ -462,17 +481,10 @@ mod test {
     #[test]
     fn white_pawn_pushes() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_pushes(&Default::default());
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_pawn_pushes(&Default::default());
+        });
 
         assert_in_any_order(moves, expected_white_pawn_pushes());
     }
@@ -480,17 +492,10 @@ mod test {
     #[test]
     fn white_pawn_captures() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_captures(&Default::default());
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_pawn_captures(&Default::default());
+        });
 
         assert_in_any_order(moves, expected_white_pawn_captures());
     }
@@ -534,20 +539,13 @@ mod test {
     #[test]
     fn white_pawn_push_mask() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
-            capture: Bitboard::EMPTY,
-            push: Bitboard::from_square(Square::F4) | Bitboard::from_square(Square::H4),
-            movable: Bitboard::ALL,
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+                capture: Bitboard::EMPTY,
+                push: Bitboard::from_square(Square::F4) | Bitboard::from_square(Square::H4),
+                movable: Bitboard::ALL,
+            });
         });
 
         assert_in_any_order(
@@ -561,20 +559,13 @@ mod test {
     #[test]
     fn white_pawn_capture_mask() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
-            capture: Bitboard::from_square(Square::A8) | Bitboard::from_square(Square::G3),
-            push: Bitboard::EMPTY,
-            movable: Bitboard::ALL,
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+                capture: Bitboard::from_square(Square::A8) | Bitboard::from_square(Square::G3),
+                push: Bitboard::EMPTY,
+                movable: Bitboard::ALL,
+            });
         });
 
         assert_in_any_order(
@@ -588,20 +579,13 @@ mod test {
     #[test]
     fn white_pawn_movable_mask() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::White,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
-            capture: Bitboard::ALL,
-            push: Bitboard::ALL,
-            movable: Bitboard::from_square(Square::F3),
+        let moves = call_and_get_moves(&board, Color::White, |move_gen| {
+            move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+                capture: Bitboard::ALL,
+                push: Bitboard::ALL,
+                movable: Bitboard::from_square(Square::F3),
+            });
         });
 
         assert_in_any_order(
@@ -615,17 +599,10 @@ mod test {
     #[test]
     fn black_pawn_pushes() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_pushes(&Default::default());
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_pawn_pushes(&Default::default());
+        });
 
         assert_in_any_order(moves, expected_black_pawn_pushes());
     }
@@ -633,17 +610,10 @@ mod test {
     #[test]
     fn black_pawn_captures() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_captures(&Default::default());
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_pawn_captures(&Default::default());
+        });
 
         assert_in_any_order(moves, expected_black_pawn_captures());
     }
@@ -687,20 +657,13 @@ mod test {
     #[test]
     fn black_pawn_push_mask() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
-            capture: Bitboard::EMPTY,
-            push: Bitboard::from_square(Square::A5) | Bitboard::from_square(Square::C6),
-            movable: Bitboard::ALL,
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+                capture: Bitboard::EMPTY,
+                push: Bitboard::from_square(Square::A5) | Bitboard::from_square(Square::C6),
+                movable: Bitboard::ALL,
+            });
         });
 
         assert_in_any_order(
@@ -714,20 +677,13 @@ mod test {
     #[test]
     fn black_pawn_capture_mask() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
-            capture: Bitboard::from_square(Square::F1),
-            push: Bitboard::EMPTY,
-            movable: Bitboard::ALL,
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+                capture: Bitboard::from_square(Square::F1),
+                push: Bitboard::EMPTY,
+                movable: Bitboard::ALL,
+            });
         });
 
         assert_in_any_order(
@@ -741,20 +697,13 @@ mod test {
     #[test]
     fn black_pawn_movable_mask() {
         let board = pawn_test_board();
-        let mut moves = MoveVec::new();
-        let mut move_gen = MoveGenerator::new(
-            &board,
-            Color::Black,
-            None,
-            Default::default(),
-            Default::default(),
-            &mut moves,
-        );
 
-        move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
-            capture: Bitboard::ALL,
-            push: Bitboard::ALL,
-            movable: Bitboard::from_square(Square::G2),
+        let moves = call_and_get_moves(&board, Color::Black, |move_gen| {
+            move_gen.pseudo_legal_pawn_moves(&MoveGenMasks {
+                capture: Bitboard::ALL,
+                push: Bitboard::ALL,
+                movable: Bitboard::from_square(Square::G2),
+            });
         });
 
         assert_in_any_order(
