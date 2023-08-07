@@ -724,5 +724,444 @@ mod test {
         );
     }
 
-    // TODO: pinned pieces and castling
+    #[test]
+    fn pinned_knights_cant_move() {
+        let board = "
+            ..k.....
+            ........
+            ........
+            ........
+            ....b...
+            ........
+            .....PNP
+            .r.N...K
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves
+                .into_iter()
+                .filter(|m| m.piece() == Piece::WHITE_KNIGHT),
+            vec![],
+        )
+    }
+
+    #[test]
+    fn vertically_pinned_pawns_can_push() {
+        let board = "
+            ....k...
+            ....q...
+            ........
+            ........
+            ........
+            ........
+            ....P...
+            ....K...
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves.into_iter().filter(|m| m.piece() == Piece::WHITE_PAWN),
+            vec![
+                Move::builder(Square::E2, Square::E3, Piece::WHITE_PAWN).build(),
+                Move::builder(Square::E2, Square::E4, Piece::WHITE_PAWN)
+                    .is_double_pawn_push()
+                    .build(),
+            ],
+        )
+    }
+
+    #[test]
+    fn orthogonally_pinned_sliders() {
+        let board = "
+            ....k...
+            ....q...
+            ........
+            ....R...
+            ........
+            r.Q.K.Br
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves.into_iter().filter(|m| {
+                matches!(
+                    m.piece(),
+                    Piece::WHITE_BISHOP | Piece::WHITE_ROOK | Piece::WHITE_QUEEN
+                )
+            }),
+            vec![
+                Move::builder(Square::E5, Square::E4, Piece::WHITE_ROOK).build(),
+                Move::builder(Square::E5, Square::E6, Piece::WHITE_ROOK).build(),
+                Move::builder(Square::E5, Square::E7, Piece::WHITE_ROOK)
+                    .captures(Piece::BLACK_QUEEN)
+                    .build(),
+                //
+                Move::builder(Square::C3, Square::B3, Piece::WHITE_QUEEN).build(),
+                Move::builder(Square::C3, Square::D3, Piece::WHITE_QUEEN).build(),
+                Move::builder(Square::C3, Square::A3, Piece::WHITE_QUEEN)
+                    .captures(Piece::BLACK_ROOK)
+                    .build(),
+            ],
+        )
+    }
+
+    #[test]
+    fn diagonally_pinned_pawns_can_capture() {
+        let board = "
+            ...k....
+            ........
+            b.......
+            ...p.q..
+            ..P.P...
+            ...K....
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves.into_iter().filter(|m| m.piece() == Piece::WHITE_PAWN),
+            vec![Move::builder(Square::E4, Square::F5, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_QUEEN)
+                .build()],
+        );
+    }
+
+    #[test]
+    fn diagonally_pinned_pawns_can_capture_en_passant_towards_pinner() {
+        let board = "
+            ...k...b
+            ........
+            ........
+            ....Pp..
+            ...K....
+            ........
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::F6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.legal_moves();
+
+        assert_in_any_order(
+            moves.into_iter().filter(|m| m.piece() == Piece::WHITE_PAWN),
+            vec![Move::builder(Square::E5, Square::F6, Piece::WHITE_PAWN)
+                .captures(Piece::BLACK_PAWN)
+                .is_en_passant()
+                .build()],
+        );
+    }
+
+    #[test]
+    fn diagonally_pinned_pawns_cannot_capture_en_passant() {
+        let board = "
+            ...k...b
+            ........
+            ........
+            ...pP...
+            ...K....
+            ........
+            ........
+            ........
+        "
+        .parse()
+        .unwrap();
+
+        let mut moves = MoveVec::new();
+        let mut move_gen = MoveGenerator::new(
+            &board,
+            Color::White,
+            Some(Square::D6),
+            Default::default(),
+            Default::default(),
+            &mut moves,
+        );
+
+        move_gen.legal_moves();
+
+        assert_in_any_order(
+            moves.into_iter().filter(|m| m.piece() == Piece::WHITE_PAWN),
+            vec![],
+        );
+    }
+
+    #[test]
+    fn diagonally_pinned_sliders() {
+        let board = "
+            q...k...
+            ........
+            ..B...b.
+            .....R..
+            ....K...
+            .....Q..
+            ........
+            .......b
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(
+            moves.into_iter().filter(|m| {
+                matches!(
+                    m.piece(),
+                    Piece::WHITE_BISHOP | Piece::WHITE_ROOK | Piece::WHITE_QUEEN
+                )
+            }),
+            vec![
+                Move::builder(Square::C6, Square::D5, Piece::WHITE_BISHOP).build(),
+                Move::builder(Square::C6, Square::B7, Piece::WHITE_BISHOP).build(),
+                Move::builder(Square::C6, Square::A8, Piece::WHITE_BISHOP)
+                    .captures(Piece::BLACK_QUEEN)
+                    .build(),
+                //
+                Move::builder(Square::F3, Square::G2, Piece::WHITE_QUEEN).build(),
+                Move::builder(Square::F3, Square::H1, Piece::WHITE_QUEEN)
+                    .captures(Piece::BLACK_BISHOP)
+                    .build(),
+            ],
+        )
+    }
+
+    #[test]
+    fn normal_castling_moves() {
+        let board = "
+            r...k..r
+            ........
+            ........
+            ........
+            ........
+            ........
+            ........
+            R...K..R
+        "
+        .parse()
+        .unwrap();
+
+        let white_moves = legal_moves_default_settings(&board, Color::White);
+        let black_moves = legal_moves_default_settings(&board, Color::Black);
+
+        assert_in_any_order(
+            white_moves.into_iter().filter(|m| m.is_castle()),
+            vec![
+                Move::builder(Square::E1, Square::G1, Piece::WHITE_KING)
+                    .is_castle()
+                    .build(),
+                Move::builder(Square::E1, Square::C1, Piece::WHITE_KING)
+                    .is_castle()
+                    .build(),
+            ],
+        );
+
+        assert_in_any_order(
+            black_moves.into_iter().filter(|m| m.is_castle()),
+            vec![
+                Move::builder(Square::E8, Square::G8, Piece::BLACK_KING)
+                    .is_castle()
+                    .build(),
+                Move::builder(Square::E8, Square::C8, Piece::BLACK_KING)
+                    .is_castle()
+                    .build(),
+            ],
+        );
+    }
+
+    #[test]
+    fn cannot_castle_if_rook_missing() {
+        let board = "
+            ....k..n
+            ........
+            ........
+            ........
+            ........
+            ........
+            ........
+            ....K..n
+        "
+        .parse()
+        .unwrap();
+
+        let white_moves = legal_moves_default_settings(&board, Color::White);
+        let black_moves = legal_moves_default_settings(&board, Color::Black);
+
+        assert_in_any_order(white_moves.into_iter().filter(|m| m.is_castle()), vec![]);
+
+        assert_in_any_order(black_moves.into_iter().filter(|m| m.is_castle()), vec![]);
+    }
+
+    #[test]
+    fn cannot_castle_if_rights_missing() {
+        let board = "
+            r...k..r
+            ........
+            ........
+            ........
+            ........
+            ........
+            ........
+            R...K..R
+        "
+        .parse()
+        .unwrap();
+
+        let castling = Castling::WHITE_KINGSIDE | Castling::BLACK_QUEENSIDE;
+
+        let white_moves = {
+            let mut moves = MoveVec::new();
+
+            let mut move_gen = MoveGenerator::new(
+                &board,
+                Color::White,
+                None,
+                castling,
+                Default::default(),
+                &mut moves,
+            );
+
+            move_gen.legal_moves();
+
+            moves
+        };
+
+        let black_moves = {
+            let mut moves = MoveVec::new();
+
+            let mut move_gen = MoveGenerator::new(
+                &board,
+                Color::Black,
+                None,
+                castling,
+                Default::default(),
+                &mut moves,
+            );
+
+            move_gen.legal_moves();
+
+            moves
+        };
+
+        assert_in_any_order(
+            white_moves.into_iter().filter(|m| m.is_castle()),
+            vec![Move::builder(Square::E1, Square::G1, Piece::WHITE_KING)
+                .is_castle()
+                .build()],
+        );
+
+        assert_in_any_order(
+            black_moves.into_iter().filter(|m| m.is_castle()),
+            vec![Move::builder(Square::E8, Square::C8, Piece::BLACK_KING)
+                .is_castle()
+                .build()],
+        );
+    }
+
+    #[test]
+    fn cannot_castle_if_pieces_between_king_and_rook() {
+        let board = "
+            rR..k.qr
+            ........
+            ........
+            ........
+            ........
+            ........
+            ........
+            Rb..KQ.R
+        "
+        .parse()
+        .unwrap();
+
+        let white_moves = legal_moves_default_settings(&board, Color::White);
+        let black_moves = legal_moves_default_settings(&board, Color::Black);
+
+        assert_in_any_order(white_moves.into_iter().filter(|m| m.is_castle()), vec![]);
+
+        assert_in_any_order(black_moves.into_iter().filter(|m| m.is_castle()), vec![]);
+    }
+
+    #[test]
+    fn cannot_castle_in_check() {
+        let board = "
+            ....k...
+            ........
+            ....r...
+            ........
+            ........
+            ........
+            ........
+            R...K..R
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(moves.into_iter().filter(|m| m.is_castle()), vec![]);
+    }
+
+    #[test]
+    fn cannot_castle_through_check() {
+        let board = "
+            ....k...
+            ........
+            ........
+            ........
+            ........
+            ........
+            ....p...
+            R...K..R
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(moves.into_iter().filter(|m| m.is_castle()), vec![]);
+    }
+
+    #[test]
+    fn cannot_castle_into_check() {
+        let board = "
+            ....k...
+            ........
+            ........
+            ........
+            ........
+            .n......
+            .......b
+            R...K..R
+        "
+        .parse()
+        .unwrap();
+
+        let moves = legal_moves_default_settings(&board, Color::White);
+
+        assert_in_any_order(moves.into_iter().filter(|m| m.is_castle()), vec![]);
+    }
 }
