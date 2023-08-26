@@ -39,9 +39,10 @@ bitflags! {
     /// because kingside castling is still possible for black if the black king
     /// and kingside rook have not yet moved.
     ///
-    /// Note these flags do not take into account if there are any pieces
-    /// between the king and the corresponding rook, whether the king is in
-    /// check or whether the king passes through or lands on an attacked square.
+    /// Note these flags do not take into account temporary reasons for which a
+    /// castle may not be permitted, e.g. there are pieces between the king and
+    /// the corresponding rook, the king is in check or will move through or
+    /// land in check, etc.
     /// This will need to be checked during move generation.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct Castling: u8 {
@@ -112,7 +113,7 @@ pub enum BoardState {
 }
 
 /// Holds relevant information needed to undo a move.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct UnmakeData {
     the_move: Option<Move>,
     castling: Castling,
@@ -126,7 +127,7 @@ struct UnmakeData {
 ///
 /// Contains a bitboard representation of the board, along with other
 /// information such as move history, castling rights, etc.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Board {
     board: BoardRepr,
     to_move: Color,
@@ -192,6 +193,46 @@ impl Board {
     /// Returns the [`Color`] of the current player.
     pub fn to_move(&self) -> Color {
         self.to_move
+    }
+
+    /// Returns the castling rights in the current position.
+    ///
+    /// See [`Castling`] documentation for more details.
+    pub fn castling(&self) -> Castling {
+        self.castling
+    }
+
+    /// Returns the square on which a pawn may be captured en passant if the
+    /// previous move was a double pawn push.
+    ///
+    /// For example, if the previous move was a white pawn move from E2 to E4,
+    /// then this method will return `Some(Square::E3)`. If the previous move
+    /// was not a double pawn push, then this method will return `None`.
+    pub fn en_passant(&self) -> Option<Square> {
+        self.en_passant
+    }
+
+    /// Returns the current half-move clock of the current position.
+    ///
+    /// The half-move clock is used to implement the fifty-move rule, where
+    /// after fifty consecutive "full" moves without a capture or a pawn move,
+    /// the player to move can immediately claim a draw (assuming they are not
+    /// in checkmate).
+    ///
+    /// This method returns the number of "half" moves or plies since the last
+    /// capture or pawn move. When a piece is captured or a pawn is moved, this
+    /// counter is reset to 0. Any other moves increment this counter. Since
+    /// there are two plies in a "full" move, the game is considered drawn when
+    /// this counter reaches 100.
+    pub fn halfmove_clock(&self) -> u32 {
+        self.halfmove_clock
+    }
+
+    /// Returns the "full" move count from the start of the game.
+    ///
+    /// A full move is two plies, i.e. a white move and a black move.
+    pub fn fullmoves(&self) -> u32 {
+        self.fullmoves
     }
 
     /// Returns an iterator over all the pieces on the board and the square
@@ -275,31 +316,35 @@ impl Board {
         unmake_data.the_move
     }
 
-    fn castling_rights_removed(&self, the_move: Move) -> Option<Castling> {
+    fn castling_rights_removed(&self, the_move: Move) -> Castling {
+        let mut removed_rights = Castling::empty();
+
         if the_move.is_move_of(PieceType::King) {
-            Some(match the_move.piece().color() {
+            removed_rights |= match the_move.piece().color() {
                 Color::White => Castling::WHITE,
                 Color::Black => Castling::BLACK,
-            })
+            };
         } else if the_move.is_move_of(PieceType::Rook) {
-            match the_move.from_square() {
-                Square::WHITE_KINGSIDE_ROOK => Some(Castling::WHITE_KINGSIDE),
-                Square::WHITE_QUEENSIDE_ROOK => Some(Castling::WHITE_QUEENSIDE),
-                Square::BLACK_KINGSIDE_ROOK => Some(Castling::BLACK_KINGSIDE),
-                Square::BLACK_QUEENSIDE_ROOK => Some(Castling::BLACK_QUEENSIDE),
-                _ => None,
-            }
-        } else if the_move.is_capture_of(PieceType::Rook) {
-            match the_move.to_square() {
-                Square::WHITE_KINGSIDE_ROOK => Some(Castling::WHITE_KINGSIDE),
-                Square::WHITE_QUEENSIDE_ROOK => Some(Castling::WHITE_QUEENSIDE),
-                Square::BLACK_KINGSIDE_ROOK => Some(Castling::BLACK_KINGSIDE),
-                Square::BLACK_QUEENSIDE_ROOK => Some(Castling::BLACK_QUEENSIDE),
-                _ => None,
-            }
-        } else {
-            None
+            removed_rights |= match the_move.from_square() {
+                Square::WHITE_KINGSIDE_ROOK => Castling::WHITE_KINGSIDE,
+                Square::WHITE_QUEENSIDE_ROOK => Castling::WHITE_QUEENSIDE,
+                Square::BLACK_KINGSIDE_ROOK => Castling::BLACK_KINGSIDE,
+                Square::BLACK_QUEENSIDE_ROOK => Castling::BLACK_QUEENSIDE,
+                _ => Castling::empty(),
+            };
         }
+
+        if the_move.is_capture_of(PieceType::Rook) {
+            removed_rights |= match the_move.to_square() {
+                Square::WHITE_KINGSIDE_ROOK => Castling::WHITE_KINGSIDE,
+                Square::WHITE_QUEENSIDE_ROOK => Castling::WHITE_QUEENSIDE,
+                Square::BLACK_KINGSIDE_ROOK => Castling::BLACK_KINGSIDE,
+                Square::BLACK_QUEENSIDE_ROOK => Castling::BLACK_QUEENSIDE,
+                _ => Castling::empty(),
+            };
+        }
+
+        removed_rights
     }
 
     fn make_move_unchecked(&mut self, the_move: Move) -> UnmakeData {
@@ -312,9 +357,7 @@ impl Board {
 
         // Update if the move broke any castling rights
         let prev_castling = self.castling;
-        if let Some(remove_rights) = self.castling_rights_removed(the_move) {
-            self.castling.remove(remove_rights);
-        }
+        self.castling.remove(self.castling_rights_removed(the_move));
 
         // Set the en passant square if applicable
         let prev_en_passant = self.en_passant;
@@ -410,5 +453,190 @@ mod test {
             "Qkq"
         );
         assert_eq!(Castling::all().as_fen_str(), "KQkq");
+    }
+
+    // TODO: Test pieces, get_pieces, legal_moves, and legal_moves_ex
+
+    type LegalMoveArgs = (Square, Square, Option<PieceType>);
+    fn m(from: Square, to: Square) -> LegalMoveArgs {
+        (from, to, None)
+    }
+
+    fn assert_sequence_of_legal_moves(
+        mut board: Board,
+        ops: Vec<(LegalMoveArgs, Box<dyn Fn(&Board)>)>,
+    ) {
+        let mut board_states = vec![board.clone()];
+
+        for (i, (args, asserter)) in ops.iter().enumerate() {
+            let (from, to, promo) = *args;
+
+            assert!(
+                board.push_move(from, to, promo),
+                "failed on move {i}: {from} to {to} (promo {promo:?}) is not a valid move"
+            );
+            asserter(&board);
+
+            board_states.push(board.clone());
+        }
+
+        for (_, asserter) in ops.iter().rev() {
+            assert_eq!(board, board_states.pop().unwrap());
+            asserter(&board);
+
+            assert!(board.pop_move().is_some());
+        }
+
+        assert_eq!(board, board_states.pop().unwrap());
+    }
+
+    #[test]
+    fn board_push_and_pop_move() {
+        let mut board = Board::starting_position();
+
+        assert!(board.push_move(Square::E2, Square::E4, None));
+
+        let popped_move = board.pop_move();
+        assert_eq!(
+            popped_move,
+            Some(
+                Move::builder(Square::E2, Square::E4, Piece::WHITE_PAWN)
+                    .is_double_pawn_push()
+                    .build()
+            )
+        );
+
+        assert_eq!(board, Board::starting_position());
+    }
+
+    #[test]
+    fn board_adjusts_to_move_and_fullmoves_correctly() {
+        assert_sequence_of_legal_moves(
+            Board::starting_position(),
+            vec![
+                (
+                    m(Square::E2, Square::E4),
+                    Box::new(|board| {
+                        assert_eq!(board.to_move(), Color::Black);
+                        assert_eq!(board.fullmoves(), 1);
+                    }),
+                ),
+                (
+                    m(Square::E7, Square::E5),
+                    Box::new(|board| {
+                        assert_eq!(board.to_move(), Color::White);
+                        assert_eq!(board.fullmoves(), 2);
+                    }),
+                ),
+                (
+                    m(Square::G1, Square::F3),
+                    Box::new(|board| {
+                        assert_eq!(board.to_move(), Color::Black);
+                        assert_eq!(board.fullmoves(), 2);
+                    }),
+                ),
+            ],
+        );
+    }
+
+    #[test]
+    fn board_adjusts_castling_correctly_after_castle_and_king_move() {
+        assert_sequence_of_legal_moves(
+            Board::try_parse_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap(),
+            vec![
+                (
+                    m(Square::E1, Square::G1),
+                    Box::new(|board| assert_eq!(board.castling(), Castling::BLACK)),
+                ),
+                (
+                    m(Square::E8, Square::E7),
+                    Box::new(|board| assert_eq!(board.castling(), Castling::empty())),
+                ),
+            ],
+        );
+    }
+
+    #[test]
+    fn board_adjusts_castling_correctly_after_rooks_moved_or_captured() {
+        assert_sequence_of_legal_moves(
+            Board::try_parse_fen("r3k2r/8/8/8/8/6n1/8/R3K2R b KQkq - 0 1").unwrap(),
+            vec![
+                (
+                    m(Square::G3, Square::H1),
+                    Box::new(|board| {
+                        assert_eq!(
+                            board.castling(),
+                            Castling::WHITE_QUEENSIDE | Castling::BLACK
+                        )
+                    }),
+                ),
+                (
+                    m(Square::A1, Square::A8),
+                    Box::new(|board| assert_eq!(board.castling(), Castling::BLACK_KINGSIDE)),
+                ),
+            ],
+        );
+    }
+
+    #[test]
+    fn board_updates_en_passant_correctly() {
+        assert_sequence_of_legal_moves(
+            Board::try_parse_fen("4k3/4p3/8/8/2p5/8/1P4P1/4K3 w - - 0 1").unwrap(),
+            vec![
+                (
+                    m(Square::G2, Square::G3),
+                    Box::new(|board| assert_eq!(board.en_passant(), None)),
+                ),
+                (
+                    m(Square::E7, Square::E5),
+                    Box::new(|board| assert_eq!(board.en_passant(), Some(Square::E6))),
+                ),
+                (
+                    m(Square::B2, Square::B4),
+                    Box::new(|board| assert_eq!(board.en_passant(), Some(Square::B3))),
+                ),
+                (
+                    m(Square::C4, Square::B3),
+                    Box::new(|board| assert_eq!(board.en_passant(), None)),
+                ),
+            ],
+        )
+    }
+
+    #[test]
+    fn board_updates_halfmove_clock_correctly() {
+        assert_sequence_of_legal_moves(
+            Board::try_parse_fen("4k3/p7/2P4R/8/1r6/8/5b2/5K2 w - - 0 1").unwrap(),
+            vec![
+                (
+                    m(Square::H6, Square::F6),
+                    Box::new(|board| assert_eq!(board.halfmove_clock(), 1)),
+                ),
+                (
+                    m(Square::B4, Square::B3),
+                    Box::new(|board| assert_eq!(board.halfmove_clock(), 2)),
+                ),
+                (
+                    m(Square::F6, Square::F2),
+                    Box::new(|board| assert_eq!(board.halfmove_clock(), 0)),
+                ),
+                (
+                    m(Square::B3, Square::B4),
+                    Box::new(|board| assert_eq!(board.halfmove_clock(), 1)),
+                ),
+                (
+                    m(Square::C6, Square::C7),
+                    Box::new(|board| assert_eq!(board.halfmove_clock(), 0)),
+                ),
+                (
+                    m(Square::B4, Square::B3),
+                    Box::new(|board| assert_eq!(board.halfmove_clock(), 1)),
+                ),
+                (
+                    (Square::C7, Square::C8, Some(PieceType::Queen)),
+                    Box::new(|board| assert_eq!(board.halfmove_clock(), 0)),
+                ),
+            ],
+        )
     }
 }
