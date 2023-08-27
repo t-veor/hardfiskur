@@ -421,6 +421,8 @@ impl Default for Board {
 
 #[cfg(test)]
 mod test {
+    use crate::test_utils::assert_in_any_order;
+
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -455,7 +457,128 @@ mod test {
         assert_eq!(Castling::all().as_fen_str(), "KQkq");
     }
 
-    // TODO: Test pieces, get_pieces, legal_moves, and legal_moves_ex
+    #[test]
+    fn board_pieces() {
+        let board =
+            Board::try_parse_fen("8/p7/1p1k1pp1/3b4/3p1PP1/3P4/P1P1K2N/8 w - - 0 1").unwrap();
+
+        assert_in_any_order(
+            board.pieces(),
+            vec![
+                (Piece::BLACK_PAWN, Square::A7),
+                (Piece::BLACK_PAWN, Square::B6),
+                (Piece::BLACK_KING, Square::D6),
+                (Piece::BLACK_PAWN, Square::F6),
+                (Piece::BLACK_PAWN, Square::G6),
+                (Piece::BLACK_BISHOP, Square::D5),
+                (Piece::BLACK_PAWN, Square::D4),
+                (Piece::WHITE_PAWN, Square::F4),
+                (Piece::WHITE_PAWN, Square::G4),
+                (Piece::WHITE_PAWN, Square::D3),
+                (Piece::WHITE_PAWN, Square::A2),
+                (Piece::WHITE_PAWN, Square::C2),
+                (Piece::WHITE_KING, Square::E2),
+                (Piece::WHITE_KNIGHT, Square::H2),
+            ],
+        )
+    }
+
+    #[test]
+    fn board_get_pieces() {
+        let board =
+            Board::try_parse_fen("8/p7/1p1k1pp1/3b4/3p1PP1/3P4/P1P1K2N/8 w - - 0 1").unwrap();
+
+        assert_eq!(board.get_piece(Square::D6), Some(Piece::BLACK_KING));
+        assert_eq!(board.get_piece(Square::D5), Some(Piece::BLACK_BISHOP));
+        assert_eq!(board.get_piece(Square::H2), Some(Piece::WHITE_KNIGHT));
+        assert_eq!(board.get_piece(Square::E1), None);
+    }
+
+    #[test]
+    fn board_legal_moves() {
+        let board = Board::try_parse_fen("4r1k1/8/8/8/8/8/6P1/4nKn1 w - - 0 1").unwrap();
+        let (moves, result) = board.legal_moves();
+
+        assert_in_any_order(
+            moves,
+            vec![
+                MoveBuilder::new(Square::F1, Square::F2, Piece::WHITE_KING).build(),
+                MoveBuilder::new(Square::F1, Square::G1, Piece::WHITE_KING)
+                    .captures(Piece::BLACK_KNIGHT)
+                    .build(),
+                MoveBuilder::new(Square::G2, Square::G3, Piece::WHITE_PAWN).build(),
+                MoveBuilder::new(Square::G2, Square::G4, Piece::WHITE_PAWN)
+                    .is_double_pawn_push()
+                    .build(),
+            ],
+        );
+        assert_eq!(result.checker_count, 0);
+    }
+
+    #[test]
+    fn board_legal_moves_in_check() {
+        let board = Board::try_parse_fen("5rk1/8/8/8/8/8/6R1/4nK2 w - - 0 1").unwrap();
+        let (moves, result) = board.legal_moves();
+
+        assert_in_any_order(
+            moves,
+            vec![
+                MoveBuilder::new(Square::F1, Square::E1, Piece::WHITE_KING)
+                    .captures(Piece::BLACK_KNIGHT)
+                    .build(),
+                MoveBuilder::new(Square::F1, Square::E2, Piece::WHITE_KING).build(),
+                MoveBuilder::new(Square::F1, Square::G1, Piece::WHITE_KING).build(),
+                MoveBuilder::new(Square::G2, Square::F2, Piece::WHITE_ROOK).build(),
+            ],
+        );
+        assert_eq!(result.checker_count, 1);
+    }
+
+    #[test]
+    fn board_legal_moves_in_double_check() {
+        let board = Board::try_parse_fen("5rk1/8/8/8/8/3b4/6R1/4NK2 w - - 0 1").unwrap();
+        let (moves, result) = board.legal_moves();
+
+        assert_in_any_order(
+            moves,
+            vec![MoveBuilder::new(Square::F1, Square::G1, Piece::WHITE_KING).build()],
+        );
+        assert_eq!(result.checker_count, 2);
+    }
+
+    #[test]
+    fn board_legal_moves_ex_only_pushes() {
+        let board = Board::try_parse_fen("4r1k1/8/8/8/8/8/6P1/4nKn1 w - - 0 1").unwrap();
+        let mut moves = MoveVec::new();
+        let result = board.legal_moves_ex(MoveGenFlags::GEN_QUIET_MOVES, &mut moves);
+
+        assert_in_any_order(
+            moves,
+            vec![
+                MoveBuilder::new(Square::F1, Square::F2, Piece::WHITE_KING).build(),
+                MoveBuilder::new(Square::G2, Square::G3, Piece::WHITE_PAWN).build(),
+                MoveBuilder::new(Square::G2, Square::G4, Piece::WHITE_PAWN)
+                    .is_double_pawn_push()
+                    .build(),
+            ],
+        );
+        assert_eq!(result.checker_count, 0);
+    }
+
+    #[test]
+    fn board_legal_moves_ex_only_captures() {
+        let board = Board::try_parse_fen("4r1k1/8/8/8/8/8/6P1/4nKn1 w - - 0 1").unwrap();
+        let mut moves = MoveVec::new();
+        let result = board.legal_moves_ex(MoveGenFlags::GEN_CAPTURES, &mut moves);
+
+        assert_in_any_order(
+            moves,
+            vec![MoveBuilder::new(Square::F1, Square::G1, Piece::WHITE_KING)
+                .captures(Piece::BLACK_KNIGHT)
+                .build()],
+        );
+        assert_eq!(result.checker_count, 0);
+    }
 
     type LegalMoveArgs = (Square, Square, Option<PieceType>);
     fn m(from: Square, to: Square) -> LegalMoveArgs {
@@ -488,6 +611,20 @@ mod test {
         }
 
         assert_eq!(board, board_states.pop().unwrap());
+    }
+
+    #[test]
+    fn board_push_invalid_move_returns_false() {
+        let mut board = Board::starting_position();
+
+        assert!(!board.push_move(Square::E1, Square::E2, None));
+    }
+
+    #[test]
+    fn board_pop_moves_when_no_move_history_returns_none() {
+        let mut board = Board::starting_position();
+
+        assert_eq!(board.pop_move(), None);
     }
 
     #[test]

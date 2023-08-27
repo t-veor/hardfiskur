@@ -119,7 +119,7 @@ impl Color {
 /// Internal representation is a 4 bit integer, formed by a bitwise-or of the
 /// [`Color`] and [`PieceType`]. Since [`PieceType`] can never be 0, Rust can
 /// optimise the [`None`] of an [`Option<Piece>`] to be represented by 0.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Piece(NonZeroU8);
 
 impl Piece {
