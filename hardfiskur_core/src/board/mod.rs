@@ -297,6 +297,21 @@ impl Board {
         }
     }
 
+    /// Make a move on the board.
+    ///
+    /// Checks first if the move is legal. If it is, the move is made on the
+    /// board and `true` is returned. Otherwise, `false` is returned.
+    pub fn push_move_repr(&mut self, the_move: Move) -> bool {
+        let legal_moves = self.legal_moves().0;
+
+        if legal_moves.contains(&the_move) {
+            self.push_move_unchecked(the_move);
+            true
+        } else {
+            false
+        }
+    }
+
     /// Make a move on the board without checking its legality.
     ///
     /// Ensure that the move provided is legal, otherwise you will put the board
@@ -314,6 +329,11 @@ impl Board {
         let unmake_data = self.move_history.pop()?;
         self.unmake_move(unmake_data);
         unmake_data.the_move
+    }
+
+    /// Returns the bitboard representing all pieces of the given color.
+    pub fn color_bitboard(&self, color: Color) -> Bitboard {
+        self.board[color]
     }
 
     fn castling_rights_removed(&self, the_move: Move) -> Castling {

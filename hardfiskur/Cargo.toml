@@ -1,0 +1,9 @@
+[package]
+name = "hardfiskur"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.28"
+hardfiskur_core = { path = "../hardfiskur_core" }
+hardfiskur_ui = { path = "../hardfiskur_ui" }

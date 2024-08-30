@@ -4,8 +4,12 @@ members = [
     "hardfiskur_uci",
     "hardfiskur_ui",
 
+    "hardfiskur",
+
     "find_magics",
     "bitboard_attack_viewer",
     "perft",
 ]
 resolver = "2"
+
+default-members = ["hardfiskur"]

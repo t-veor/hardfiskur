@@ -1,16 +1,16 @@
 use egui::{
-    epaint::ColorImage, Align2, Painter, PointerButton, Pos2, Rect, Sense, TextureHandle, Ui, Vec2,
+    epaint::{ColorImage, PathShape, PathStroke, RectShape},
+    vec2, Align2, Color32, Painter, PointerButton, Pos2, Rect, Rgba, Sense, Shadow, TextureHandle,
+    Ui, Vec2,
 };
 use hardfiskur_core::board::{Bitboard, Color, Move, Piece, PieceType, Square};
 
 use crate::constants::{
-    BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_WHITE, CHESS_PIECES_SPRITE, SCALE,
+    BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_WHITE, CHESS_PIECES_SPRITE, MOVE_COLOR, SCALE,
 };
 
-use self::{
-    arrow::Arrow,
-    promo_ui::{PromotionResult, PromotionUi},
-};
+use self::{arrow::Arrow, promo_ui::PromotionUi};
+pub use promo_ui::PromotionResult;
 
 mod arrow;
 mod promo_ui;
@@ -24,6 +24,7 @@ pub struct BaseBoardData<'a> {
     pub drag_mask: Bitboard,
     pub allow_arrows: bool,
     pub promotion: Option<(Square, Color)>,
+    pub checked_king_position: Option<Square>,
 }
 
 impl<'a> BaseBoardData<'a> {
@@ -42,6 +43,7 @@ impl<'a> Default for BaseBoardData<'a> {
             drag_mask: Bitboard::EMPTY,
             allow_arrows: true,
             promotion: None,
+            checked_king_position: None,
         }
     }
 }
@@ -49,6 +51,7 @@ impl<'a> Default for BaseBoardData<'a> {
 #[derive(Debug)]
 pub struct BaseBoardResponse {
     pub egui_response: egui::Response,
+    pub holding: Option<Square>,
     pub dropped: Option<(Square, Square)>,
     pub clicked_square: Option<Square>,
     pub promotion_result: Option<PromotionResult>,
@@ -58,6 +61,7 @@ impl BaseBoardResponse {
     pub fn new(egui_response: egui::Response) -> Self {
         Self {
             egui_response,
+            holding: None,
             dropped: None,
             clicked_square: None,
             promotion_result: None,
@@ -72,7 +76,7 @@ pub struct BaseBoard {
     rel_mouse_pos: Pos2,
     mouse_square: Option<Square>,
 
-    drag_start: Option<Square>,
+    holding: Option<Square>,
 
     arrow_start: Option<Square>,
     arrows: Vec<Arrow>,
@@ -87,7 +91,7 @@ impl Default for BaseBoard {
             board_rect: Rect::from_min_max(Pos2::ZERO, Pos2::ZERO),
             rel_mouse_pos: Pos2::ZERO,
             mouse_square: None,
-            drag_start: None,
+            holding: None,
             arrow_start: None,
             arrows: Vec::new(),
             promotion_ui: None,
@@ -129,6 +133,10 @@ impl BaseBoard {
 
         self.paint_bitboard(&painter, &data);
 
+        self.paint_in_check(&painter, &data);
+
+        self.paint_moves(&painter, &data);
+
         self.paint_pieces(ui, &data);
 
         self.paint_arrows(&painter, &data);
@@ -136,6 +144,7 @@ impl BaseBoard {
         self.paint_promotion_ui(ui, &painter);
 
         let mut response = BaseBoardResponse::new(egui_response);
+        response.holding = self.holding;
 
         self.handle_input(&data, &mut response);
 
@@ -226,7 +235,7 @@ impl BaseBoard {
         {
             if let Some(start) = self.mouse_square {
                 if data.drag_mask.get(start) && data.piece_at(start).is_some() {
-                    self.drag_start = self.mouse_square;
+                    self.holding = self.mouse_square;
                 }
             }
         }
@@ -235,12 +244,12 @@ impl BaseBoard {
             .egui_response
             .drag_stopped_by(PointerButton::Primary)
         {
-            if let (Some(start), Some(end)) = (self.drag_start, self.mouse_square) {
+            if let (Some(start), Some(end)) = (self.holding, self.mouse_square) {
                 if data.piece_at(start).is_some() {
                     response.dropped = Some((start, end));
                 }
             }
-            self.drag_start = None;
+            self.holding = None;
         }
     }
 
@@ -347,21 +356,21 @@ impl BaseBoard {
         let sprite_handle = self.get_piece_sprite(ui.ctx());
 
         for square in Square::all() {
-            if self.drag_start == Some(square) {
-                continue;
-            }
-
             if let Some(piece) = data.pieces.get(square.index()).copied().flatten() {
                 let src_rect = Self::get_piece_uv(piece);
                 let dst_rect = Self::dst_rect(square, self.board_rect, data.perspective);
 
-                egui::Image::new(&sprite_handle)
-                    .uv(src_rect)
-                    .paint_at(ui, dst_rect)
+                let mut image = egui::Image::new(&sprite_handle).uv(src_rect);
+
+                if self.holding == Some(square) {
+                    image = image.tint(Rgba::from_rgba_unmultiplied(1.0, 1.0, 1.0, 0.2));
+                }
+
+                image.paint_at(ui, dst_rect)
             }
         }
 
-        if let Some(drag_from_square) = self.drag_start {
+        if let Some(drag_from_square) = self.holding {
             if let Some(dragged_piece) =
                 data.pieces.get(drag_from_square.index()).copied().flatten()
             {
@@ -377,6 +386,81 @@ impl BaseBoard {
             } else {
                 // Dragged piece was removed from underneath us...
             }
+        }
+    }
+
+    fn paint_moves(&mut self, painter: &Painter, data: &BaseBoardData<'_>) {
+        let mut start_squares = [false; 64];
+        let mut end_squares = [false; 64];
+
+        for m in data.possible_moves {
+            start_squares[m.from_square().index()] = true;
+            end_squares[m.to_square().index()] = true;
+        }
+
+        for square in Square::all() {
+            let is_start_square = start_squares[square.index()];
+            let is_end_square = end_squares[square.index()];
+
+            if !is_start_square && !is_end_square {
+                continue;
+            }
+
+            let dst_rect = Self::dst_rect(square, self.board_rect, data.perspective);
+            if is_start_square || self.mouse_square == Some(square) {
+                painter.add(RectShape::filled(dst_rect, 0.0, MOVE_COLOR));
+            } else if data.pieces[square.index()].is_some() {
+                let triangles = [
+                    vec![
+                        dst_rect.left_top(),
+                        dst_rect.left_top() + vec2(SCALE * 0.25, 0.0),
+                        dst_rect.left_top() + vec2(0.0, SCALE * 0.25),
+                    ],
+                    vec![
+                        dst_rect.right_top(),
+                        dst_rect.right_top() + vec2(-SCALE * 0.25, 0.0),
+                        dst_rect.right_top() + vec2(0.0, SCALE * 0.25),
+                    ],
+                    vec![
+                        dst_rect.left_bottom(),
+                        dst_rect.left_bottom() + vec2(SCALE * 0.25, 0.0),
+                        dst_rect.left_bottom() + vec2(0.0, -SCALE * 0.25),
+                    ],
+                    vec![
+                        dst_rect.right_bottom(),
+                        dst_rect.right_bottom() + vec2(-SCALE * 0.25, 0.0),
+                        dst_rect.right_bottom() + vec2(1.0, -SCALE * 0.25),
+                    ],
+                ];
+
+                for points in triangles {
+                    painter.add(PathShape {
+                        points,
+                        closed: true,
+                        fill: MOVE_COLOR,
+                        stroke: PathStroke::NONE,
+                    });
+                }
+            } else {
+                painter.circle_filled(dst_rect.center(), SCALE * 0.125, MOVE_COLOR);
+            }
+        }
+    }
+
+    fn paint_in_check(&mut self, painter: &Painter, data: &BaseBoardData<'_>) {
+        if let Some(square) = data.checked_king_position {
+            painter.add(
+                Shadow {
+                    blur: SCALE * 0.25,
+                    spread: -SCALE * 0.125,
+                    color: Color32::RED,
+                    ..Default::default()
+                }
+                .as_shape(
+                    Self::dst_rect(square, self.board_rect, data.perspective),
+                    SCALE * 0.5,
+                ),
+            );
         }
     }
 

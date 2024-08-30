@@ -1687,6 +1687,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hardfiskur"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "hardfiskur_core",
+ "hardfiskur_ui",
+]
+
+[[package]]
 name = "hardfiskur_core"
 version = "0.1.0"
 dependencies = [

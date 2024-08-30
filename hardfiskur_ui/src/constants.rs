@@ -10,6 +10,8 @@ pub const BOARD_PRIMARY: Color32 = Color32::from_rgba_premultiplied(20, 85, 30, 
 pub const BOARD_LAST_MOVE: Color32 = Color32::from_rgba_premultiplied(0x66, 0x85, 0x00, 0x68);
 pub const BOARD_BITBOARD_HIGHLIGHT: Color32 = Color32::from_rgba_premultiplied(192, 64, 64, 192);
 
+pub const MOVE_COLOR: Color32 = Color32::from_rgba_premultiplied(13, 72, 16, 154);
+
 pub const ARROW_COLOR: Color32 = Color32::from_rgba_premultiplied(13, 72, 16, 154);
 
 pub const ARROW_WIDTH: f32 = 12.0;
