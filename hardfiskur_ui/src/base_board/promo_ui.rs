@@ -103,7 +103,7 @@ impl PromotionUi {
             let dst_rect_center = self.anchor + Vec2::new(0.0, i as f32 * self.direction);
             let dst_rect = Rect::from_center_size(dst_rect_center, Vec2::splat(SCALE));
 
-            egui::Image::new(sprite_handle, Vec2::splat(SCALE))
+            egui::Image::new(sprite_handle)
                 .uv(src_rect)
                 .paint_at(ui, dst_rect);
         }

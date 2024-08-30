@@ -269,9 +269,9 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Bitboard Attack Viewer",
         eframe::NativeOptions {
-            initial_window_size: Some(Vec2::new(1024.0, 768.0)),
+            viewport: egui::ViewportBuilder::default().with_inner_size(Vec2::new(1024.0, 768.0)),
             ..Default::default()
         },
-        Box::new(|cc| Box::new(MagicBitboardViewerUI::new(cc))),
+        Box::new(|cc| Ok(Box::new(MagicBitboardViewerUI::new(cc)))),
     )
 }

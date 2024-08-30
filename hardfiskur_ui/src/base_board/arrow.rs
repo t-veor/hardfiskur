@@ -1,4 +1,8 @@
-use egui::{emath::Rot2, epaint::PathShape, Painter, Pos2, Rect, Stroke};
+use egui::{
+    emath::Rot2,
+    epaint::{PathShape, PathStroke},
+    Painter, Pos2, Rect, Stroke,
+};
 use hardfiskur_core::board::{Color, Square};
 
 use crate::{
@@ -41,7 +45,7 @@ impl Arrow {
                 width: stroke_width,
                 color: ARROW_COLOR,
             },
-        )
+        );
     }
 
     fn draw_arrow(&self, painter: &Painter, origin: Pos2, end: Pos2, is_selected: bool) {
@@ -76,7 +80,7 @@ impl Arrow {
             points,
             closed: true,
             fill: ARROW_COLOR,
-            stroke: Stroke::NONE,
+            stroke: PathStroke::NONE,
         });
     }
 }

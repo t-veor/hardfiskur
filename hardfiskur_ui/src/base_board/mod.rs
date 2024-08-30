@@ -233,7 +233,7 @@ impl BaseBoard {
 
         if response
             .egui_response
-            .drag_released_by(PointerButton::Primary)
+            .drag_stopped_by(PointerButton::Primary)
         {
             if let (Some(start), Some(end)) = (self.drag_start, self.mouse_square) {
                 if data.piece_at(start).is_some() {
@@ -255,7 +255,7 @@ impl BaseBoard {
 
         if response
             .egui_response
-            .drag_released_by(PointerButton::Secondary)
+            .drag_stopped_by(PointerButton::Secondary)
         {
             if let Some(start) = self.arrow_start.take() {
                 let end = self.mouse_square.unwrap_or(start);
@@ -270,7 +270,7 @@ impl BaseBoard {
 
         if response
             .egui_response
-            .drag_released_by(PointerButton::Primary)
+            .drag_stopped_by(PointerButton::Primary)
         {
             self.arrows.clear();
         }
@@ -340,7 +340,7 @@ impl BaseBoard {
                 let src_rect = Self::get_piece_uv(piece);
                 let dst_rect = Self::dst_rect(square, self.board_rect, data.perspective);
 
-                egui::Image::new(&sprite_handle, Vec2::splat(SCALE))
+                egui::Image::new(&sprite_handle)
                     .uv(src_rect)
                     .paint_at(ui, dst_rect)
             }
@@ -356,7 +356,7 @@ impl BaseBoard {
                     Vec2::splat(SCALE),
                 );
 
-                egui::Image::new(&sprite_handle, Vec2::splat(SCALE))
+                egui::Image::new(&sprite_handle)
                     .uv(src_rect)
                     .paint_at(ui, dst_rect);
             } else {
