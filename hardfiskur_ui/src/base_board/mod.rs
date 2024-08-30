@@ -231,7 +231,10 @@ impl BaseBoard {
             }
         }
 
-        if response.egui_response.clicked_by(PointerButton::Primary) {
+        if response
+            .egui_response
+            .drag_stopped_by(PointerButton::Primary)
+        {
             if let (Some(start), Some(end)) = (self.drag_start, self.mouse_square) {
                 if data.piece_at(start).is_some() {
                     response.dropped = Some((start, end));
