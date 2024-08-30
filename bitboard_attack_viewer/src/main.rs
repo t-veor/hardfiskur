@@ -1,6 +1,6 @@
 use eframe::egui::{self, Layout, Vec2};
 use hardfiskur_core::{
-    board::{Bitboard, Color, Piece, PieceType, Square},
+    board::{Bitboard, Piece, PieceType, Square},
     move_gen::{lookups::Lookups, magic::MagicTableEntry},
 };
 use hardfiskur_ui::base_board::{BaseBoard, BaseBoardData};
@@ -11,8 +11,6 @@ struct MagicBitboardViewerUI {
     square: Square,
     blockers: Bitboard,
     lookups: &'static Lookups,
-
-    should_promote: bool,
 }
 
 impl MagicBitboardViewerUI {
@@ -23,8 +21,6 @@ impl MagicBitboardViewerUI {
             square: Square::new(0, 0).unwrap(),
             blockers: Bitboard::EMPTY,
             lookups: Lookups::get_instance(),
-
-            should_promote: false,
         }
     }
 }
@@ -234,7 +230,6 @@ impl eframe::App for MagicBitboardViewerUI {
                         pieces: &board[..],
                         display_bitboard: attack_pattern,
                         drag_mask: Bitboard::from_square(self.square),
-                        promotion: self.should_promote.then_some((self.square, Color::White)),
                         ..Default::default()
                     };
 
@@ -243,20 +238,12 @@ impl eframe::App for MagicBitboardViewerUI {
                     if let Some((start, end)) = response.dropped {
                         if start == self.square {
                             self.square = end;
-                            self.should_promote = true;
                         }
                     }
 
                     if let Some(square) = response.clicked_square {
                         if square != self.square {
                             self.blockers ^= Bitboard::from_square(square);
-                        }
-                    }
-
-                    if let Some(promotion) = response.promotion_result {
-                        self.should_promote = false;
-                        if let Some(piece_type) = promotion.into_piece_type() {
-                            self.piece = piece_type;
                         }
                     }
                 },
