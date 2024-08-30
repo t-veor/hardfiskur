@@ -231,10 +231,7 @@ impl BaseBoard {
             }
         }
 
-        if response
-            .egui_response
-            .drag_stopped_by(PointerButton::Primary)
-        {
+        if response.egui_response.clicked_by(PointerButton::Primary) {
             if let (Some(start), Some(end)) = (self.drag_start, self.mouse_square) {
                 if data.piece_at(start).is_some() {
                     response.dropped = Some((start, end));
@@ -260,19 +257,34 @@ impl BaseBoard {
             if let Some(start) = self.arrow_start.take() {
                 let end = self.mouse_square.unwrap_or(start);
                 let arrow = Arrow { start, end };
-                if let Some(idx) = self.arrows.iter().position(|a| a == &arrow) {
-                    self.arrows.swap_remove(idx);
-                } else {
-                    self.arrows.push(arrow)
-                }
+
+                self.toggle_arrow(arrow);
             }
         }
 
-        if response
-            .egui_response
-            .drag_stopped_by(PointerButton::Primary)
+        if data.allow_arrows && response.egui_response.clicked_by(PointerButton::Secondary) {
+            if let Some(mouse_square) = self.mouse_square {
+                self.toggle_arrow(Arrow {
+                    start: mouse_square,
+                    end: mouse_square,
+                });
+            }
+        }
+
+        if response.egui_response.clicked_by(PointerButton::Primary)
+            || response
+                .egui_response
+                .drag_stopped_by(PointerButton::Primary)
         {
             self.arrows.clear();
+        }
+    }
+
+    fn toggle_arrow(&mut self, arrow: Arrow) {
+        if let Some(idx) = self.arrows.iter().position(|a| a == &arrow) {
+            self.arrows.swap_remove(idx);
+        } else {
+            self.arrows.push(arrow)
         }
     }
 
