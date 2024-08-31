@@ -146,7 +146,7 @@ fn generic_perft(mut board: Board, max_depth: usize) {
 fn specific_perft(mut board: Board, depth: usize) {
     assert!(depth >= 1);
 
-    let legal_moves = board.legal_moves().0;
+    let legal_moves = board.legal_moves();
 
     let mut total_nodes = 0;
     for m in legal_moves {

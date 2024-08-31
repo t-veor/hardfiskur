@@ -154,6 +154,36 @@ impl Piece {
         Self::new(Color::Black, piece_type)
     }
 
+    /// Convenience method for constructing a pawn of the given [`Color`].
+    pub const fn pawn(color: Color) -> Self {
+        Self::new(color, PieceType::Pawn)
+    }
+
+    /// Convenience method for constructing a knight of the given [`Color`].
+    pub const fn knight(color: Color) -> Self {
+        Self::new(color, PieceType::Knight)
+    }
+
+    /// Convenience method for constructing a bishop of the given [`Color`].
+    pub const fn bishop(color: Color) -> Self {
+        Self::new(color, PieceType::Bishop)
+    }
+
+    /// Convenience method for constructing a rook of the given [`Color`].
+    pub const fn rook(color: Color) -> Self {
+        Self::new(color, PieceType::Rook)
+    }
+
+    /// Convenience method for constructing a queen of the given [`Color`].
+    pub const fn queen(color: Color) -> Self {
+        Self::new(color, PieceType::Queen)
+    }
+
+    /// Convenience method for constructing a king of the given [`Color`].
+    pub const fn king(color: Color) -> Self {
+        Self::new(color, PieceType::King)
+    }
+
     /// Constructs a [`Piece`] from its 4-bit representation.
     ///
     /// Note that since Rust does not have a 4-bit type, `value` will first be
@@ -190,6 +220,36 @@ impl Piece {
     /// Returns if this piece is black.
     pub const fn is_black(self) -> bool {
         self.color().is_black()
+    }
+
+    /// Returns if this piece is a pawn.
+    pub const fn is_pawn(self) -> bool {
+        matches!(self.piece_type(), PieceType::Pawn)
+    }
+
+    /// Returns if this piece is a knight.
+    pub const fn is_knight(self) -> bool {
+        matches!(self.piece_type(), PieceType::Knight)
+    }
+
+    /// Returns if this piece is a bishop.
+    pub const fn is_bishop(self) -> bool {
+        matches!(self.piece_type(), PieceType::Bishop)
+    }
+
+    /// Returns if this piece is a rook.
+    pub const fn is_rook(self) -> bool {
+        matches!(self.piece_type(), PieceType::Rook)
+    }
+
+    /// Returns if this piece is a queen.
+    pub const fn is_queen(self) -> bool {
+        matches!(self.piece_type(), PieceType::Queen)
+    }
+
+    /// Returns if this piece is a king.
+    pub const fn is_king(self) -> bool {
+        matches!(self.piece_type(), PieceType::King)
     }
 
     /// Returns the [`PieceType`] of this piece.
@@ -276,11 +336,7 @@ impl Debug for Piece {
 
 impl Display for Piece {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_char(if self.is_white() {
-            self.piece_type().as_uppercase_char()
-        } else {
-            self.piece_type().as_lowercase_char()
-        })
+        f.write_char(self.as_fen_char())
     }
 }
 

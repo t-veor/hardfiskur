@@ -5,6 +5,7 @@ mod board_repr;
 mod fen;
 mod move_repr;
 mod piece;
+mod san;
 mod square;
 
 use bitflags::bitflags;
@@ -102,7 +103,7 @@ impl Castling {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoardState {
     /// The player to move has legal moves available, and the game is not drawn.
-    InPlay,
+    InPlay { checkers: u32 },
     /// The game is drawn.
     Draw,
     /// The game is over with a win for the specified player.
@@ -249,7 +250,15 @@ impl Board {
     }
 
     /// Generate all the possible legal moves in the current position.
-    pub fn legal_moves(&self) -> (MoveVec, MoveGenResult) {
+    pub fn legal_moves(&self) -> MoveVec {
+        let mut moves = MoveVec::new();
+        self.legal_moves_ex(MoveGenFlags::default(), &mut moves);
+        moves
+    }
+
+    /// Generate all the possible legal moves in the current position, and
+    /// returns the number of pieces currently checking the king.
+    pub fn legal_moves_and_checkers(&self) -> (MoveVec, MoveGenResult) {
         let mut moves = MoveVec::new();
         let result = self.legal_moves_ex(MoveGenFlags::default(), &mut moves);
         (moves, result)
@@ -270,6 +279,22 @@ impl Board {
         .legal_moves()
     }
 
+    pub fn state(&self) -> BoardState {
+        // TODO: draw by repetition
+        let (legal_moves, move_gen_result) = self.legal_moves_and_checkers();
+        let in_check = move_gen_result.checker_count > 0;
+
+        if legal_moves.len() > 0 {
+            BoardState::InPlay {
+                checkers: move_gen_result.checker_count,
+            }
+        } else if in_check {
+            BoardState::Win(self.to_move.flip())
+        } else {
+            BoardState::Draw
+        }
+    }
+
     /// Make a move on the board.
     ///
     /// Attempts to find a legal move matching the provided parameters. If one
@@ -280,7 +305,7 @@ impl Board {
     /// the back rank, in which case it should be `Some` of a valid promotion
     /// piece type.
     pub fn push_move(&mut self, from: Square, to: Square, promotion: Option<PieceType>) -> bool {
-        let legal_moves = self.legal_moves().0;
+        let legal_moves = self.legal_moves();
 
         let the_move = legal_moves.into_iter().find(|m| {
             m.from_square() == from
@@ -302,7 +327,7 @@ impl Board {
     /// Checks first if the move is legal. If it is, the move is made on the
     /// board and `true` is returned. Otherwise, `false` is returned.
     pub fn push_move_repr(&mut self, the_move: Move) -> bool {
-        let legal_moves = self.legal_moves().0;
+        let legal_moves = self.legal_moves();
 
         if legal_moves.contains(&the_move) {
             self.push_move_unchecked(the_move);
@@ -332,8 +357,38 @@ impl Board {
     }
 
     /// Returns the bitboard representing all pieces of the given color.
-    pub fn color_bitboard(&self, color: Color) -> Bitboard {
+    pub fn get_bitboard_for_color(&self, color: Color) -> Bitboard {
         self.board[color]
+    }
+
+    /// Returns the bitboard representing all positions of the given piece.
+    pub fn get_bitboard_for_piece(&self, piece: Piece) -> Bitboard {
+        self.board[piece]
+    }
+
+    /// Returns all positions of the given piece.
+    pub fn find_piece(&self, piece: Piece) -> impl Iterator<Item = Square> {
+        self.board[piece].squares()
+    }
+
+    /// Finds the king of the given color.
+    ///
+    /// This method assumes that the board is in a valid state (i.e. exactly 1
+    /// king of each color). Panics if none or multiple kings are found.
+    pub fn get_king(&self, color: Color) -> Square {
+        let mut kings = self.board[Piece::king(color)].squares();
+        let square = kings.next().expect("No kings found");
+        match kings.next() {
+            Some(_) => panic!("Multiple kings found"),
+            None => square,
+        }
+    }
+
+    /// Finds the king of the given color.
+    ///
+    /// No checking to see if the board is in a valid state is done.
+    pub fn get_king_unchecked(&self, color: Color) -> Option<Square> {
+        self.board[Piece::king(color)].to_square()
     }
 
     fn castling_rights_removed(&self, the_move: Move) -> Castling {
@@ -517,7 +572,7 @@ mod test {
     #[test]
     fn board_legal_moves() {
         let board = Board::try_parse_fen("4r1k1/8/8/8/8/8/6P1/4nKn1 w - - 0 1").unwrap();
-        let (moves, result) = board.legal_moves();
+        let (moves, result) = board.legal_moves_and_checkers();
 
         assert_in_any_order(
             moves,
@@ -538,7 +593,7 @@ mod test {
     #[test]
     fn board_legal_moves_in_check() {
         let board = Board::try_parse_fen("5rk1/8/8/8/8/8/6R1/4nK2 w - - 0 1").unwrap();
-        let (moves, result) = board.legal_moves();
+        let (moves, result) = board.legal_moves_and_checkers();
 
         assert_in_any_order(
             moves,
@@ -557,7 +612,7 @@ mod test {
     #[test]
     fn board_legal_moves_in_double_check() {
         let board = Board::try_parse_fen("5rk1/8/8/8/8/3b4/6R1/4NK2 w - - 0 1").unwrap();
-        let (moves, result) = board.legal_moves();
+        let (moves, result) = board.legal_moves_and_checkers();
 
         assert_in_any_order(
             moves,

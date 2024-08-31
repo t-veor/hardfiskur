@@ -35,7 +35,7 @@ impl ChessBoard {
 
     pub fn ui(&mut self, ui: &mut Ui, data: ChessBoardData<'_>) -> ChessBoardResponse {
         let pieces = self.get_pieces(data.board);
-        let (moves, move_gen_res) = data.board.legal_moves();
+        let (moves, move_gen_res) = data.board.legal_moves_and_checkers();
         let in_check = move_gen_res.checker_count > 0;
 
         let possible_moves = if let Some(holding) = self.holding {
@@ -79,7 +79,7 @@ impl ChessBoard {
         } = data;
 
         let drag_mask = if can_move {
-            board.color_bitboard(board.to_move())
+            board.get_bitboard_for_color(board.to_move())
         } else {
             Bitboard::EMPTY
         };
