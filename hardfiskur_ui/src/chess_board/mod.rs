@@ -1,4 +1,4 @@
-use egui::Ui;
+use egui::{Id, Ui};
 use hardfiskur_core::board::{Bitboard, Board, Color, Move, Piece, PieceType, Square};
 
 use crate::base_board::{BaseBoard, BaseBoardData, BaseBoardResponse, PromotionResult};
@@ -16,7 +16,6 @@ pub struct ChessBoardResponse {
     pub input_move: Option<Move>,
 }
 
-#[derive(Default)]
 pub struct ChessBoard {
     base_board: BaseBoard,
 
@@ -26,6 +25,14 @@ pub struct ChessBoard {
 }
 
 impl ChessBoard {
+    pub fn new(id: Id) -> Self {
+        Self {
+            base_board: BaseBoard::new(id),
+            holding: None,
+            promotion_progress: None,
+        }
+    }
+
     pub fn ui(&mut self, ui: &mut Ui, data: ChessBoardData<'_>) -> ChessBoardResponse {
         let pieces = self.get_pieces(data.board);
         let (moves, move_gen_res) = data.board.legal_moves();

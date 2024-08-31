@@ -1,6 +1,7 @@
-use eframe::egui::{self, Layout, Vec2};
+use eframe::egui::{self, Id, Layout, Vec2};
 use hardfiskur_core::board::{Board, Color};
 use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
+use rand::prelude::*;
 
 struct HardfiskurUI {
     chess_ui: ChessBoard,
@@ -10,7 +11,7 @@ struct HardfiskurUI {
 impl HardfiskurUI {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self {
-            chess_ui: Default::default(),
+            chess_ui: ChessBoard::new(Id::new("hardfiskur_ui_board")),
             board: Board::starting_position(),
         }
     }
@@ -36,6 +37,19 @@ impl eframe::App for HardfiskurUI {
                     }
                 },
             );
+        });
+
+        egui::Window::new("Actions").show(ctx, |ui| {
+            if ui.button("Random move").clicked() {
+                let (legal_moves, _) = self.board.legal_moves();
+                if let Some(the_move) = legal_moves.choose(&mut rand::thread_rng()) {
+                    self.board.push_move_repr(*the_move);
+                }
+            }
+
+            if ui.button("Reset").clicked() {
+                self.board = Board::starting_position();
+            }
         });
     }
 }

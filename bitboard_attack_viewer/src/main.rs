@@ -1,4 +1,4 @@
-use eframe::egui::{self, Layout, Vec2};
+use eframe::egui::{self, Id, Layout, Vec2};
 use hardfiskur_core::{
     board::{Bitboard, Piece, PieceType, Square},
     move_gen::{lookups::Lookups, magic::MagicTableEntry},
@@ -16,7 +16,7 @@ struct MagicBitboardViewerUI {
 impl MagicBitboardViewerUI {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self {
-            chess_ui: Default::default(),
+            chess_ui: BaseBoard::new(Id::new("bitboard_attack_viewer_board")),
             piece: PieceType::Knight,
             square: Square::new(0, 0).unwrap(),
             blockers: Bitboard::EMPTY,

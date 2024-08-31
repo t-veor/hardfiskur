@@ -1,9 +1,10 @@
 use egui::{
     epaint::{ColorImage, PathShape, PathStroke, RectShape},
-    vec2, Align2, Color32, Painter, PointerButton, Pos2, Rect, Rgba, Sense, Shadow, TextureHandle,
-    Ui, Vec2,
+    vec2, Align2, Color32, Id, Painter, PointerButton, Pos2, Rect, Rgba, Sense, Shadow,
+    TextureHandle, Ui, Vec2,
 };
 use hardfiskur_core::board::{Bitboard, Color, Move, Piece, PieceType, Square};
+use sprite_state::{AnimatedPieceState, SpriteState};
 
 use crate::constants::{
     BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_WHITE, CHESS_PIECES_SPRITE, MOVE_COLOR, SCALE,
@@ -14,6 +15,7 @@ pub use promo_ui::PromotionResult;
 
 mod arrow;
 mod promo_ui;
+mod sprite_state;
 
 #[derive(Debug)]
 pub struct BaseBoardData<'a> {
@@ -71,6 +73,7 @@ impl BaseBoardResponse {
 
 pub struct BaseBoard {
     piece_sprites: Option<TextureHandle>,
+    sprite_state: SpriteState,
 
     board_rect: Rect,
     rel_mouse_pos: Pos2,
@@ -84,10 +87,11 @@ pub struct BaseBoard {
     promotion_ui: Option<PromotionUi>,
 }
 
-impl Default for BaseBoard {
-    fn default() -> Self {
+impl BaseBoard {
+    pub fn new(id: Id) -> Self {
         Self {
             piece_sprites: None,
+            sprite_state: SpriteState::new(id),
             board_rect: Rect::from_min_max(Pos2::ZERO, Pos2::ZERO),
             rel_mouse_pos: Pos2::ZERO,
             mouse_square: None,
@@ -97,9 +101,7 @@ impl Default for BaseBoard {
             promotion_ui: None,
         }
     }
-}
 
-impl BaseBoard {
     pub fn ui(&mut self, ui: &mut Ui, data: BaseBoardData<'_>) -> BaseBoardResponse {
         let board_size = Vec2::splat(SCALE * 8.0);
         let (egui_response, painter) = ui.allocate_painter(board_size, Sense::click_and_drag());
@@ -128,6 +130,9 @@ impl BaseBoard {
                 data.perspective,
             )
         });
+
+        self.sprite_state.merge_pieces(ui, data.pieces);
+        self.sprite_state.update(ui);
 
         self.paint_board(&painter, &data);
 
@@ -355,19 +360,34 @@ impl BaseBoard {
     fn paint_pieces(&mut self, ui: &mut Ui, data: &BaseBoardData<'_>) {
         let sprite_handle = self.get_piece_sprite(ui.ctx());
 
-        for square in Square::all() {
-            if let Some(piece) = data.pieces.get(square.index()).copied().flatten() {
-                let src_rect = Self::get_piece_uv(piece);
-                let dst_rect = Self::dst_rect(square, self.board_rect, data.perspective);
+        for (piece, piece_state) in self.sprite_state.get_pieces() {
+            let src_rect = Self::get_piece_uv(piece);
+            let (square, dst_rect) = match piece_state {
+                AnimatedPieceState::Static(square) => (
+                    square,
+                    Self::dst_rect(square, self.board_rect, data.perspective),
+                ),
+                AnimatedPieceState::Moving { from, to, fraction } => {
+                    let from_rect = Self::dst_rect(from, self.board_rect, data.perspective);
+                    let to_rect = Self::dst_rect(to, self.board_rect, data.perspective);
+                    let offset = to_rect.min - from_rect.min;
 
-                let mut image = egui::Image::new(&sprite_handle).uv(src_rect);
-
-                if self.holding == Some(square) {
-                    image = image.tint(Rgba::from_rgba_unmultiplied(1.0, 1.0, 1.0, 0.2));
+                    (to, from_rect.translate(offset * fraction))
                 }
+                AnimatedPieceState::Emphemeral { on, .. } => {
+                    (on, Self::dst_rect(on, self.board_rect, data.perspective))
+                }
+            };
 
-                image.paint_at(ui, dst_rect)
+            let mut image = egui::Image::new(&sprite_handle).uv(src_rect);
+
+            if let AnimatedPieceState::Emphemeral { fraction, .. } = piece_state {
+                image = image.tint(Rgba::from_rgba_unmultiplied(1.0, 1.0, 1.0, 1.0 - fraction));
+            } else if self.holding == Some(square) {
+                image = image.tint(Rgba::from_rgba_unmultiplied(1.0, 1.0, 1.0, 0.2));
             }
+
+            image.paint_at(ui, dst_rect)
         }
 
         if let Some(drag_from_square) = self.holding {

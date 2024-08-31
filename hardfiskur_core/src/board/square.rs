@@ -121,6 +121,13 @@ impl Square {
     pub const fn offset(self, offset: i8) -> Self {
         Self::from_u8_unchecked((self.0 as i8).wrapping_add(offset) as u8)
     }
+
+    pub fn manhattan_distance(self, other: Self) -> u8 {
+        let (r1, f1) = (self.rank(), self.file());
+        let (r2, f2) = (other.rank(), other.file());
+
+        r1.abs_diff(r2) + f1.abs_diff(f2)
+    }
 }
 
 impl Display for Square {
