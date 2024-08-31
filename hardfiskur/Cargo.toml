@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 eframe = "0.28"
 rand = "0.8"
+rodio = "0.19"
 hardfiskur_core = { path = "../hardfiskur_core" }
 hardfiskur_ui = { path = "../hardfiskur_ui" }

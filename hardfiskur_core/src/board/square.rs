@@ -128,6 +128,13 @@ impl Square {
 
         r1.abs_diff(r2) + f1.abs_diff(f2)
     }
+
+    pub fn euclidean_distance_sq(self, other: Self) -> u32 {
+        let (r1, f1) = (self.rank(), self.file());
+        let (r2, f2) = (other.rank(), other.file());
+
+        (r1.abs_diff(r2) as u32).pow(2) + (f1.abs_diff(f2) as u32).pow(2)
+    }
 }
 
 impl Display for Square {
