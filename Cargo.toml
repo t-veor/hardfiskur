@@ -9,7 +9,6 @@ members = [
     "find_magics",
     "bitboard_attack_viewer",
     "perft",
+    "perft_testsuite",
 ]
 resolver = "2"
-
-default-members = ["hardfiskur"]
