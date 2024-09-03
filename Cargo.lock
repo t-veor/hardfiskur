@@ -1839,6 +1839,8 @@ dependencies = [
  "num-traits",
  "paste",
  "pretty_assertions",
+ "rand",
+ "rand_chacha",
  "seq-macro",
  "thiserror",
 ]

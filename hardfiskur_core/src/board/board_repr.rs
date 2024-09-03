@@ -4,7 +4,7 @@ use std::{
     str::FromStr,
 };
 
-use super::{Bitboard, Color, Move, Piece, PieceType, Square};
+use super::{zobrist::ZobristHash, Bitboard, Color, Move, Piece, PieceType, Square};
 
 /// Represents just the pieces on the board using [`Bitboard`]s.
 ///
@@ -35,6 +35,8 @@ pub struct BoardRepr {
     // 8. All black pieces
     // 9-14: Black piece boards (see above)
     boards: [Bitboard; 15],
+
+    zobrist_hash: ZobristHash,
 }
 
 impl BoardRepr {
@@ -59,7 +61,7 @@ impl BoardRepr {
                 repr[piece].set(square);
                 repr[piece.color()].set(square);
 
-                // TODO: Update Zobrist hash
+                repr.zobrist_hash.toggle_piece(piece, square);
             }
         }
 
@@ -168,84 +170,60 @@ impl BoardRepr {
         self[piece] ^= from_to_bb;
         self[color] ^= from_to_bb;
 
-        // TODO: update Zobrist hash
+        self.zobrist_hash.toggle_piece(piece, from);
+        self.zobrist_hash.toggle_piece(piece, to);
 
         if the_move.is_en_passant() {
-            let removed_pawn = Square::new_unchecked(from.rank(), to.file());
-            let removed_pawn_bb = Bitboard::from_square(removed_pawn);
+            let removed_pawn_square = the_move.en_passant_square();
+            let removed_pawn_bb = Bitboard::from_square(removed_pawn_square);
 
-            self[PieceType::Pawn.with_color(color.flip())] ^= removed_pawn_bb;
+            let opponent_pawn = Piece::pawn(color.flip());
+
+            self[opponent_pawn] ^= removed_pawn_bb;
             self[color.flip()] ^= removed_pawn_bb;
 
-            // TODO: update Zobrist hash
+            self.zobrist_hash
+                .toggle_piece(opponent_pawn, removed_pawn_square);
         } else {
             if let Some(capture) = the_move.captured_piece() {
                 self[capture] ^= to_bb;
                 self[capture.color()] ^= to_bb;
 
-                // TODO: update Zobrist hash
+                self.zobrist_hash.toggle_piece(capture, to);
             }
 
             if let Some(promote) = the_move.promotion() {
                 self[piece] ^= to_bb;
                 self[promote] ^= to_bb;
 
-                // TODO: update Zobrist hash
+                self.zobrist_hash.toggle_piece(piece, to);
+                self.zobrist_hash.toggle_piece(promote, to);
             }
 
             if the_move.is_castle() {
-                let rook_from =
-                    Square::new_unchecked(from.rank(), if from.file() < to.file() { 7 } else { 0 });
-                let rook_to = Square::new_unchecked(from.rank(), (from.file() + to.file()) / 2);
+                let (rook_from, rook_to) = the_move.castling_rook_squares();
+                let rook = Piece::rook(color);
 
                 let rook_from_bb = Bitboard::from_square(rook_from);
                 let rook_to_bb = Bitboard::from_square(rook_to);
                 let rook_from_to_bb = rook_from_bb ^ rook_to_bb;
 
-                self[PieceType::Rook.with_color(color)] ^= rook_from_to_bb;
+                self[rook] ^= rook_from_to_bb;
                 self[color] ^= rook_from_to_bb;
 
-                // TODO: update Zobrist hash
+                self.zobrist_hash.toggle_piece(rook, rook_from);
+                self.zobrist_hash.toggle_piece(rook, rook_to);
             }
         }
     }
 
-    // Used for testing
-    #[allow(dead_code)]
-    fn consistency_check(&self) {
-        let check = || {
-            let mut white_pieces = Bitboard::EMPTY;
-
-            for (_, board) in self.boards_colored(Color::White) {
-                if (white_pieces & board).has_piece() {
-                    return false;
-                }
-
-                white_pieces |= board;
-            }
-
-            if white_pieces != self[Color::White] {
-                return false;
-            }
-
-            let mut black_pieces = Bitboard::EMPTY;
-
-            for (_, board) in self.boards_colored(Color::Black) {
-                if (black_pieces & board).has_piece() {
-                    return false;
-                }
-
-                black_pieces |= board;
-            }
-
-            if black_pieces != self[Color::Black] {
-                return false;
-            }
-
-            (white_pieces & black_pieces).is_empty()
-        };
-
-        assert!(check(), "BoardRepr became inconsistent, {self:?}");
+    /// Returns the Zobrist hash of the current position. Only includes hash
+    /// contributions from pieces on the board.
+    ///
+    /// Does not include hash contributions from the player to move, castling
+    /// rights, or the en passant square.
+    pub fn zobrist_hash(&self) -> ZobristHash {
+        self.zobrist_hash
     }
 }
 
@@ -378,6 +356,57 @@ mod test {
     use std::str::FromStr;
 
     use super::*;
+
+    impl BoardRepr {
+        fn consistency_check(&self) {
+            let check = || {
+                let mut white_pieces = Bitboard::EMPTY;
+
+                for (_, board) in self.boards_colored(Color::White) {
+                    if (white_pieces & board).has_piece() {
+                        return false;
+                    }
+
+                    white_pieces |= board;
+                }
+
+                if white_pieces != self[Color::White] {
+                    return false;
+                }
+
+                let mut black_pieces = Bitboard::EMPTY;
+
+                for (_, board) in self.boards_colored(Color::Black) {
+                    if (black_pieces & board).has_piece() {
+                        return false;
+                    }
+
+                    black_pieces |= board;
+                }
+
+                if black_pieces != self[Color::Black] {
+                    return false;
+                }
+
+                if !(white_pieces & black_pieces).is_empty() {
+                    return false;
+                }
+
+                let mut zobrist_hash = ZobristHash::default();
+                for (piece, square) in self.pieces() {
+                    zobrist_hash.toggle_piece(piece, square);
+                }
+
+                if zobrist_hash != self.zobrist_hash {
+                    return false;
+                }
+
+                true
+            };
+
+            assert!(check(), "BoardRepr became inconsistent, {self:?}");
+        }
+    }
 
     fn b(sq: &str) -> Bitboard {
         Bitboard::from_square(sq.parse().unwrap())

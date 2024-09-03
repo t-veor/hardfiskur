@@ -133,16 +133,7 @@ impl Move {
     /// an en passant capture.
     ///
     /// If this move is an en passant capture, the square the captured pawn
-    /// resided on can be determined thusly:
-    /// ```
-    /// # use hardfiskur_core::board::{Square, Move};
-    /// fn en_passant_captured_pawn_square(the_move: Move) -> Square {
-    ///     Square::new_unchecked(
-    ///         the_move.from_square().rank(),
-    ///         the_move.to_square().file(),
-    ///     )
-    /// }
-    /// ```
+    /// resided on can be determined using [`Self::en_passant_square`].
     pub const fn captured_piece(self) -> Option<Piece> {
         Piece::try_from_u8(((self.0.get() & 0xF00000) >> 20) as u8)
     }
@@ -182,6 +173,36 @@ impl Move {
     /// Returns true if this move was an en passant capture.
     pub const fn is_en_passant(self) -> bool {
         MoveFlags::from_bits_retain(self.0.get()).contains(MoveFlags::EN_PASSANT)
+    }
+
+    /// If this move is an en passant capture, returns the square where the
+    /// captured pawn was on (as it is different to )
+    ///
+    /// Note that this method does not actually check if this move was an en
+    /// passant capture for performance reasons. The result of this method
+    /// called on a non-en passant move is defined but may be unexpected.
+    ///
+    /// The result of this method is defined to be the square with the same rank
+    /// as the start square, and the same file as the end square.
+    pub const fn en_passant_square(self) -> Square {
+        Square::new_unchecked(self.from_square().rank(), self.to_square().file())
+    }
+
+    /// If this move is a castling move, returns the source and destination
+    /// squares of rook involved in the castle. (The `from_square` and
+    /// `to_square` of this move are for the king.)
+    ///
+    /// Note that this method does not actually check if this move was a castle
+    /// for performance reasons. The result of this method called on a
+    /// non-castling move is defined but may be unexpected.
+    pub const fn castling_rook_squares(self) -> (Square, Square) {
+        let (from, to) = (self.from_square(), self.to_square());
+
+        let rook_from =
+            Square::new_unchecked(from.rank(), if from.file() < to.file() { 7 } else { 0 });
+        let rook_to = Square::new_unchecked(from.rank(), (from.file() + to.file()) / 2);
+
+        (rook_from, rook_to)
     }
 
     /// Convenience alias for [`MoveBuilder::new`].
