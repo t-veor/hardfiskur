@@ -15,7 +15,8 @@ pub use board_repr::BoardRepr;
 pub use fen::FenParseError;
 pub use move_repr::{Move, MoveBuilder, MoveFlags};
 pub use piece::{Color, Piece, PieceType};
-pub use square::Square;
+pub use san::SAN;
+pub use square::{ParseSquareError, Square};
 
 use crate::move_gen::{MoveGenFlags, MoveGenResult, MoveGenerator, MoveVec};
 
@@ -295,16 +296,12 @@ impl Board {
         }
     }
 
-    /// Make a move on the board.
-    ///
-    /// Attempts to find a legal move matching the provided parameters. If one
-    /// is found, the move is made on the board and `true` is returned. If no
-    /// legal moves match the criteria, `false` is returned.
+    /// Attempts to find a legal move matching the provided parameters.
     ///
     /// `promotion` should be `None` unless the move involves a pawn moving to
     /// the back rank, in which case it should be `Some` of a valid promotion
     /// piece type.
-    pub fn push_move(&mut self, from: Square, to: Square, promotion: Option<PieceType>) -> bool {
+    pub fn get_move(&self, from: Square, to: Square, promotion: Option<PieceType>) -> Option<Move> {
         let legal_moves = self.legal_moves();
 
         let the_move = legal_moves.into_iter().find(|m| {
@@ -313,13 +310,31 @@ impl Board {
                 && m.promotion().map(|piece| piece.piece_type()) == promotion
         });
 
-        match the_move {
-            Some(the_move) => {
-                self.push_move_unchecked(the_move);
-                true
-            }
-            None => false,
+        the_move
+    }
+
+    /// Make a move on the board.
+    ///
+    /// Attempts to find a legal move matching the provided parameters. If one
+    /// is found, the move is made on the board and is returned. If no legal
+    /// moves match the criteria, [`None`] is returned.
+    ///
+    /// `promotion` should be `None` unless the move involves a pawn moving to
+    /// the back rank, in which case it should be `Some` of a valid promotion
+    /// piece type.
+    pub fn push_move(
+        &mut self,
+        from: Square,
+        to: Square,
+        promotion: Option<PieceType>,
+    ) -> Option<Move> {
+        let the_move = self.get_move(from, to, promotion);
+
+        if let Some(the_move) = the_move {
+            self.push_move_unchecked(the_move);
         }
+
+        the_move
     }
 
     /// Make a move on the board.
@@ -670,7 +685,7 @@ mod test {
             let (from, to, promo) = *args;
 
             assert!(
-                board.push_move(from, to, promo),
+                board.push_move(from, to, promo).is_some(),
                 "failed on move {i}: {from} to {to} (promo {promo:?}) is not a valid move"
             );
             asserter(&board);
@@ -692,7 +707,7 @@ mod test {
     fn board_push_invalid_move_returns_false() {
         let mut board = Board::starting_position();
 
-        assert!(!board.push_move(Square::E1, Square::E2, None));
+        assert!(!board.push_move(Square::E1, Square::E2, None).is_some());
     }
 
     #[test]
@@ -706,7 +721,7 @@ mod test {
     fn board_push_and_pop_move() {
         let mut board = Board::starting_position();
 
-        assert!(board.push_move(Square::E2, Square::E4, None));
+        assert!(board.push_move(Square::E2, Square::E4, None).is_some());
 
         let popped_move = board.pop_move();
         assert_eq!(

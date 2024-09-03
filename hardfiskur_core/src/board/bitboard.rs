@@ -1,5 +1,8 @@
 use std::{fmt::Debug, str::FromStr};
 
+use paste::paste;
+use seq_macro::seq;
+
 use super::Square;
 
 /// Compact data structure representing some board state. See
@@ -23,32 +26,14 @@ impl Bitboard {
     /// Bitboard with every bit set.
     pub const ALL: Self = Self(u64::MAX);
 
-    /// Bitboard with only squares on the 1st rank set.
-    pub const RANK_1: Self = Self(0x00000000000000FF);
-    /// Bitboard with only squares on the 4th rank set.
-    pub const RANK_4: Self = Self(0x00000000FF000000);
-    /// Bitboard with only squares on the 5th rank set.
-    pub const RANK_5: Self = Self(0x000000FF00000000);
-    /// Bitboard with only squares on the 8th rank set.
-    pub const RANK_8: Self = Self(0xFF00000000000000);
-
-    /// Bitboard with only squares on the A file set.
-    pub const A_FILE: Self = Self(0x0101010101010101);
-    /// Bitboard with only squares on the B file set.
-    pub const B_FILE: Self = Self(0x0202020202020202);
-    /// Bitboard with only squares on the G file set.
-    pub const G_FILE: Self = Self(0x4040404040404040);
-    /// Bitboard with only squares on the H file set.
-    pub const H_FILE: Self = Self(0x8080808080808080);
-
     /// Returns a bitboard with all of the bits in the given rank set.
     pub const fn rank_mask(rank: u8) -> Self {
-        Self(Self::RANK_1.0 << (rank * 8))
+        Self(0x00000000000000FF << (rank * 8))
     }
 
     /// Returns a bitboard with all of the bits in the given file set.
     pub const fn file_mask(file: u8) -> Self {
-        Self(Self::A_FILE.0 << file)
+        Self(0x0101010101010101 << file)
     }
 
     /// Returns whether this bitboard contains anything, i.e. if it is not equal
@@ -213,10 +198,10 @@ impl Bitboard {
     /// # Edge cases
     ///
     /// You should ideally only call this method on bitboards whose
-    /// `.pop_count()` is 1. However, for performance reasons this method does
-    /// not check this (except to check if the bitboard is empty), and instead
-    /// simply returns the [`Square`] corresponding to the least significant bit
-    /// that is set.
+    /// [`Self::pop_count()`] is 1. However, for performance reasons this method
+    /// does not check this (except to check if the bitboard is empty), and
+    /// instead simply returns the [`Square`] corresponding to the least
+    /// significant bit that is set.
     pub const fn to_square(self) -> Option<Square> {
         // Have to write it this way because .map is not allowed in a const fn
         match self.lsb() {
@@ -277,6 +262,20 @@ impl Bitboard {
     pub fn squares(&self) -> impl Iterator<Item = Square> {
         BitIterator(self.0).map(Square::from_u8_unchecked)
     }
+}
+
+impl Bitboard {
+    seq!(RANK in 1..=8 {
+        paste! {
+            pub const [<RANK_ RANK>]: Self = Self::rank_mask(RANK - 1);
+        }
+    });
+
+    seq!(FILE in 'A'..='H' {
+        paste! {
+            pub const [<FILE _FILE>]: Self = Self::file_mask(FILE as u8 - b'A');
+        }
+    });
 }
 
 impl Debug for Bitboard {
@@ -457,18 +456,47 @@ mod test {
 
     #[test]
     fn bitboard_rank_mask() {
-        assert_eq!(Bitboard::rank_mask(0), Bitboard::RANK_1);
-        assert_eq!(Bitboard::rank_mask(3), Bitboard::RANK_4);
-        assert_eq!(Bitboard::rank_mask(4), Bitboard::RANK_5);
-        assert_eq!(Bitboard::rank_mask(7), Bitboard::RANK_8);
+        assert_eq!(Bitboard::rank_mask(0), Bitboard(0x00000000000000FF));
+        assert_eq!(Bitboard::rank_mask(1), Bitboard(0x000000000000FF00));
+        assert_eq!(Bitboard::rank_mask(2), Bitboard(0x0000000000FF0000));
+        assert_eq!(Bitboard::rank_mask(3), Bitboard(0x00000000FF000000));
+        assert_eq!(Bitboard::rank_mask(4), Bitboard(0x000000FF00000000));
+        assert_eq!(Bitboard::rank_mask(5), Bitboard(0x0000FF0000000000));
+        assert_eq!(Bitboard::rank_mask(6), Bitboard(0x00FF000000000000));
+        assert_eq!(Bitboard::rank_mask(7), Bitboard(0xFF00000000000000));
     }
 
     #[test]
     fn bitboard_file_mask() {
-        assert_eq!(Bitboard::file_mask(0), Bitboard::A_FILE);
-        assert_eq!(Bitboard::file_mask(1), Bitboard::B_FILE);
-        assert_eq!(Bitboard::file_mask(6), Bitboard::G_FILE);
-        assert_eq!(Bitboard::file_mask(7), Bitboard::H_FILE);
+        assert_eq!(Bitboard::file_mask(0), Bitboard(0x0101010101010101));
+        assert_eq!(Bitboard::file_mask(1), Bitboard(0x0202020202020202));
+        assert_eq!(Bitboard::file_mask(2), Bitboard(0x0404040404040404));
+        assert_eq!(Bitboard::file_mask(3), Bitboard(0x0808080808080808));
+        assert_eq!(Bitboard::file_mask(4), Bitboard(0x1010101010101010));
+        assert_eq!(Bitboard::file_mask(5), Bitboard(0x2020202020202020));
+        assert_eq!(Bitboard::file_mask(6), Bitboard(0x4040404040404040));
+        assert_eq!(Bitboard::file_mask(7), Bitboard(0x8080808080808080));
+    }
+
+    #[test]
+    fn bitboard_aliases() {
+        assert_eq!(Bitboard::RANK_1, Bitboard(0x00000000000000FF));
+        assert_eq!(Bitboard::RANK_2, Bitboard(0x000000000000FF00));
+        assert_eq!(Bitboard::RANK_3, Bitboard(0x0000000000FF0000));
+        assert_eq!(Bitboard::RANK_4, Bitboard(0x00000000FF000000));
+        assert_eq!(Bitboard::RANK_5, Bitboard(0x000000FF00000000));
+        assert_eq!(Bitboard::RANK_6, Bitboard(0x0000FF0000000000));
+        assert_eq!(Bitboard::RANK_7, Bitboard(0x00FF000000000000));
+        assert_eq!(Bitboard::RANK_8, Bitboard(0xFF00000000000000));
+
+        assert_eq!(Bitboard::A_FILE, Bitboard(0x0101010101010101));
+        assert_eq!(Bitboard::B_FILE, Bitboard(0x0202020202020202));
+        assert_eq!(Bitboard::C_FILE, Bitboard(0x0404040404040404));
+        assert_eq!(Bitboard::D_FILE, Bitboard(0x0808080808080808));
+        assert_eq!(Bitboard::E_FILE, Bitboard(0x1010101010101010));
+        assert_eq!(Bitboard::F_FILE, Bitboard(0x2020202020202020));
+        assert_eq!(Bitboard::G_FILE, Bitboard(0x4040404040404040));
+        assert_eq!(Bitboard::H_FILE, Bitboard(0x8080808080808080));
     }
 
     #[test]

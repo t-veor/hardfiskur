@@ -123,19 +123,6 @@ impl Color {
 pub struct Piece(NonZeroU8);
 
 impl Piece {
-    pub const WHITE_PAWN: Piece = Piece::new(Color::White, PieceType::Pawn);
-    pub const WHITE_KNIGHT: Piece = Piece::new(Color::White, PieceType::Knight);
-    pub const WHITE_BISHOP: Piece = Piece::new(Color::White, PieceType::Bishop);
-    pub const WHITE_ROOK: Piece = Piece::new(Color::White, PieceType::Rook);
-    pub const WHITE_QUEEN: Piece = Piece::new(Color::White, PieceType::Queen);
-    pub const WHITE_KING: Piece = Piece::new(Color::White, PieceType::King);
-    pub const BLACK_PAWN: Piece = Piece::new(Color::Black, PieceType::Pawn);
-    pub const BLACK_KNIGHT: Piece = Piece::new(Color::Black, PieceType::Knight);
-    pub const BLACK_BISHOP: Piece = Piece::new(Color::Black, PieceType::Bishop);
-    pub const BLACK_ROOK: Piece = Piece::new(Color::Black, PieceType::Rook);
-    pub const BLACK_QUEEN: Piece = Piece::new(Color::Black, PieceType::Queen);
-    pub const BLACK_KING: Piece = Piece::new(Color::Black, PieceType::King);
-
     /// Constructs a [`Piece`] from a [`Color`] and a [`PieceType`].
     pub const fn new(color: Color, piece_type: PieceType) -> Self {
         // Safety: piece_type as u8 can never be 0
@@ -323,6 +310,22 @@ impl Piece {
     pub const fn is_slider(self) -> bool {
         self.piece_type().is_slider()
     }
+}
+
+/// Convenient constants for specifying specific pieces.
+impl Piece {
+    pub const WHITE_PAWN: Piece = Piece::new(Color::White, PieceType::Pawn);
+    pub const WHITE_KNIGHT: Piece = Piece::new(Color::White, PieceType::Knight);
+    pub const WHITE_BISHOP: Piece = Piece::new(Color::White, PieceType::Bishop);
+    pub const WHITE_ROOK: Piece = Piece::new(Color::White, PieceType::Rook);
+    pub const WHITE_QUEEN: Piece = Piece::new(Color::White, PieceType::Queen);
+    pub const WHITE_KING: Piece = Piece::new(Color::White, PieceType::King);
+    pub const BLACK_PAWN: Piece = Piece::new(Color::Black, PieceType::Pawn);
+    pub const BLACK_KNIGHT: Piece = Piece::new(Color::Black, PieceType::Knight);
+    pub const BLACK_BISHOP: Piece = Piece::new(Color::Black, PieceType::Bishop);
+    pub const BLACK_ROOK: Piece = Piece::new(Color::Black, PieceType::Rook);
+    pub const BLACK_QUEEN: Piece = Piece::new(Color::Black, PieceType::Queen);
+    pub const BLACK_KING: Piece = Piece::new(Color::Black, PieceType::King);
 }
 
 impl Debug for Piece {
