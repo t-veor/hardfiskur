@@ -1,7 +1,7 @@
 use std::{io::Cursor, usize};
 
 use eframe::egui::{self, Id, Key, Layout, Vec2};
-use hardfiskur_core::board::{Board, Color, Move, Piece, PieceType};
+use hardfiskur_core::board::{Board, BoardState, Color, DrawReason, Move, Piece, PieceType};
 use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
 use rand::prelude::*;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
@@ -11,6 +11,10 @@ struct HardfiskurUI {
     board: Board,
 
     move_history: Vec<String>,
+    just_moved: bool,
+
+    playing: bool,
+    state_text: String,
 
     _output_stream: OutputStream,
     output_stream_handle: OutputStreamHandle,
@@ -25,6 +29,10 @@ impl HardfiskurUI {
             board: Board::starting_position(),
 
             move_history: vec![],
+            just_moved: false,
+
+            playing: true,
+            state_text: "".to_string(),
 
             _output_stream: stream,
             output_stream_handle: handle,
@@ -37,6 +45,10 @@ impl HardfiskurUI {
     }
 
     fn make_move(&mut self, the_move: Move) {
+        if !self.playing {
+            return;
+        }
+
         let san = self.board.get_san(the_move);
 
         if self.board.push_move_repr(the_move) {
@@ -57,10 +69,32 @@ impl HardfiskurUI {
             });
         }
     }
+
+    fn update_playing(&mut self) {
+        let state = self.board.state();
+        self.playing = matches!(state, BoardState::InPlay { .. });
+        self.state_text = match state {
+            BoardState::InPlay { .. } => "".to_string(),
+            BoardState::Draw(DrawReason::FiftyMoveRule) => "Draw by fifty-move rule".to_string(),
+            BoardState::Draw(DrawReason::InsufficientMaterial) => {
+                "Draw by insufficient material".to_string()
+            }
+            BoardState::Draw(DrawReason::Stalemate) => "Draw by stalemate".to_string(),
+            BoardState::Draw(DrawReason::ThreeFoldRepetition) => {
+                "Draw by threefold repetition".to_string()
+            }
+            BoardState::Win(color) => match color {
+                Color::White => "Win by white".to_string(),
+                Color::Black => "Win by black".to_string(),
+            },
+        };
+    }
 }
 
 impl eframe::App for HardfiskurUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.update_playing();
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(
                 Layout::centered_and_justified(egui::Direction::LeftToRight),
@@ -69,28 +103,34 @@ impl eframe::App for HardfiskurUI {
                         ui,
                         ChessBoardData {
                             board: &self.board,
+                            skip_animation: self.just_moved,
                             can_move: true,
                             perspective: Color::White,
                         },
                     );
 
+                    self.just_moved = false;
+
                     if let Some(m) = response.input_move {
                         self.make_move(m);
+                        self.just_moved = true;
                     }
                 },
             );
         });
 
         egui::SidePanel::right("right_panel").show(ctx, |ui| {
+            ui.label(&format!("State: {}", self.state_text));
+
             if ui.button("Random move").clicked()
                 || ctx.input(|input| input.key_pressed(Key::Space))
             {
                 if self.board.to_move().is_white() {
-                    if let Some(the_move) = min_king_distance(&self.board) {
+                    if let Some(the_move) = random_move(&self.board) {
                         self.make_move(the_move);
                     }
                 } else {
-                    if let Some(the_move) = minimize_opp_moves2(&self.board) {
+                    if let Some(the_move) = random_move(&self.board) {
                         self.make_move(the_move);
                     }
                 }
@@ -100,14 +140,18 @@ impl eframe::App for HardfiskurUI {
                 self.reset();
             }
 
-            egui::Grid::new("moves").show(ui, |ui| {
-                for (i, m) in self.move_history.iter().enumerate() {
-                    ui.label(m);
-                    if i % 2 == 1 {
-                        ui.end_row();
-                    }
-                }
-            });
+            egui::ScrollArea::vertical()
+                .stick_to_bottom(true)
+                .show(ui, |ui| {
+                    egui::Grid::new("moves").show(ui, |ui| {
+                        for (i, m) in self.move_history.iter().enumerate() {
+                            ui.label(m);
+                            if i % 2 == 1 {
+                                ui.end_row();
+                            }
+                        }
+                    });
+                });
         });
     }
 }

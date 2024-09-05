@@ -20,6 +20,7 @@ mod sprite_state;
 #[derive(Debug)]
 pub struct BaseBoardData<'a> {
     pub pieces: &'a [Option<Piece>],
+    pub skip_piece_animation: bool,
     pub possible_moves: &'a [Move],
     pub perspective: Color,
     pub display_bitboard: Bitboard,
@@ -39,6 +40,7 @@ impl<'a> Default for BaseBoardData<'a> {
     fn default() -> Self {
         Self {
             pieces: &[],
+            skip_piece_animation: false,
             possible_moves: &[],
             perspective: Color::White,
             display_bitboard: Bitboard::EMPTY,
@@ -131,7 +133,8 @@ impl BaseBoard {
             )
         });
 
-        self.sprite_state.merge_pieces(ui, data.pieces);
+        self.sprite_state
+            .merge_pieces(ui, data.pieces, data.skip_piece_animation);
         self.sprite_state.update(ui);
 
         self.paint_board(&painter, &data);

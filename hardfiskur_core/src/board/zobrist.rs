@@ -1,4 +1,5 @@
 use std::{
+    fmt::Debug,
     ops::{BitXor, BitXorAssign},
     sync::OnceLock,
 };
@@ -7,11 +8,12 @@ use rand::{RngCore, SeedableRng};
 
 use super::{Castling, Color, Piece, Square};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct ZobristHash(u64);
 
 impl ZobristHash {
     pub fn piece(piece: Piece, square: Square) -> Self {
+        // TODO: remove bounds check?
         let instance = ZobristTable::get_instance();
         let index = piece.get() as usize;
         Self(instance.pieces[index * 64 + square.index()])
@@ -58,6 +60,14 @@ impl BitXor for ZobristHash {
 impl BitXorAssign for ZobristHash {
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = *self ^ rhs;
+    }
+}
+
+impl Debug for ZobristHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ZobristHash")
+            .field(&format_args!("{:#016X}", self.0))
+            .finish()
     }
 }
 

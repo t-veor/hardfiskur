@@ -1,3 +1,5 @@
+use std::iter::repeat;
+
 use egui::{Id, Ui};
 use hardfiskur_core::board::{Piece, Square};
 
@@ -19,7 +21,6 @@ pub enum AnimatedPieceState {
 enum PieceState {
     Static,
     Moving { from: Square },
-    BeingDragged,
 }
 
 #[derive(Debug)]
@@ -45,7 +46,23 @@ impl SpriteState {
         }
     }
 
-    pub fn merge_pieces(&mut self, ui: &mut Ui, incoming_pieces: &[Option<Piece>]) {
+    fn replace_pieces(&mut self, incoming_pieces: &[Option<Piece>]) {
+        self.clear_current_animation();
+
+        for (piece, incoming_piece) in self
+            .pieces
+            .iter_mut()
+            .zip(incoming_pieces.iter().copied().chain(repeat(None)))
+        {
+            *piece = incoming_piece.map(|p| (p, PieceState::Static))
+        }
+    }
+
+    pub fn merge_pieces(&mut self, ui: &mut Ui, incoming_pieces: &[Option<Piece>], replace: bool) {
+        if replace {
+            return self.replace_pieces(incoming_pieces);
+        }
+
         let mut disappearing_pieces = Vec::new();
         let mut new_pieces = Vec::new();
         let mut static_pieces = Vec::new();
@@ -160,7 +177,6 @@ impl SpriteState {
                         to: square,
                         fraction: self.animation_value,
                     },
-                    PieceState::BeingDragged => AnimatedPieceState::Static(square),
                 };
 
                 Some((piece, animated_piece_state))

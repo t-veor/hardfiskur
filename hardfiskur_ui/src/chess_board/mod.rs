@@ -6,6 +6,7 @@ use crate::base_board::{BaseBoard, BaseBoardData, BaseBoardResponse, PromotionRe
 #[derive(Debug)]
 pub struct ChessBoardData<'a> {
     pub board: &'a Board,
+    pub skip_animation: bool,
     pub can_move: bool,
     pub perspective: Color,
 }
@@ -74,6 +75,7 @@ impl ChessBoard {
     ) -> BaseBoardData<'a> {
         let ChessBoardData {
             board,
+            skip_animation,
             can_move,
             perspective,
         } = data;
@@ -95,6 +97,7 @@ impl ChessBoard {
 
         BaseBoardData {
             pieces,
+            skip_piece_animation: skip_animation,
             possible_moves,
             perspective,
             drag_mask,

@@ -303,6 +303,14 @@ impl Square {
     pub fn euclidean_distance(self, other: Self) -> f64 {
         (self.euclidean_distance_sq(other) as f64).sqrt()
     }
+
+    /// Returns the parity of this square.
+    ///
+    /// Returns 0 if this square is a black square, or 1 if it is a white square.
+    /// TODO: test
+    pub fn parity(self) -> u8 {
+        (self.file() + self.rank()) % 2
+    }
 }
 
 impl Display for Square {

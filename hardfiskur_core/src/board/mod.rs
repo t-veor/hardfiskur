@@ -30,12 +30,17 @@ pub enum BoardState {
     /// The player to move has legal moves available, and the game is not drawn.
     InPlay { checkers: u32 },
     /// The game is drawn.
-    Draw,
+    Draw(DrawReason),
     /// The game is over with a win for the specified player.
     Win(Color),
-    /// The board is in an invalid state -- e.g. a king can be captured, there
-    /// are no kings/too many kings, etc.
-    Invalid,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DrawReason {
+    Stalemate,
+    ThreeFoldRepetition,
+    FiftyMoveRule,
+    InsufficientMaterial,
 }
 
 /// Holds relevant information needed to undo a move.
@@ -45,9 +50,7 @@ struct UnmakeData {
     castling: Castling,
     en_passant: Option<Square>,
     halfmove_clock: u32,
-    // TODO
-    // last_irreversible_ply: u32,
-    // zobrist_hash: ZobristHash,
+    zobrist_hash: ZobristHash,
 }
 
 /// Represents the current game state.
@@ -64,7 +67,6 @@ pub struct Board {
     fullmoves: u32,
 
     move_history: Vec<UnmakeData>,
-    // last_irreversible_ply: u32,
     zobrist_hash: ZobristHash,
 }
 
@@ -99,9 +101,8 @@ impl Board {
     ) -> Self {
         let board = BoardRepr::new(board);
 
-        let zobrist_hash = board.zobrist_hash(); // TODO
-
-        // TODO: calculate Zobrist hash
+        let zobrist_hash =
+            board.zobrist_hash() ^ Self::non_board_hash(to_move, castling, en_passant); // TODO
 
         Self {
             board,
@@ -211,18 +212,26 @@ impl Board {
     }
 
     pub fn state(&self) -> BoardState {
-        // TODO: draw by repetition
+        // TODO: test this function
         let (legal_moves, move_gen_result) = self.legal_moves_and_checkers();
         let in_check = move_gen_result.checker_count > 0;
 
         if legal_moves.len() > 0 {
-            BoardState::InPlay {
-                checkers: move_gen_result.checker_count,
+            if self.halfmove_clock >= 100 {
+                BoardState::Draw(DrawReason::FiftyMoveRule)
+            } else if self.check_draw_by_insufficient_material() {
+                BoardState::Draw(DrawReason::InsufficientMaterial)
+            } else if self.check_draw_by_repetition() {
+                BoardState::Draw(DrawReason::ThreeFoldRepetition)
+            } else {
+                BoardState::InPlay {
+                    checkers: move_gen_result.checker_count,
+                }
             }
         } else if in_check {
             BoardState::Win(self.to_move.flip())
         } else {
-            BoardState::Draw
+            BoardState::Draw(DrawReason::Stalemate)
         }
     }
 
@@ -336,6 +345,73 @@ impl Board {
         self.board[Piece::king(color)].to_square()
     }
 
+    pub fn check_draw_by_insufficient_material(&self) -> bool {
+        let major_pieces_and_pawns = self.board[Piece::WHITE_ROOK]
+            | self.board[Piece::WHITE_QUEEN]
+            | self.board[Piece::BLACK_ROOK]
+            | self.board[Piece::BLACK_QUEEN]
+            | self.board[Piece::WHITE_PAWN]
+            | self.board[Piece::BLACK_PAWN];
+
+        if major_pieces_and_pawns != Bitboard::EMPTY {
+            return false;
+        }
+
+        // Only kings and minor pieces are left.
+
+        let [white_knights, white_bishops, black_knights, black_bishops] = [
+            self.board[Piece::WHITE_KNIGHT].pop_count(),
+            self.board[Piece::WHITE_BISHOP].pop_count(),
+            self.board[Piece::BLACK_KNIGHT].pop_count(),
+            self.board[Piece::BLACK_BISHOP].pop_count(),
+        ];
+        let minor_piece_count = white_knights + white_bishops + black_knights + black_bishops;
+
+        // bare kings, or one side has a king plus a minor piece
+        if minor_piece_count <= 1 {
+            return true;
+        }
+
+        // Check for 2 bishops of the same color
+        if minor_piece_count == 2 && white_bishops == 1 && black_bishops == 1 {
+            let white_bishop = self.board[Piece::WHITE_BISHOP].to_square().unwrap();
+            let black_bishop = self.board[Piece::BLACK_BISHOP].to_square().unwrap();
+
+            if white_bishop.parity() == black_bishop.parity() {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn check_draw_by_repetition(&self) -> bool {
+        let mut repetitions = 0;
+        // We only need to check back to the last time an irreversible move is
+        // made, i.e. back to the last time the halfmove clock was reset.
+        for (unmake_data, _) in self.move_history.iter().rev().zip(0..self.halfmove_clock) {
+            if unmake_data.zobrist_hash == self.zobrist_hash {
+                repetitions += 1;
+
+                if repetitions >= 2 {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    fn non_board_hash(
+        to_move: Color,
+        castling: Castling,
+        en_passant: Option<Square>,
+    ) -> ZobristHash {
+        ZobristHash::color(to_move)
+            ^ ZobristHash::castling(castling)
+            ^ ZobristHash::en_passant(en_passant)
+    }
+
     fn castling_rights_removed(&self, the_move: Move) -> Castling {
         let mut removed_rights = Castling::empty();
 
@@ -398,13 +474,16 @@ impl Board {
             self.halfmove_clock += 1;
         }
 
-        // TODO: recalc zobrist hash and repetition table
+        let prev_zobrist_hash = self.zobrist_hash;
+        self.zobrist_hash = self.board.zobrist_hash()
+            ^ Self::non_board_hash(self.to_move, self.castling, self.en_passant);
 
         UnmakeData {
             the_move: Some(the_move),
             castling: prev_castling,
             en_passant: prev_en_passant,
             halfmove_clock: prev_halfmove_clock,
+            zobrist_hash: prev_zobrist_hash,
         }
     }
 
@@ -414,6 +493,7 @@ impl Board {
             castling,
             en_passant,
             halfmove_clock,
+            zobrist_hash,
         } = unmake_data;
 
         self.to_move = self.to_move.flip();
@@ -428,8 +508,7 @@ impl Board {
         self.castling = castling;
         self.en_passant = en_passant;
         self.halfmove_clock = halfmove_clock;
-
-        // TODO: reset zobrist hash and repetition table
+        self.zobrist_hash = zobrist_hash;
     }
 }
 
