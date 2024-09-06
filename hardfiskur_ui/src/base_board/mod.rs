@@ -116,8 +116,8 @@ impl BaseBoard {
             let Pos2 { x, y } = Self::render_to_board_coords(data.perspective, self.rel_mouse_pos);
             if (0.0..8.0).contains(&x) && (0.0..8.0).contains(&y) {
                 Some(Square::new_unchecked(
-                    y.max(0.0).min(7.0) as _,
-                    x.max(0.0).min(7.0) as _,
+                    y.clamp(0.0, 7.0) as _,
+                    x.clamp(0.0, 7.0) as _,
                 ))
             } else {
                 None

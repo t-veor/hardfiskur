@@ -264,6 +264,7 @@ impl Bitboard {
     }
 }
 
+#[allow(clippy::eq_op, clippy::char_lit_as_u8)]
 impl Bitboard {
     seq!(RANK in 1..=8 {
         paste! {

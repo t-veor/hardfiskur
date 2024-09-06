@@ -19,6 +19,7 @@
 //!    masked occupied set.
 //! 4. Get the ray starting from the first blocker in the same direction, and
 //!    remove it from the initial ray attack.
+//!
 //! This will return truncated ray stopping after the first blocker. Note that
 //! the direction of the bitscan will depend on the direction of the ray -- for
 //! "positive" directions where the square indices increase as you move along a
@@ -71,6 +72,7 @@
 //! 3. Right shift the product by some amount (depending on the magic number) to
 //!    extract an index.
 //! 4. Use the index to lookup the pre-computed attack pattern.
+//!
 //! This is much faster and requires no iteration or bitscanning.
 //!
 //! We don't actually know of a way of finding these "magic" numbers

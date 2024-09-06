@@ -178,9 +178,9 @@ fn main() -> Result<(), String> {
 
     let mut board = position;
     for move_spec in moves {
-        if !board
+        if board
             .push_move(move_spec.start, move_spec.end, move_spec.promotion)
-            .is_some()
+            .is_none()
         {
             return Err(format!(
                 "Move `{move_spec}` is invalid to play in this position ({})",

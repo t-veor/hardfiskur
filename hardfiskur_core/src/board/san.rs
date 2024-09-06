@@ -1,6 +1,6 @@
 use std::fmt::{Display, Write};
 
-use super::{Board, BoardState, Move, PieceType, Square};
+use super::{Board, Move, PieceType, Square};
 
 #[derive(Debug, Clone, Copy)]
 enum Disambiguator {
@@ -151,16 +151,19 @@ impl Board {
         };
 
         // Make the move. Is it a check or checkmate?
-        let mut is_check = false;
-        let mut is_checkmate = false;
-
         let mut board = self.clone();
         board.push_move_unchecked(the_move);
 
-        match board.state() {
-            BoardState::InPlay { checkers } => is_check = checkers > 0,
-            BoardState::Win(_) => is_checkmate = true,
-            _ => (),
+        let (legal_moves, result) = board.legal_moves_and_checkers();
+        let mut is_check = false;
+        let mut is_checkmate = false;
+
+        if result.checker_count > 0 {
+            if legal_moves.is_empty() {
+                is_checkmate = true;
+            } else {
+                is_check = true;
+            }
         }
 
         Some(SAN {

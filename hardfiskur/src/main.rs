@@ -1,7 +1,7 @@
-use std::{io::Cursor, usize};
+use std::io::Cursor;
 
 use eframe::egui::{self, Id, Key, Layout, Vec2};
-use hardfiskur_core::board::{Board, BoardState, Color, DrawReason, Move, Piece, PieceType};
+use hardfiskur_core::board::{Board, BoardState, Color, DrawReason, Move, PieceType};
 use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
 use rand::prelude::*;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
@@ -129,10 +129,8 @@ impl eframe::App for HardfiskurUI {
                     if let Some(the_move) = random_move(&self.board) {
                         self.make_move(the_move);
                     }
-                } else {
-                    if let Some(the_move) = random_move(&self.board) {
-                        self.make_move(the_move);
-                    }
+                } else if let Some(the_move) = random_move(&self.board) {
+                    self.make_move(the_move);
                 }
             }
 
@@ -244,16 +242,8 @@ fn min_king_distance(board: &Board) -> Option<Move> {
     for m in legal_moves.iter().copied() {
         board.push_move_unchecked(m);
 
-        let white_king = board
-            .pieces()
-            .find(|(piece, square)| *piece == Piece::WHITE_KING)
-            .unwrap()
-            .1;
-        let black_king = board
-            .pieces()
-            .find(|(piece, square)| *piece == Piece::BLACK_KING)
-            .unwrap()
-            .1;
+        let white_king = board.get_king(Color::White);
+        let black_king = board.get_king(Color::Black);
 
         let king_distance = white_king.euclidean_distance_sq(black_king);
 
@@ -295,7 +285,7 @@ fn pawns_only(board: &Board) -> Option<Move> {
             pawn_moves
                 .choose(&mut rand::thread_rng())
                 .copied()
-                .or_else(|| minimize_opp_moves(&board))
+                .or_else(|| minimize_opp_moves(board))
         })
 }
 

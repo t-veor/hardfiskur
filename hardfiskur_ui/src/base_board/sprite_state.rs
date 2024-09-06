@@ -124,13 +124,8 @@ impl SpriteState {
         }
 
         for ((from_square, to_square), moving_piece) in moving_pieces {
-            // Check if it was a drag
-            let piece_state = match self.pieces[from_square.index()] {
-                // Some((_, PieceState::BeingDragged)) => PieceState::Static,
-                _ => PieceState::Moving { from: from_square },
-            };
-
-            next_pieces[to_square.index()] = Some((moving_piece, piece_state));
+            next_pieces[to_square.index()] =
+                Some((moving_piece, PieceState::Moving { from: from_square }));
         }
 
         self.pieces = next_pieces;

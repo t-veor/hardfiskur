@@ -216,7 +216,7 @@ impl Board {
         let (legal_moves, move_gen_result) = self.legal_moves_and_checkers();
         let in_check = move_gen_result.checker_count > 0;
 
-        if legal_moves.len() > 0 {
+        if !legal_moves.is_empty() {
             if self.halfmove_clock >= 100 {
                 BoardState::Draw(DrawReason::FiftyMoveRule)
             } else if self.check_draw_by_insufficient_material() {
@@ -243,13 +243,11 @@ impl Board {
     pub fn get_move(&self, from: Square, to: Square, promotion: Option<PieceType>) -> Option<Move> {
         let legal_moves = self.legal_moves();
 
-        let the_move = legal_moves.into_iter().find(|m| {
+        legal_moves.into_iter().find(|m| {
             m.from_square() == from
                 && m.to_square() == to
                 && m.promotion().map(|piece| piece.piece_type()) == promotion
-        });
-
-        the_move
+        })
     }
 
     /// Make a move on the board.
