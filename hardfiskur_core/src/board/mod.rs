@@ -211,6 +211,15 @@ impl Board {
         .legal_moves()
     }
 
+    /// Returns the current state of the game, i.e. whether it is still in play,
+    /// a win for either player or drawn. See [`BoardState`] for the possible
+    /// states of a game.
+    ///
+    /// This method is rather slow and is intended to conveniently calculate the
+    /// state of a game for display purposes. Within an engine you would most
+    /// likely attempt to calculate the state of the game using already computed
+    /// information (e.g. legal moves from the current position) to avoid extra
+    /// recomputation.
     pub fn state(&self) -> BoardState {
         // TODO: test this function
         let (legal_moves, move_gen_result) = self.legal_moves_and_checkers();
@@ -343,6 +352,18 @@ impl Board {
         self.board[Piece::king(color)].to_square()
     }
 
+    /// Checks if the current position is drawn by insufficient material.
+    ///
+    /// Only returns true in situations where no legal sequence of moves can
+    /// lead to a checkmate, i.e. the following situations:
+    /// * Both sides only have a king
+    /// * One side has a king and a minor piece against a king
+    /// * Both sides have a king and bishop, but the bishops are the same colour
+    ///
+    /// This is a reasonably fast operation (as it is just a bunch of bitboard
+    /// operations), and so may be called in the engine evaluation function.
+    /// However, you probably want better draw evaluation in your evaluation
+    /// function than what this method provides.
     pub fn check_draw_by_insufficient_material(&self) -> bool {
         let major_pieces_and_pawns = self.board[Piece::WHITE_ROOK]
             | self.board[Piece::WHITE_QUEEN]
@@ -357,13 +378,12 @@ impl Board {
 
         // Only kings and minor pieces are left.
 
-        let [white_knights, white_bishops, black_knights, black_bishops] = [
-            self.board[Piece::WHITE_KNIGHT].pop_count(),
+        let [knights, white_bishops, black_bishops] = [
+            (self.board[Piece::WHITE_KNIGHT] | self.board[Piece::BLACK_KNIGHT]).pop_count(),
             self.board[Piece::WHITE_BISHOP].pop_count(),
-            self.board[Piece::BLACK_KNIGHT].pop_count(),
             self.board[Piece::BLACK_BISHOP].pop_count(),
         ];
-        let minor_piece_count = white_knights + white_bishops + black_knights + black_bishops;
+        let minor_piece_count = knights + white_bishops + black_bishops;
 
         // bare kings, or one side has a king plus a minor piece
         if minor_piece_count <= 1 {
@@ -383,11 +403,22 @@ impl Board {
         false
     }
 
+    /// Checks for draw by threefold repetition. Returns true if the current
+    /// position has been seen at least 2 more times in the game history.
+    ///
+    /// There is a small chance that this method returns incorrect results due
+    /// to a Zobrist hash collision.
     pub fn check_draw_by_repetition(&self) -> bool {
         let mut repetitions = 0;
         // We only need to check back to the last time an irreversible move is
         // made, i.e. back to the last time the halfmove clock was reset.
-        for (unmake_data, _) in self.move_history.iter().rev().zip(0..self.halfmove_clock) {
+        let mut halfmove_clock = self.halfmove_clock as i32;
+        for unmake_data in self.move_history.iter().rev().skip(1).step_by(2) {
+            halfmove_clock -= 2;
+            if halfmove_clock <= 0 {
+                break;
+            }
+
             if unmake_data.zobrist_hash == self.zobrist_hash {
                 repetitions += 1;
 
