@@ -36,7 +36,7 @@ impl ChessBoard {
 
     pub fn ui(&mut self, ui: &mut Ui, data: ChessBoardData<'_>) -> ChessBoardResponse {
         let pieces = self.get_pieces(data.board);
-        let (moves, move_gen_res) = data.board.legal_moves_and_checkers();
+        let (moves, move_gen_res) = data.board.legal_moves_and_meta();
         let in_check = move_gen_res.checker_count > 0;
 
         let possible_moves = if let Some(holding) = self.holding {

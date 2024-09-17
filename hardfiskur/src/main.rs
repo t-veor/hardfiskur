@@ -168,7 +168,7 @@ fn minimize_opp_moves2(board: &Board) -> Option<Move> {
 
     'outer: for m in legal_moves.iter().copied() {
         board.push_move_unchecked(m);
-        let (opp_m, r) = board.legal_moves_and_checkers();
+        let (opp_m, r) = board.legal_moves_and_meta();
         let checkers = r.checker_count;
         let opp_moves = opp_m.len();
         board.pop_move();
@@ -208,7 +208,7 @@ fn minimize_opp_moves(board: &Board) -> Option<Move> {
 
     for m in legal_moves.iter().copied() {
         board.push_move_unchecked(m);
-        let (opp_m, r) = board.legal_moves_and_checkers();
+        let (opp_m, r) = board.legal_moves_and_meta();
         let checkers = r.checker_count;
         let opp_moves = opp_m.len();
         board.pop_move();

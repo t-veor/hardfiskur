@@ -189,16 +189,19 @@ impl Board {
     }
 
     /// Generate all the possible legal moves in the current position, and
-    /// returns the number of pieces currently checking the king.
-    pub fn legal_moves_and_checkers(&self) -> (MoveVec, MoveGenResult) {
+    /// some additional information about the position:
+    /// * number of enemy pieces checking the king (of the side to move)
+    /// * whether en passant capture is available or not
+    pub fn legal_moves_and_meta(&self) -> (MoveVec, MoveGenResult) {
         let mut moves = MoveVec::new();
         let result = self.legal_moves_ex(MoveGenFlags::default(), &mut moves);
         (moves, result)
     }
 
-    /// More customisable version of [`Self::legal_moves`], allowing you to pass
-    /// in `flags` to control whether captures or pushes should be generated,
-    /// and specify where moves should be output into via `out_moves`.
+    /// More customisable version of [`Self::legal_moves_and_meta`], allowing
+    /// you to pass in [`MoveGenFlags`] to control whether captures or pushes
+    /// should be generated, and specify where moves should be output into via
+    /// `out_moves`.
     pub fn legal_moves_ex(&self, flags: MoveGenFlags, out_moves: &mut MoveVec) -> MoveGenResult {
         MoveGenerator::new(
             &self.board,
@@ -222,7 +225,7 @@ impl Board {
     /// recomputation.
     pub fn state(&self) -> BoardState {
         // TODO: test this function
-        let (legal_moves, move_gen_result) = self.legal_moves_and_checkers();
+        let (legal_moves, move_gen_result) = self.legal_moves_and_meta();
         let in_check = move_gen_result.checker_count > 0;
 
         if !legal_moves.is_empty() {
@@ -404,31 +407,130 @@ impl Board {
     }
 
     /// Checks for draw by threefold repetition. Returns true if the current
-    /// position has been seen at least 2 more times in the game history.
+    /// position has been seen at least 2 times in the game history.
     ///
-    /// There is a small chance that this method returns incorrect results due
-    /// to a Zobrist hash collision.
+    /// This is a relatively slow method that should not be used in the engine
+    /// -- an approximation there such as checking the Zobrist hash should
+    /// suffice. However, it is exact -- i.e. it accurately determines if the
+    /// current exact position has occurred at least twice before, taking into
+    /// account castling rights and en passant.
     pub fn check_draw_by_repetition(&self) -> bool {
+        #[derive(Debug, Clone, Copy)]
+        struct ChainListItem {
+            from: Square,
+            to: Square,
+        }
+
+        // Can only ever be a maxmimum of 24 pieces that can make reversible
+        // moves.
+        let mut chain_list = Vec::<ChainListItem>::with_capacity(24);
         let mut repetitions = 0;
-        // We only need to check back to the last time an irreversible move is
-        // made, i.e. back to the last time the halfmove clock was reset.
-        let mut halfmove_clock = self.halfmove_clock as i32;
-        for unmake_data in self.move_history.iter().rev().skip(1).step_by(2) {
-            halfmove_clock -= 2;
-            if halfmove_clock <= 0 {
-                break;
-            }
+        let mut earliest_repetition_found = 0;
 
-            if unmake_data.zobrist_hash == self.zobrist_hash {
-                repetitions += 1;
+        for (move_history_pos, unmake_data) in self.move_history.iter().enumerate().rev() {
+            let m = match unmake_data.the_move {
+                Some(m) => m,
+                None => continue,
+            };
 
-                if repetitions >= 2 {
-                    return true;
+            if m.is_reversible() {
+                match chain_list.iter().position(|i| i.from == m.to_square()) {
+                    Some(i) => {
+                        let item = &mut chain_list[i];
+                        // Concat moves
+                        item.from = m.from_square();
+
+                        if item.from == item.to {
+                            // Remove this from the chain list (since it's now a
+                            // null entry anyway)
+                            chain_list.swap_remove(i);
+
+                            if chain_list.is_empty() {
+                                // Chain list being empty means every piece is
+                                // back to its original position at this point.
+                                repetitions += 1;
+                                earliest_repetition_found = move_history_pos;
+
+                                // (The current position counts as a repetition,
+                                // so we check for == 2 rather than == 3)
+                                if repetitions >= 2 {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    None => {
+                        debug_assert!(m.from_square() != m.to_square());
+                        chain_list.push(ChainListItem {
+                            from: m.from_square(),
+                            to: m.to_square(),
+                        });
+                    }
                 }
             }
         }
 
-        false
+        if repetitions >= 2 {
+            // Extremely pernicious edge cases -- although we see the same board
+            // position 3 times, this could not be a true repetition because:
+            // * The castling state is different in this position vs. the
+            //   current one
+            // * The repeated position resulted from a double pawn push, which
+            //   could have been captured en passant, but no more in the current
+            //   position
+
+            let unmake_data = &self.move_history[earliest_repetition_found];
+
+            if self.castling != unmake_data.castling {
+                // Not a true repetition
+                // (Since castling rights can only ever be removed, never added,
+                // there couldn't be an earlier position where the castling bits
+                // are the same)
+                return false;
+            }
+
+            if unmake_data.en_passant.is_some() {
+                // The initial repeated position was caused by a double pawn
+                // push. This is especially annoying because it still counts as
+                // a repetition if en passant wasn't possible, which could be
+                // because:
+                // * There isn't a pawn in position to actually capture en
+                //   passant
+                // * The pawn that could capture en passant is pinned
+                // * By capturing en passant, removing the capturing and
+                //   captured pawn exposes a horizontal check by a rook or a
+                //   queen
+
+                // Rather than jank together some new code for detecting this,
+                // the move generation is already capable of handling all these
+                // cases. So even though this calling the move generation again
+                // is somewhat expensive this should be a pretty rare case that
+                // it really shouldn't matter.
+
+                let result = MoveGenerator::new(
+                    &self.board,
+                    self.to_move,
+                    // use the en passant state of the first repetition
+                    unmake_data.en_passant,
+                    self.castling,
+                    MoveGenFlags::GEN_CAPTURES,
+                    // (Don't care about the moves)
+                    &mut MoveVec::new(),
+                )
+                .legal_moves();
+                if result.en_passant_possible {
+                    // Not a true repetition
+                    // (Since this position resulted from a double pawn push,
+                    // it's an irreversible move and positions prior to this
+                    // can't be a repetition)
+                    return false;
+                }
+            }
+
+            true
+        } else {
+            false
+        }
     }
 
     fn non_board_hash(
@@ -441,7 +543,7 @@ impl Board {
             ^ ZobristHash::en_passant(en_passant)
     }
 
-    fn castling_rights_removed(&self, the_move: Move) -> Castling {
+    fn castling_rights_removed(the_move: Move) -> Castling {
         let mut removed_rights = Castling::empty();
 
         if the_move.is_move_of(PieceType::King) {
@@ -482,18 +584,17 @@ impl Board {
 
         // Update if the move broke any castling rights
         let prev_castling = self.castling;
-        self.castling.remove(self.castling_rights_removed(the_move));
+        self.castling
+            .remove(Self::castling_rights_removed(the_move));
 
         // Set the en passant square if applicable
-        let prev_en_passant = self.en_passant;
+        let prev_en_passant = self.en_passant.take();
         if the_move.is_double_pawn_push() {
             // Little trick -- due to our square representation, the square
             // inbetween two squares vertically is simply the average of the
             // start and end square
             let en_passant_square = (the_move.from_square().get() + the_move.to_square().get()) / 2;
             self.en_passant = Some(Square::from_u8_unchecked(en_passant_square));
-        } else {
-            self.en_passant = None;
         }
 
         let prev_halfmove_clock = self.halfmove_clock;
@@ -625,7 +726,7 @@ mod test {
     #[test]
     fn board_legal_moves() {
         let board = Board::try_parse_fen("4r1k1/8/8/8/8/8/6P1/4nKn1 w - - 0 1").unwrap();
-        let (moves, result) = board.legal_moves_and_checkers();
+        let (moves, result) = board.legal_moves_and_meta();
 
         assert_in_any_order(
             moves,
@@ -646,7 +747,7 @@ mod test {
     #[test]
     fn board_legal_moves_in_check() {
         let board = Board::try_parse_fen("5rk1/8/8/8/8/8/6R1/4nK2 w - - 0 1").unwrap();
-        let (moves, result) = board.legal_moves_and_checkers();
+        let (moves, result) = board.legal_moves_and_meta();
 
         assert_in_any_order(
             moves,
@@ -665,7 +766,7 @@ mod test {
     #[test]
     fn board_legal_moves_in_double_check() {
         let board = Board::try_parse_fen("5rk1/8/8/8/8/3b4/6R1/4NK2 w - - 0 1").unwrap();
-        let (moves, result) = board.legal_moves_and_checkers();
+        let (moves, result) = board.legal_moves_and_meta();
 
         assert_in_any_order(
             moves,
@@ -846,10 +947,10 @@ mod test {
     #[test]
     fn board_updates_en_passant_correctly() {
         assert_sequence_of_legal_moves(
-            Board::try_parse_fen("4k3/4p3/8/8/2p5/8/1P4P1/4K3 w - - 0 1").unwrap(),
+            Board::try_parse_fen("4k3/4p3/8/8/p1p2P2/8/1P4P1/4K3 w - - 0 1").unwrap(),
             vec![
                 (
-                    m(Square::G2, Square::G3),
+                    m(Square::F4, Square::F5),
                     Box::new(|board| assert_eq!(board.en_passant(), None)),
                 ),
                 (

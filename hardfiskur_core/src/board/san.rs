@@ -154,7 +154,7 @@ impl Board {
         let mut board = self.clone();
         board.push_move_unchecked(the_move);
 
-        let (legal_moves, result) = board.legal_moves_and_checkers();
+        let (legal_moves, result) = board.legal_moves_and_meta();
         let mut is_check = false;
         let mut is_checkmate = false;
 

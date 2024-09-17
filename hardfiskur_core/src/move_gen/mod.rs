@@ -51,6 +51,7 @@ impl Default for MoveGenFlags {
 #[derive(Debug, Clone, Default)]
 pub struct MoveGenResult {
     pub checker_count: u32,
+    pub en_passant_possible: bool,
 }
 
 /// Masks used by the pseudo-legal move generation methods that restrict the
@@ -117,6 +118,8 @@ pub struct MoveGenerator<'board, 'moves> {
     en_passant: Option<Square>,
     castling: Castling,
     flags: MoveGenFlags,
+
+    en_passant_possible: bool,
     out_moves: &'moves mut MoveVec,
 }
 
@@ -138,6 +141,8 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
             en_passant,
             castling,
             flags,
+
+            en_passant_possible: false,
             out_moves,
         }
     }
@@ -171,7 +176,10 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
 
         if checker_count > 1 {
             // In double check, only legal moves are the king's, so we can bail
-            return MoveGenResult { checker_count };
+            return MoveGenResult {
+                checker_count,
+                en_passant_possible: false,
+            };
         }
 
         if checker_count == 1 {
@@ -222,7 +230,10 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
             self.castling_moves(king, king_danger_squares);
         }
 
-        MoveGenResult { checker_count }
+        MoveGenResult {
+            checker_count,
+            en_passant_possible: self.en_passant_possible,
+        }
     }
 
     fn attackers_on_king(&self, king_square: Square) -> Bitboard {

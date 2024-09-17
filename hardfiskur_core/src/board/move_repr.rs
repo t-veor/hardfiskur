@@ -123,8 +123,9 @@ impl Move {
     }
 
     /// Returns if the piece that was moved was of the given type.
-    pub fn is_move_of(self, piece_type: PieceType) -> bool {
-        self.piece().piece_type() == piece_type
+    pub const fn is_move_of(self, piece_type: PieceType) -> bool {
+        let moved_piece_type = (self.0.get() & 0x070000) >> 16;
+        moved_piece_type as u8 == piece_type as u8
     }
 
     /// Returns the piece that was captured, if any.
@@ -203,6 +204,14 @@ impl Move {
         let rook_to = Square::new_unchecked(from.rank(), (from.file() + to.file()) / 2);
 
         (rook_from, rook_to)
+    }
+
+    /// Returns true if this move is not a pawn move nor a capture.
+    ///
+    /// Note that this method does not check if the move is non-reversible due
+    /// to losing castling rights.
+    pub const fn is_reversible(self) -> bool {
+        !self.is_move_of(PieceType::Pawn) && !self.is_capture()
     }
 
     /// Convenience alias for [`MoveBuilder::new`].

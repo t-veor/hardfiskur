@@ -163,6 +163,7 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
             }
 
             // Getting here means no pin issues from the en passant
+            self.en_passant_possible = true;
             self.out_moves.push(
                 Move::builder(from, to, PieceType::Pawn.with_color(self.to_move))
                     .captures(opponent_pawn)
