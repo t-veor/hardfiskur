@@ -1031,4 +1031,184 @@ mod test {
             ],
         )
     }
+
+    #[test]
+    fn board_reports_in_play_correctly() {
+        let mut board = Board::starting_position();
+
+        assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+
+        board.push_uci("e2e4").unwrap();
+
+        assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+    }
+
+    #[test]
+    fn board_reports_checks_correctly() {
+        let mut board = Board::try_parse_fen("4k3/3Q4/8/8/8/6b1/P4n2/4K3 b - - 0 1").unwrap();
+        assert_eq!(board.state(), BoardState::InPlay { checkers: 1 });
+
+        board.push_uci("e8d7").unwrap();
+        assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+
+        board.push_uci("a2a4").unwrap();
+        assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+
+        board.push_uci("f2d3").unwrap();
+        assert_eq!(board.state(), BoardState::InPlay { checkers: 2 });
+    }
+
+    #[test]
+    fn board_reports_checkmate_correctly() {
+        let board = Board::try_parse_fen("8/8/8/8/8/4k3/8/4K2r w - - 0 1").unwrap();
+        assert_eq!(board.state(), BoardState::Win(Color::Black));
+
+        let board = Board::try_parse_fen("k7/8/NK6/8/8/8/8/7B b - - 0 1").unwrap();
+        assert_eq!(board.state(), BoardState::Win(Color::White));
+
+        let board = Board::try_parse_fen("6kn/6pp/4B2N/8/8/2K5/8/5R2 b - - 0 1").unwrap();
+        assert_eq!(board.state(), BoardState::Win(Color::White));
+    }
+
+    #[test]
+    fn board_reports_stalemate_correctly() {
+        let board = Board::try_parse_fen("7k/8/4Q2K/8/8/8/8/8 b - - 0 1").unwrap();
+        assert_eq!(board.state(), BoardState::Draw(DrawReason::Stalemate));
+
+        let board = Board::try_parse_fen("r7/8/8/8/8/1n6/1P1k4/1K6 w - - 0 1").unwrap();
+        assert_eq!(board.state(), BoardState::Draw(DrawReason::Stalemate));
+    }
+
+    #[test]
+    fn board_reports_draw_by_insufficient_material() {
+        let board = Board::try_parse_fen("8/8/8/8/3k4/8/8/1K6 w - - 0 1").unwrap();
+        assert_eq!(
+            board.state(),
+            BoardState::Draw(DrawReason::InsufficientMaterial)
+        );
+    }
+
+    #[test]
+    fn board_reports_draw_by_repetition() {
+        let mut board = Board::starting_position();
+
+        for _ in 0..2 {
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci("g1f3").unwrap();
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci("b8c6").unwrap();
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci("f3g1").unwrap();
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci("c6b8").unwrap();
+        }
+
+        assert_eq!(
+            board.state(),
+            BoardState::Draw(DrawReason::ThreeFoldRepetition)
+        );
+    }
+
+    #[test]
+    fn board_reports_draw_by_fifty_move_rule() {
+        let mut board = Board::try_parse_fen("k6K/p7/7P/8/8/8/8/Rr6 w - - 0 1").unwrap();
+        board.push_uci("h6h7").unwrap();
+
+        // Generate squares A1, B1, C1, ... H1, H2, G2, F2, ... B6, A6
+        let mut rook_square_sequence = Vec::new();
+        for rank in 0..6 {
+            if rank % 2 == 0 {
+                for file in 0..8 {
+                    rook_square_sequence.push(Square::new(rank, file).unwrap());
+                }
+            } else {
+                for file in (0..8).rev() {
+                    rook_square_sequence.push(Square::new(rank, file).unwrap());
+                }
+            }
+        }
+
+        let rook_move_sequence = rook_square_sequence
+            .iter()
+            .cycle()
+            .copied()
+            .zip(rook_square_sequence.iter().cycle().skip(1).copied());
+
+        let black_white_move_sequence = rook_move_sequence.clone().skip(1).zip(rook_move_sequence);
+
+        // Just shuffle the rooks around a whole bunch, with
+        // ... Rc1
+        // Rb1 Rd1
+        // Rc1 Re1 etc.
+        let mut moves = 0;
+        for (black_move, white_move) in black_white_move_sequence {
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_move(black_move.0, black_move.1, None).unwrap();
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_move(white_move.0, white_move.1, None).unwrap();
+
+            moves += 1;
+            if moves >= 50 {
+                break;
+            }
+        }
+
+        assert_eq!(board.state(), BoardState::Draw(DrawReason::FiftyMoveRule));
+    }
+
+    #[test]
+    fn board_checks_draw_by_insufficient_material_positive_cases() {
+        // Bare kings
+        assert!(Board::try_parse_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+
+        // Black has king + minor piece
+        assert!(Board::try_parse_fen("4kn2/8/8/8/8/8/8/4K3 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+
+        // White has king + minor piece
+        assert!(Board::try_parse_fen("4k3/8/8/2B5/8/8/8/4K3 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+
+        // Two bishops of the same color
+        assert!(Board::try_parse_fen("4k3/8/8/8/3B1b2/8/8/4K3 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+    }
+
+    #[test]
+    fn board_checks_draw_by_insufficient_material_negative_cases() {
+        // white has a pawn
+        assert!(!Board::try_parse_fen("4k3/8/8/8/8/2P5/8/4K3 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+
+        // black has a queen
+        assert!(!Board::try_parse_fen("4k3/8/6q1/8/8/8/8/4K3 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+
+        // white has a knight and black has a bishop
+        assert!(!Board::try_parse_fen("4k3/8/3b4/8/8/8/8/4KN2 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+
+        // black has two minor pieces
+        assert!(!Board::try_parse_fen("4k1n1/8/3b4/8/8/8/8/4K3 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+
+        // two bishops of opposite color
+        assert!(!Board::try_parse_fen("4k3/8/3bB3/8/8/8/8/4K3 w - - 0 1")
+            .unwrap()
+            .check_draw_by_insufficient_material());
+    }
+
+    #[test]
+    fn board_checks_draw_by_threefold_repetition_correctly() {
+        todo!()
+    }
 }
