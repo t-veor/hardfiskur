@@ -9,7 +9,7 @@ use crate::board::{Bitboard, Square};
 ///
 /// Used for generating and querying primitive bitboards that represent a ray
 /// from a starting square.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]
 pub enum Direction {
     East = 0,
     North = 1,

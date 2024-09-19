@@ -35,7 +35,7 @@ const POSSIBLE_PROMOTIONS: &[PieceType] = &[
 pub type MoveVec = ArrayVec<Move, MAX_MOVES>;
 
 bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct MoveGenFlags: u8 {
         const GEN_CAPTURES = 0b01;
         const GEN_QUIET_MOVES = 0b10;

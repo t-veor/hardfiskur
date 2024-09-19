@@ -11,7 +11,7 @@ use num_derive::{FromPrimitive, ToPrimitive};
 /// Piece types are assigned integers 1-6, so that they fit in 3-bits, and also
 /// that 0 is unused -- this is so that Rust can optimise [`Option<PieceType>`]
 /// to use the value 0 for [`None`].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]
 pub enum PieceType {
     Pawn = 1,
     Knight = 2,
@@ -83,7 +83,7 @@ impl PieceType {
 /// Used for representing who a [`Piece`] belongs to. Uses 0 for white and 8 for
 /// black, such that the [`Piece`] representation can simply be formed from a
 /// bitwise or of the [`Color`] and [`PieceType`].
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Color {
     #[default]
     White = 0,
@@ -119,7 +119,7 @@ impl Color {
 /// Internal representation is a 4 bit integer, formed by a bitwise-or of the
 /// [`Color`] and [`PieceType`]. Since [`PieceType`] can never be 0, Rust can
 /// optimise the [`None`] of an [`Option<Piece>`] to be represented by 0.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Piece(NonZeroU8);
 
 impl Piece {

@@ -53,7 +53,7 @@ bitflags! {
 ///    |    +------------------------------ promoted to piece (0 if none)
 ///    +----------------------------------- move flags
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Move(NonZeroU32);
 
 impl PartialOrd for Move {
@@ -253,7 +253,7 @@ impl Debug for Move {
 /// promotion or the castling state, etc. This struct provides a streaming
 /// interface to incrementally build a move, before calling
 /// [`MoveBuilder::build`] to finalise.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MoveBuilder {
     pub from: Square,
     pub to: Square,

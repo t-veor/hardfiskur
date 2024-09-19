@@ -8,7 +8,7 @@ use rand::{RngCore, SeedableRng};
 
 use super::{Castling, Color, Piece, Square};
 
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ZobristHash(u64);
 
 impl ZobristHash {

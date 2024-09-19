@@ -17,7 +17,7 @@ use super::Square;
 ///
 /// Bitboards have all the bitwise operations defined on them, e.g. `&`, `|`,
 /// `^`, and `!`.
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Bitboard(pub u64);
 
 impl Bitboard {

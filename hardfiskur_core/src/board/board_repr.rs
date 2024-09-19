@@ -21,7 +21,7 @@ use super::{zobrist::ZobristHash, Bitboard, Color, Move, Piece, PieceType, Squar
 ///     println!("All white pieces: {:?}", board_repr[Color::White]);
 /// }
 /// ```
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct BoardRepr {
     // Repr:
     // 0: All white pieces

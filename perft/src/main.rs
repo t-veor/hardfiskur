@@ -1,12 +1,8 @@
-use std::{
-    fmt::{Display, Write},
-    str::FromStr,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use clap::Parser;
 use hardfiskur_core::{
-    board::{Board, Piece, PieceType, Square},
+    board::{Board, Piece, UCIMove},
     perft::perft,
 };
 
@@ -34,7 +30,7 @@ struct Args {
     /// followed by the ending square in algebraic notation, plus an optional
     /// promotion target as a lowercase FEN char, e.g. `d2d4`, `e2e1q`
     #[arg(short, long, num_args(0..))]
-    moves: Vec<MoveSpec>,
+    moves: Vec<UCIMove>,
 
     /// Exact depth to search to.
     #[arg(short, long, value_parser = clap::value_parser!(u8).range(1..), default_value_t = 8)]
@@ -48,56 +44,6 @@ struct Args {
     /// identifying the exact sequence of moves under which they occur.
     #[arg(long)]
     divide: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct MoveSpec {
-    start: Square,
-    end: Square,
-    promotion: Option<PieceType>,
-}
-
-impl Display for MoveSpec {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.start.fmt(f)?;
-        self.end.fmt(f)?;
-        if let Some(promotion) = self.promotion {
-            f.write_char(promotion.as_lowercase_char())?;
-        }
-        Ok(())
-    }
-}
-
-impl FromStr for MoveSpec {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let chars = s.chars().collect::<Vec<_>>();
-        if chars.len() != 4 && chars.len() != 5 {
-            return Err("Expected 4 or 5 characters".to_owned());
-        }
-
-        let start = String::from_iter(&chars[0..2])
-            .parse()
-            .map_err(|_| "Invalid starting square".to_owned())?;
-        let end = String::from_iter(&chars[2..4])
-            .parse()
-            .map_err(|_| "Invalid ending square".to_owned())?;
-        let promotion = match chars.get(4) {
-            Some(c) => Some(
-                Piece::try_from_fen_char(*c)
-                    .ok_or_else(|| "Invalid promotion target".to_owned())?
-                    .piece_type(),
-            ),
-            None => None,
-        };
-
-        Ok(Self {
-            start,
-            end,
-            promotion,
-        })
-    }
 }
 
 fn parse_position(s: &str) -> Result<Board, String> {
@@ -150,9 +96,9 @@ fn specific_perft(mut board: Board, depth: usize) {
 
     let mut total_nodes = 0;
     for m in legal_moves {
-        let move_spec = MoveSpec {
-            start: m.from_square(),
-            end: m.to_square(),
+        let move_spec = UCIMove {
+            from: m.from_square(),
+            to: m.to_square(),
             promotion: m.promotion().map(Piece::piece_type),
         };
 
@@ -179,7 +125,7 @@ fn main() -> Result<(), String> {
     let mut board = position;
     for move_spec in moves {
         if board
-            .push_move(move_spec.start, move_spec.end, move_spec.promotion)
+            .push_move(move_spec.from, move_spec.to, move_spec.promotion)
             .is_none()
         {
             return Err(format!(

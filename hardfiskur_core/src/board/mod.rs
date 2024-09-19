@@ -8,6 +8,7 @@ mod move_repr;
 mod piece;
 mod san;
 mod square;
+mod uci_move;
 mod zobrist;
 
 pub use bitboard::Bitboard;
@@ -18,6 +19,7 @@ pub use move_repr::{Move, MoveBuilder, MoveFlags};
 pub use piece::{Color, Piece, PieceType};
 pub use san::SAN;
 pub use square::{ParseSquareError, Square};
+pub use uci_move::UCIMove;
 use zobrist::ZobristHash;
 
 use crate::move_gen::{MoveGenFlags, MoveGenResult, MoveGenerator, MoveVec};
@@ -25,7 +27,7 @@ use crate::move_gen::{MoveGenFlags, MoveGenResult, MoveGenerator, MoveVec};
 pub const STARTING_POSITION_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 /// State of play for the board.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BoardState {
     /// The player to move has legal moves available, and the game is not drawn.
     InPlay { checkers: u32 },
@@ -35,7 +37,7 @@ pub enum BoardState {
     Win(Color),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DrawReason {
     Stalemate,
     ThreeFoldRepetition,
@@ -44,7 +46,7 @@ pub enum DrawReason {
 }
 
 /// Holds relevant information needed to undo a move.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct UnmakeData {
     the_move: Option<Move>,
     castling: Castling,
@@ -285,6 +287,8 @@ impl Board {
 
         the_move
     }
+
+    // pub fn push_uci(&mut self, uci: &str) -> Option<Move> {}
 
     /// Make a move on the board.
     ///

@@ -25,7 +25,7 @@ use thiserror::Error;
 /// assert_eq!("A4".parse(), Ok(Square::A4));
 /// assert_eq!("invalid square".parse::<Square>(), Err(ParseSquareError));
 /// ```
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Square(u8);
 
 impl Square {
