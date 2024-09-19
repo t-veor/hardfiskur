@@ -19,8 +19,8 @@ pub use move_repr::{Move, MoveBuilder, MoveFlags};
 pub use piece::{Color, Piece, PieceType};
 pub use san::SAN;
 pub use square::{ParseSquareError, Square};
-pub use uci_move::UCIMove;
-use zobrist::ZobristHash;
+pub use uci_move::{ParseUCIMoveError, UCIMove};
+pub use zobrist::ZobristHash;
 
 use crate::move_gen::{MoveGenFlags, MoveGenResult, MoveGenerator, MoveVec};
 
@@ -264,7 +264,8 @@ impl Board {
         })
     }
 
-    /// Make a move on the board.
+    /// Make a move on the board. (See [`Self::push_uci`] for a more convenient
+    /// interface.)
     ///
     /// Attempts to find a legal move matching the provided parameters. If one
     /// is found, the move is made on the board and is returned. If no legal
@@ -288,7 +289,35 @@ impl Board {
         the_move
     }
 
-    // pub fn push_uci(&mut self, uci: &str) -> Option<Move> {}
+    /// Make a move on the board, using the move format in Universal Chess
+    /// Interface (UCI) to specify the move.
+    ///
+    /// See [`UCIMove`] for more details about the format.
+    ///
+    /// Attempts to find a legal move matching the provided move. If one is
+    /// found, the move is made on the board and is returned. If no legal moves
+    /// match the criteria, [`None`] is returned.
+    ///
+    /// # Examples
+    /// ```
+    /// # use hardfiskur_core::board::Board;
+    /// let mut board = Board::starting_position();
+    /// assert!(board.push_uci("e2e4").is_some());
+    /// assert!(board.push_uci("d7d5").is_some());
+    /// assert!(board.push_uci("e1e2").is_some());
+    ///
+    /// // Promotion, but obviously not possible right now
+    /// assert!(board.push_uci("a2a1q").is_none());
+    /// ```
+    pub fn push_uci(&mut self, uci: &str) -> Option<Move> {
+        let UCIMove {
+            from,
+            to,
+            promotion,
+        } = uci.parse().ok()?;
+
+        self.push_move(from, to, promotion)
+    }
 
     /// Make a move on the board.
     ///
@@ -813,23 +842,16 @@ mod test {
         assert_eq!(result.checker_count, 0);
     }
 
-    type LegalMoveArgs = (Square, Square, Option<PieceType>);
-    fn m(from: Square, to: Square) -> LegalMoveArgs {
-        (from, to, None)
-    }
-
     fn assert_sequence_of_legal_moves(
         mut board: Board,
-        ops: Vec<(LegalMoveArgs, Box<dyn Fn(&Board)>)>,
+        ops: Vec<(&'static str, Box<dyn Fn(&Board)>)>,
     ) {
         let mut board_states = vec![board.clone()];
 
-        for (i, (args, asserter)) in ops.iter().enumerate() {
-            let (from, to, promo) = *args;
-
+        for (i, (uci_move, asserter)) in ops.iter().enumerate() {
             assert!(
-                board.push_move(from, to, promo).is_some(),
-                "failed on move {i}: {from} to {to} (promo {promo:?}) is not a valid move"
+                board.push_uci(uci_move).is_some(),
+                "failed on move {i}: {uci_move} is not a valid move"
             );
             asserter(&board);
 
@@ -885,21 +907,21 @@ mod test {
             Board::starting_position(),
             vec![
                 (
-                    m(Square::E2, Square::E4),
+                    "e2e4",
                     Box::new(|board| {
                         assert_eq!(board.to_move(), Color::Black);
                         assert_eq!(board.fullmoves(), 1);
                     }),
                 ),
                 (
-                    m(Square::E7, Square::E5),
+                    "e7e5",
                     Box::new(|board| {
                         assert_eq!(board.to_move(), Color::White);
                         assert_eq!(board.fullmoves(), 2);
                     }),
                 ),
                 (
-                    m(Square::G1, Square::F3),
+                    "g1f3",
                     Box::new(|board| {
                         assert_eq!(board.to_move(), Color::Black);
                         assert_eq!(board.fullmoves(), 2);
@@ -915,11 +937,11 @@ mod test {
             Board::try_parse_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap(),
             vec![
                 (
-                    m(Square::E1, Square::G1),
+                    "e1g1",
                     Box::new(|board| assert_eq!(board.castling(), Castling::BLACK)),
                 ),
                 (
-                    m(Square::E8, Square::E7),
+                    "e8e7",
                     Box::new(|board| assert_eq!(board.castling(), Castling::empty())),
                 ),
             ],
@@ -932,7 +954,7 @@ mod test {
             Board::try_parse_fen("r3k2r/8/8/8/8/6n1/8/R3K2R b KQkq - 0 1").unwrap(),
             vec![
                 (
-                    m(Square::G3, Square::H1),
+                    "g3h1",
                     Box::new(|board| {
                         assert_eq!(
                             board.castling(),
@@ -941,7 +963,7 @@ mod test {
                     }),
                 ),
                 (
-                    m(Square::A1, Square::A8),
+                    "a1a8",
                     Box::new(|board| assert_eq!(board.castling(), Castling::BLACK_KINGSIDE)),
                 ),
             ],
@@ -954,19 +976,19 @@ mod test {
             Board::try_parse_fen("4k3/4p3/8/8/p1p2P2/8/1P4P1/4K3 w - - 0 1").unwrap(),
             vec![
                 (
-                    m(Square::F4, Square::F5),
+                    "f4f5",
                     Box::new(|board| assert_eq!(board.en_passant(), None)),
                 ),
                 (
-                    m(Square::E7, Square::E5),
+                    "e7e5",
                     Box::new(|board| assert_eq!(board.en_passant(), Some(Square::E6))),
                 ),
                 (
-                    m(Square::B2, Square::B4),
+                    "b2b4",
                     Box::new(|board| assert_eq!(board.en_passant(), Some(Square::B3))),
                 ),
                 (
-                    m(Square::C4, Square::B3),
+                    "c4b3",
                     Box::new(|board| assert_eq!(board.en_passant(), None)),
                 ),
             ],
@@ -979,31 +1001,31 @@ mod test {
             Board::try_parse_fen("4k3/p7/2P4R/8/1r6/8/5b2/5K2 w - - 0 1").unwrap(),
             vec![
                 (
-                    m(Square::H6, Square::F6),
+                    "h6f6",
                     Box::new(|board| assert_eq!(board.halfmove_clock(), 1)),
                 ),
                 (
-                    m(Square::B4, Square::B3),
+                    "b4b3",
                     Box::new(|board| assert_eq!(board.halfmove_clock(), 2)),
                 ),
                 (
-                    m(Square::F6, Square::F2),
+                    "f6f2",
                     Box::new(|board| assert_eq!(board.halfmove_clock(), 0)),
                 ),
                 (
-                    m(Square::B3, Square::B4),
+                    "b3b4",
                     Box::new(|board| assert_eq!(board.halfmove_clock(), 1)),
                 ),
                 (
-                    m(Square::C6, Square::C7),
+                    "c6c7",
                     Box::new(|board| assert_eq!(board.halfmove_clock(), 0)),
                 ),
                 (
-                    m(Square::B4, Square::B3),
+                    "b4b3",
                     Box::new(|board| assert_eq!(board.halfmove_clock(), 1)),
                 ),
                 (
-                    (Square::C7, Square::C8, Some(PieceType::Queen)),
+                    "c7c8q",
                     Box::new(|board| assert_eq!(board.halfmove_clock(), 0)),
                 ),
             ],
