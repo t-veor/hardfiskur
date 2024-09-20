@@ -104,7 +104,7 @@ impl Board {
         let board = BoardRepr::new(board);
 
         let zobrist_hash =
-            board.zobrist_hash() ^ Self::non_board_hash(to_move, castling, en_passant); // TODO
+            board.zobrist_hash() ^ Self::non_board_hash(to_move, castling, en_passant);
 
         Self {
             board,
@@ -226,7 +226,6 @@ impl Board {
     /// information (e.g. legal moves from the current position) to avoid extra
     /// recomputation.
     pub fn state(&self) -> BoardState {
-        // TODO: test this function
         let (legal_moves, move_gen_result) = self.legal_moves_and_meta();
         let in_check = move_gen_result.checker_count > 0;
 
@@ -1208,7 +1207,125 @@ mod test {
     }
 
     #[test]
-    fn board_checks_draw_by_threefold_repetition_correctly() {
-        todo!()
+    fn board_checks_draw_by_threefold_repetition_not_immediately_repeated_moves() {
+        let mut board = Board::starting_position();
+
+        let moves = [
+            "e2e3", "e7e6", "c2c3", "c7c6", // Repetition 1
+            "d1e2", "d8e7", "e2d1", "e7d8", // Repetition 2
+            "d1g4", "d8a5", "g4a4", "a5g5", "a4d1", "g5d8", // Repetition 3
+        ];
+
+        for m in moves {
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci(m).unwrap();
+        }
+
+        assert_eq!(
+            board.state(),
+            BoardState::Draw(DrawReason::ThreeFoldRepetition)
+        );
+    }
+
+    #[test]
+    fn board_checks_draw_by_repetition_loss_of_castling_rights() {
+        let mut board = Board::starting_position();
+
+        let moves = [
+            "e2e4", "e7e5",
+            // not actual 1st repetition due to both sides still having
+            // castling rights
+            "e1e2", "e8e7", // castling rights lost, repetition 1
+            "e2e1", "e7e8", // (pseudo-repetition 2)
+            "e1e2", "e8e7", // repetition 2
+            "e2e1", "e7e8", // (pseudo-repetition 3)
+            "e1e2", "e8e7", // repetition 3
+        ];
+
+        for m in moves {
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci(m).unwrap();
+        }
+
+        assert_eq!(
+            board.state(),
+            BoardState::Draw(DrawReason::ThreeFoldRepetition)
+        );
+    }
+
+    #[test]
+    fn board_checks_draw_by_repetition_loss_of_en_passant_possibility() {
+        let mut board = Board::starting_position();
+
+        let moves = [
+            "e2e4", "e7e6", "e4e5", "d7d5",
+            // not first repetition due to en passant available for white's
+            // e-pawn
+            "g1f3", // Reptition 1
+            "g8f6", "f3g1", "f6g8", // (pseudo-repetition 2)
+            "g1f3", // Repetition 2
+            "g8f6", "f3g1", "f6g8", // (pseudo-repetition 3)
+            "g1f3", // Repetition 3
+        ];
+
+        for m in moves {
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci(m).unwrap();
+        }
+
+        assert_eq!(
+            board.state(),
+            BoardState::Draw(DrawReason::ThreeFoldRepetition)
+        );
+    }
+
+    #[test]
+    fn board_checks_draw_by_repetition_edge_case_en_passant_not_possible_due_to_pinned_pawn() {
+        let mut board =
+            Board::try_parse_fen("rn1qkbnr/pppppppp/5b2/4P3/8/2K5/PPPP1PPP/RNBQ1BNR b kq - 0 1")
+                .unwrap();
+
+        let moves = [
+            "d7d5",
+            // repetition 1, en passant is "available" but not possible because
+            // the en passant pin is actually pinned.
+            "g1f3", "b8c6", "f3g1", "c6b8", // repetition 2
+            "g1f3", "b8c6", "f3g1", "c6b8", // repetition 3
+        ];
+
+        for m in moves {
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci(m).unwrap();
+        }
+
+        assert_eq!(
+            board.state(),
+            BoardState::Draw(DrawReason::ThreeFoldRepetition)
+        );
+    }
+
+    #[test]
+    fn board_checks_draw_by_repetition_edge_case_en_passant_not_possible_due_to_horizontal_pin() {
+        let mut board =
+            Board::try_parse_fen("rnb1kbnr/pppppppp/8/1K2P2q/8/8/PPPP1PPP/RNBQ1BNR b kq - 0 1")
+                .unwrap();
+
+        let moves = [
+            "d7d5",
+            // repetition 1, en passant is "available" but not possible because
+            // the en passant pin is actually pinned.
+            "g1f3", "b8c6", "f3g1", "c6b8", // repetition 2
+            "g1f3", "b8c6", "f3g1", "c6b8", // repetition 3
+        ];
+
+        for m in moves {
+            assert_eq!(board.state(), BoardState::InPlay { checkers: 0 });
+            board.push_uci(m).unwrap();
+        }
+
+        assert_eq!(
+            board.state(),
+            BoardState::Draw(DrawReason::ThreeFoldRepetition)
+        );
     }
 }
