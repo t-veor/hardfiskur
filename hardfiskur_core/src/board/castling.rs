@@ -1,3 +1,5 @@
+use std::fmt::{Display, Write};
+
 use bitflags::bitflags;
 
 bitflags! {
@@ -48,6 +50,31 @@ impl Default for Castling {
     }
 }
 
+impl Display for Castling {
+    /// Returns the castling state as the 3rd field in a FEN string.
+    ///
+    /// See [`Self::as_fen_str`].
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_empty() {
+            f.write_char('-')
+        } else {
+            if self.contains(Self::WHITE_KINGSIDE) {
+                f.write_char('K')?;
+            }
+            if self.contains(Self::WHITE_QUEENSIDE) {
+                f.write_char('Q')?;
+            }
+            if self.contains(Self::BLACK_KINGSIDE) {
+                f.write_char('k')?;
+            }
+            if self.contains(Self::BLACK_QUEENSIDE) {
+                f.write_char('q')?;
+            }
+            Ok(())
+        }
+    }
+}
+
 impl Castling {
     /// Returns the castling state as the 3rd field in [Forsyth-Edwards
     /// Notation](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation).
@@ -57,23 +84,43 @@ impl Castling {
     /// queenside, 'k' if black can castle kingside, and 'q' if black can castle
     /// queenside.
     pub fn as_fen_str(self) -> String {
-        if self.is_empty() {
-            "-".to_owned()
-        } else {
-            let mut result = String::with_capacity(4);
-            if self.contains(Self::WHITE_KINGSIDE) {
-                result.push('K');
-            }
-            if self.contains(Self::WHITE_QUEENSIDE) {
-                result.push('Q');
-            }
-            if self.contains(Self::BLACK_KINGSIDE) {
-                result.push('k');
-            }
-            if self.contains(Self::BLACK_QUEENSIDE) {
-                result.push('q');
-            }
-            result
-        }
+        format!("{self}")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn castling_as_fen_str() {
+        assert_eq!(Castling::empty().as_fen_str(), "-");
+        assert_eq!(Castling::WHITE_KINGSIDE.as_fen_str(), "K");
+        assert_eq!(Castling::WHITE_QUEENSIDE.as_fen_str(), "Q");
+        assert_eq!(Castling::BLACK_KINGSIDE.as_fen_str(), "k");
+        assert_eq!(Castling::BLACK_QUEENSIDE.as_fen_str(), "q");
+
+        assert_eq!(Castling::WHITE.as_fen_str(), "KQ");
+        assert_eq!(Castling::BLACK.as_fen_str(), "kq");
+        assert_eq!(Castling::KINGSIDE.as_fen_str(), "Kk");
+        assert_eq!(Castling::QUEENSIDE.as_fen_str(), "Qq");
+
+        assert_eq!(
+            (Castling::WHITE_KINGSIDE | Castling::BLACK_QUEENSIDE).as_fen_str(),
+            "Kq"
+        );
+        assert_eq!(
+            (Castling::BLACK_KINGSIDE | Castling::WHITE_QUEENSIDE).as_fen_str(),
+            "Qk"
+        );
+
+        assert_eq!(
+            Castling::all()
+                .difference(Castling::WHITE_KINGSIDE)
+                .as_fen_str(),
+            "Qkq"
+        );
+        assert_eq!(Castling::all().as_fen_str(), "KQkq");
     }
 }

@@ -69,6 +69,8 @@ impl HardfiskurUI {
                 None => "?".to_string(),
             });
         }
+
+        println!("{}", self.board);
     }
 
     fn undo_move(&mut self) {

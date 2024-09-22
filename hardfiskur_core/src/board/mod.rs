@@ -11,6 +11,8 @@ mod square;
 mod uci_move;
 mod zobrist;
 
+use std::fmt::Display;
+
 pub use bitboard::Bitboard;
 pub use board_repr::BoardRepr;
 pub use castling::Castling;
@@ -680,6 +682,27 @@ impl Default for Board {
     }
 }
 
+impl Display for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self.board)?;
+        writeln!(f, "Move {} -- {:?} to move", self.fullmoves, self.to_move)?;
+
+        write!(f, "Castling rights: {}", self.castling)?;
+        if let Some(square) = self.en_passant {
+            write!(f, "\tEn passant available on {}", square)?;
+        }
+        writeln!(f)?;
+
+        write!(
+            f,
+            "Plies since last capture or pawn push: {}",
+            self.halfmove_clock
+        )?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::test_utils::assert_in_any_order;
@@ -688,34 +711,71 @@ mod test {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn castling_as_fen_str() {
-        assert_eq!(Castling::empty().as_fen_str(), "-");
-        assert_eq!(Castling::WHITE_KINGSIDE.as_fen_str(), "K");
-        assert_eq!(Castling::WHITE_QUEENSIDE.as_fen_str(), "Q");
-        assert_eq!(Castling::BLACK_KINGSIDE.as_fen_str(), "k");
-        assert_eq!(Castling::BLACK_QUEENSIDE.as_fen_str(), "q");
+    fn board_default_is_starting_position() {
+        let default = Board::default();
+        let start_pos = Board::starting_position();
 
-        assert_eq!(Castling::WHITE.as_fen_str(), "KQ");
-        assert_eq!(Castling::BLACK.as_fen_str(), "kq");
-        assert_eq!(Castling::KINGSIDE.as_fen_str(), "Kk");
-        assert_eq!(Castling::QUEENSIDE.as_fen_str(), "Qq");
+        assert_eq!(default, start_pos);
+    }
 
-        assert_eq!(
-            (Castling::WHITE_KINGSIDE | Castling::BLACK_QUEENSIDE).as_fen_str(),
-            "Kq"
-        );
-        assert_eq!(
-            (Castling::BLACK_KINGSIDE | Castling::WHITE_QUEENSIDE).as_fen_str(),
-            "Qk"
-        );
+    #[test]
+    fn board_display_representation() {
+        let board =
+            Board::try_parse_fen("rnbqkb1r/ppp1pppp/5n2/8/2pP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 2 4")
+                .unwrap();
+        let expected = "+---+---+---+---+---+---+---+---+
+|*r |*n |*b |*q |*k |*b | \u{00a0} |*r | 8
++---+---+---+---+---+---+---+---+
+|*p |*p |*p | \u{00a0} |*p |*p |*p |*p | 7
++---+---+---+---+---+---+---+---+
+| \u{00a0} | . | \u{00a0} | . | \u{00a0} |*n | \u{00a0} | . | 6
++---+---+---+---+---+---+---+---+
+| . | \u{00a0} | . | \u{00a0} | . | \u{00a0} | . | \u{00a0} | 5
++---+---+---+---+---+---+---+---+
+| \u{00a0} | . |*p | P | \u{00a0} | . | \u{00a0} | . | 4
++---+---+---+---+---+---+---+---+
+| . | \u{00a0} | . | \u{00a0} | . | N | . | \u{00a0} | 3
++---+---+---+---+---+---+---+---+
+| P | P | \u{00a0} | . | P | P | P | P | 2
++---+---+---+---+---+---+---+---+
+| R | N | B | Q | K | B | . | R | 1
++---+---+---+---+---+---+---+---+
+  a   b   c   d   e   f   g   h
+Move 4 -- White to move
+Castling rights: KQkq
+Plies since last capture or pawn push: 2";
 
-        assert_eq!(
-            Castling::all()
-                .difference(Castling::WHITE_KINGSIDE)
-                .as_fen_str(),
-            "Qkq"
-        );
-        assert_eq!(Castling::all().as_fen_str(), "KQkq");
+        assert_eq!(format!("{board}"), expected)
+    }
+
+    #[test]
+    fn board_display_representation_with_en_passant() {
+        let board =
+            Board::try_parse_fen("rnbqkb1r/pp3ppp/3p4/3Pp3/3N4/2N5/PPP2PPP/R1BQKB1R w KQkq e6 0 7")
+                .unwrap();
+        let expected = "+---+---+---+---+---+---+---+---+
+|*r |*n |*b |*q |*k |*b | \u{00a0} |*r | 8
++---+---+---+---+---+---+---+---+
+|*p |*p | . | \u{00a0} | . |*p |*p |*p | 7
++---+---+---+---+---+---+---+---+
+| \u{00a0} | . | \u{00a0} |*p | \u{00a0} | . | \u{00a0} | . | 6
++---+---+---+---+---+---+---+---+
+| . | \u{00a0} | . | P |*p | \u{00a0} | . | \u{00a0} | 5
++---+---+---+---+---+---+---+---+
+| \u{00a0} | . | \u{00a0} | N | \u{00a0} | . | \u{00a0} | . | 4
++---+---+---+---+---+---+---+---+
+| . | \u{00a0} | N | \u{00a0} | . | \u{00a0} | . | \u{00a0} | 3
++---+---+---+---+---+---+---+---+
+| P | P | P | . | \u{00a0} | P | P | P | 2
++---+---+---+---+---+---+---+---+
+| R | \u{00a0} | B | Q | K | B | . | R | 1
++---+---+---+---+---+---+---+---+
+  a   b   c   d   e   f   g   h
+Move 7 -- White to move
+Castling rights: KQkq\tEn passant available on e6
+Plies since last capture or pawn push: 0";
+
+        assert_eq!(format!("{board}"), expected);
     }
 
     #[test]
@@ -871,7 +931,32 @@ mod test {
     fn board_push_invalid_move_returns_false() {
         let mut board = Board::starting_position();
 
-        assert!(!board.push_move(Square::E1, Square::E2, None).is_some());
+        assert!(board.push_move(Square::E1, Square::E2, None).is_none());
+    }
+
+    #[test]
+    fn board_push_invalid_uci_returns_none() {
+        let mut board = Board::starting_position();
+
+        assert!(board.push_uci("xxxx").is_none());
+    }
+
+    #[test]
+    fn board_push_move_repr_returns_true_for_valid_move() {
+        let mut board = Board::starting_position();
+        let m = MoveBuilder::new(Square::E2, Square::E4, Piece::WHITE_PAWN)
+            .is_double_pawn_push()
+            .build();
+
+        assert!(board.push_move_repr(m));
+    }
+
+    #[test]
+    fn board_push_move_repr_returns_false_for_invalid_move() {
+        let mut board = Board::starting_position();
+        let m = MoveBuilder::new(Square::E1, Square::E2, Piece::WHITE_KING).build();
+
+        assert!(!board.push_move_repr(m));
     }
 
     #[test]
@@ -964,6 +1049,22 @@ mod test {
                 (
                     "a1a8",
                     Box::new(|board| assert_eq!(board.castling(), Castling::BLACK_KINGSIDE)),
+                ),
+            ],
+        );
+
+        assert_sequence_of_legal_moves(
+            Board::try_parse_fen("r3k2r/8/8/8/8/1n6/8/R3K2R b KQkq - 0 1").unwrap(),
+            vec![
+                (
+                    "b3a1",
+                    Box::new(|board| {
+                        assert_eq!(board.castling(), Castling::WHITE_KINGSIDE | Castling::BLACK)
+                    }),
+                ),
+                (
+                    "h1h8",
+                    Box::new(|board| assert_eq!(board.castling(), Castling::BLACK_QUEENSIDE)),
                 ),
             ],
         );

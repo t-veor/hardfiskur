@@ -188,4 +188,11 @@ mod test {
             Err(ParseUCIMoveError::InvalidPromoTarget('x'))
         );
     }
+
+    #[test]
+    fn display_impl() {
+        assert_eq!(format!("{}", UCIMove::from_str("e2e4").unwrap()), "e2e4");
+        assert_eq!(format!("{}", UCIMove::from_str("b8c6").unwrap()), "b8c6");
+        assert_eq!(format!("{}", UCIMove::from_str("e7e8q").unwrap()), "e7e8q");
+    }
 }

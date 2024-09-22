@@ -59,13 +59,13 @@ pub struct Move(NonZeroU32);
 impl PartialOrd for Move {
     // Used for testing
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.0.get().swap_bytes().cmp(&other.0.get().swap_bytes()))
+        Some(self.cmp(&other))
     }
 }
 
 impl Ord for Move {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        self.0.get().swap_bytes().cmp(&other.0.get().swap_bytes())
     }
 }
 
