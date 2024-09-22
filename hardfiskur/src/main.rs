@@ -1,7 +1,7 @@
 use std::io::Cursor;
 
 use eframe::egui::{self, Id, Key, Layout, Vec2};
-use hardfiskur_core::board::{Board, BoardState, Color, DrawReason, Move, PieceType};
+use hardfiskur_core::board::{Board, BoardState, Color, DrawReason, Move};
 use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
 use rand::prelude::*;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
@@ -59,6 +59,7 @@ impl HardfiskurUI {
             };
             let sound = Decoder::new(Cursor::new(sound_file))
                 .unwrap()
+                .amplify(0.2)
                 .convert_samples();
 
             self.output_stream_handle.play_raw(sound).unwrap();
@@ -67,6 +68,13 @@ impl HardfiskurUI {
                 Some(san) => format!("{san}"),
                 None => "?".to_string(),
             });
+        }
+    }
+
+    fn undo_move(&mut self) {
+        if self.board.pop_move().is_some() {
+            self.playing = true;
+            self.move_history.pop();
         }
     }
 
@@ -125,11 +133,7 @@ impl eframe::App for HardfiskurUI {
             if ui.button("Random move").clicked()
                 || ctx.input(|input| input.key_pressed(Key::Space))
             {
-                if self.board.to_move().is_white() {
-                    if let Some(the_move) = random_move(&self.board) {
-                        self.make_move(the_move);
-                    }
-                } else if let Some(the_move) = random_move(&self.board) {
+                if let Some(the_move) = random_move(&self.board) {
                     self.make_move(the_move);
                 }
             }
@@ -138,11 +142,18 @@ impl eframe::App for HardfiskurUI {
                 self.reset();
             }
 
+            if ui.button("Undo move").clicked() {
+                self.undo_move();
+            }
+
             egui::ScrollArea::vertical()
                 .stick_to_bottom(true)
                 .show(ui, |ui| {
-                    egui::Grid::new("moves").show(ui, |ui| {
+                    egui::Grid::new("moves").striped(true).show(ui, |ui| {
                         for (i, m) in self.move_history.iter().enumerate() {
+                            if i % 2 == 0 {
+                                ui.label(format!("{}.", (i / 2) + 1));
+                            }
                             ui.label(m);
                             if i % 2 == 1 {
                                 ui.end_row();
@@ -157,136 +168,6 @@ impl eframe::App for HardfiskurUI {
 fn random_move(board: &Board) -> Option<Move> {
     let legal_moves = board.legal_moves();
     legal_moves.choose(&mut rand::thread_rng()).copied()
-}
-
-fn minimize_opp_moves2(board: &Board) -> Option<Move> {
-    let mut board = board.clone();
-    let legal_moves = board.legal_moves();
-
-    let mut best_moves = Vec::new();
-    let mut min_opp_moves = usize::MAX;
-
-    'outer: for m in legal_moves.iter().copied() {
-        board.push_move_unchecked(m);
-        let (opp_m, r) = board.legal_moves_and_meta();
-        let checkers = r.checker_count;
-        let opp_moves = opp_m.len();
-        board.pop_move();
-
-        // avoid stalemate
-        if checkers == 0 && opp_moves == 0 {
-            continue;
-        }
-
-        // avoid recaptures
-        for om in opp_m {
-            if om.to_square() == m.to_square() {
-                continue 'outer;
-            }
-        }
-
-        if opp_moves < min_opp_moves {
-            best_moves = vec![m];
-            min_opp_moves = opp_moves;
-        } else if opp_moves == min_opp_moves {
-            best_moves.push(m)
-        }
-    }
-
-    best_moves
-        .choose(&mut rand::thread_rng())
-        .copied()
-        .or_else(|| minimize_opp_moves(&board))
-}
-
-fn minimize_opp_moves(board: &Board) -> Option<Move> {
-    let mut board = board.clone();
-    let legal_moves = board.legal_moves();
-
-    let mut best_moves = Vec::new();
-    let mut min_opp_moves = usize::MAX;
-
-    for m in legal_moves.iter().copied() {
-        board.push_move_unchecked(m);
-        let (opp_m, r) = board.legal_moves_and_meta();
-        let checkers = r.checker_count;
-        let opp_moves = opp_m.len();
-        board.pop_move();
-
-        // avoid stalemate
-        if checkers == 0 && opp_moves == 0 {
-            continue;
-        }
-
-        if opp_moves < min_opp_moves {
-            best_moves = vec![m];
-            min_opp_moves = opp_moves;
-        } else if opp_moves == min_opp_moves {
-            best_moves.push(m)
-        }
-    }
-
-    best_moves
-        .choose(&mut rand::thread_rng())
-        .copied()
-        .or_else(|| random_move(&board))
-}
-
-fn min_king_distance(board: &Board) -> Option<Move> {
-    let mut board = board.clone();
-    let legal_moves = board.legal_moves();
-
-    let mut best_moves = Vec::new();
-    let mut min_distance = u32::MAX;
-
-    for m in legal_moves.iter().copied() {
-        board.push_move_unchecked(m);
-
-        let white_king = board.get_king(Color::White);
-        let black_king = board.get_king(Color::Black);
-
-        let king_distance = white_king.euclidean_distance_sq(black_king);
-
-        board.pop_move();
-
-        if king_distance < min_distance {
-            best_moves = vec![m];
-            min_distance = king_distance;
-        } else if king_distance == min_distance {
-            best_moves.push(m)
-        }
-    }
-
-    best_moves
-        .choose(&mut rand::thread_rng())
-        .copied()
-        .or_else(|| random_move(&board))
-}
-
-fn pawns_only(board: &Board) -> Option<Move> {
-    let legal_moves = board.legal_moves();
-
-    let pawn_captures: Vec<_> = legal_moves
-        .iter()
-        .filter(|m| m.piece().piece_type() == PieceType::Pawn && m.is_capture())
-        .copied()
-        .collect();
-
-    let pawn_moves: Vec<_> = legal_moves
-        .iter()
-        .filter(|m| m.piece().piece_type() == PieceType::Pawn)
-        .copied()
-        .collect();
-
-    pawn_captures
-        .choose(&mut rand::thread_rng())
-        .copied()
-        .or_else(|| {
-            pawn_moves
-                .choose(&mut rand::thread_rng())
-                .copied()
-                .or_else(|| minimize_opp_moves(board))
-        })
 }
 
 fn main() -> eframe::Result<()> {
