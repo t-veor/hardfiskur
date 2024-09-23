@@ -2,6 +2,7 @@ use std::io::Cursor;
 
 use eframe::egui::{self, Id, Key, Layout, Vec2};
 use hardfiskur_core::board::{Board, BoardState, Color, DrawReason, Move};
+use hardfiskur_engine::search::simple_search;
 use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
 use rand::prelude::*;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
@@ -69,8 +70,6 @@ impl HardfiskurUI {
                 None => "?".to_string(),
             });
         }
-
-        println!("{}", self.board);
     }
 
     fn undo_move(&mut self) {
@@ -135,7 +134,7 @@ impl eframe::App for HardfiskurUI {
             if ui.button("Random move").clicked()
                 || ctx.input(|input| input.key_pressed(Key::Space))
             {
-                if let Some(the_move) = random_move(&self.board) {
+                if let Some(the_move) = simple_search(&mut self.board.clone()) {
                     self.make_move(the_move);
                 }
             }

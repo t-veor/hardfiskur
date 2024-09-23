@@ -5,10 +5,9 @@ use bitflags::bitflags;
 
 use crate::board::{Bitboard, BoardRepr, Castling, Color, Move, Piece, PieceType, Square};
 
-use self::{
-    lookups::Lookups,
-    pseudo_legal::{black_pawn_attacks, white_pawn_attacks},
-};
+use lookups::Lookups;
+
+pub use pseudo_legal::{black_pawn_attacks, white_pawn_attacks};
 
 pub mod bitboard_utils;
 pub mod lookups;

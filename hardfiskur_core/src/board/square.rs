@@ -311,6 +311,21 @@ impl Square {
     pub fn parity(self) -> u8 {
         (self.file() + self.rank()) % 2
     }
+
+    /// Returns the square which is the reflection of this about the horizontal
+    /// axis of the board (i.e. between the 4th and 5th ranks).
+    pub const fn flip(self) -> Self {
+        // Squares are represented as 0bRRRFFF, where RRR is the rank of the
+        // square, and FFF is the file.
+
+        // We want to leave the file the same and just set the rank to (7 -
+        // rank). If the rank were stored as a 3-bit unsigned integer, then (7 -
+        // rank) is actually equivalent to ~rank.
+
+        // We can therefore flip the rank by performing an xor with 0b111000
+        // (56).
+        Self(self.0 ^ 0b111000)
+    }
 }
 
 impl Display for Square {

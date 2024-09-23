@@ -24,7 +24,7 @@ pub use square::{ParseSquareError, Square};
 pub use uci_move::{ParseUCIMoveError, UCIMove};
 pub use zobrist::ZobristHash;
 
-use crate::move_gen::{MoveGenFlags, MoveGenResult, MoveGenerator, MoveVec};
+use crate::move_gen::{self, MoveGenFlags, MoveGenResult, MoveGenerator, MoveVec};
 
 pub const STARTING_POSITION_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -449,6 +449,7 @@ impl Board {
     /// current exact position has occurred at least twice before, taking into
     /// account castling rights and en passant.
     pub fn check_draw_by_repetition(&self) -> bool {
+        return false;
         #[derive(Debug, Clone, Copy)]
         struct ChainListItem {
             from: Square,
@@ -501,6 +502,8 @@ impl Board {
                         });
                     }
                 }
+            } else {
+                break;
             }
         }
 
@@ -565,6 +568,36 @@ impl Board {
         } else {
             false
         }
+    }
+
+    // TODO: Document
+    pub fn last_move(&self) -> Option<Move> {
+        self.move_history
+            .last()
+            .and_then(|unmake_data| unmake_data.the_move)
+    }
+
+    pub fn attacked_by_pawn(&self, current_player: Color, square: Square) -> bool {
+        let attacked_bb = match current_player {
+            Color::White => move_gen::black_pawn_attacks(self.board[Piece::BLACK_PAWN]),
+            Color::Black => move_gen::white_pawn_attacks(self.board[Piece::WHITE_PAWN]),
+        };
+        attacked_bb.get(square)
+    }
+
+    pub fn current_position_repeated_at_least(&self, times: u32) -> bool {
+        let mut repetitions = 0;
+        for (unmake_data, _) in self.move_history.iter().rev().zip(0..self.halfmove_clock) {
+            if unmake_data.zobrist_hash == self.zobrist_hash {
+                repetitions += 1;
+
+                if repetitions >= times {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     fn non_board_hash(
