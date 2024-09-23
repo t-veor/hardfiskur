@@ -31,8 +31,10 @@ pub fn simple_negamax_search(
         };
     }
 
-    // Handle repetitions
-    if board.current_position_repeated_at_least(if ply_from_root > 2 { 1 } else { 2 }) {
+    // Handle repetitions & fifty-move rule
+    if board.current_position_repeated_at_least(if ply_from_root > 2 { 1 } else { 2 })
+        || board.halfmove_clock() >= 100
+    {
         return (Score(0), None);
     }
 

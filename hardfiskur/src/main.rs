@@ -128,14 +128,21 @@ impl eframe::App for HardfiskurUI {
             );
         });
 
+        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+            ui.label(self.board.fen());
+            ui.label(&format!("{:?}", self.board.zobrist_hash()));
+        });
+
         egui::SidePanel::right("right_panel").show(ctx, |ui| {
             ui.label(&format!("State: {}", self.state_text));
 
             if ui.button("Random move").clicked()
                 || ctx.input(|input| input.key_pressed(Key::Space))
             {
-                if let Some(the_move) = simple_search(&mut self.board.clone()) {
-                    self.make_move(the_move);
+                if self.playing {
+                    if let Some(the_move) = simple_search(&mut self.board.clone()) {
+                        self.make_move(the_move);
+                    }
                 }
             }
 

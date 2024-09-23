@@ -172,6 +172,10 @@ impl Board {
         self.fullmoves
     }
 
+    pub fn zobrist_hash(&self) -> ZobristHash {
+        self.zobrist_hash
+    }
+
     /// Returns an iterator over all the pieces on the board and the square
     /// they're on.
     ///
@@ -449,7 +453,6 @@ impl Board {
     /// current exact position has occurred at least twice before, taking into
     /// account castling rights and en passant.
     pub fn check_draw_by_repetition(&self) -> bool {
-        return false;
         #[derive(Debug, Clone, Copy)]
         struct ChainListItem {
             from: Square,
@@ -468,42 +471,44 @@ impl Board {
                 None => continue,
             };
 
-            if m.is_reversible() {
-                match chain_list.iter().position(|i| i.from == m.to_square()) {
-                    Some(i) => {
-                        let item = &mut chain_list[i];
-                        // Concat moves
-                        item.from = m.from_square();
+            if !m.is_reversible() {
+                break;
+            }
 
-                        if item.from == item.to {
-                            // Remove this from the chain list (since it's now a
-                            // null entry anyway)
-                            chain_list.swap_remove(i);
+            match chain_list.iter().position(|i| i.from == m.to_square()) {
+                Some(i) => {
+                    let item = &mut chain_list[i];
+                    // Concat moves
+                    item.from = m.from_square();
 
-                            if chain_list.is_empty() {
-                                // Chain list being empty means every piece is
-                                // back to its original position at this point.
-                                repetitions += 1;
-                                earliest_repetition_found = move_history_pos;
+                    if item.from == item.to {
+                        // Remove this from the chain list (since it's now a
+                        // null entry anyway)
+                        chain_list.swap_remove(i);
 
-                                // (The current position counts as a repetition,
-                                // so we check for == 2 rather than == 3)
-                                if repetitions >= 2 {
-                                    break;
-                                }
+                        // Chain list being empty means every piece is back to
+                        // its original position at this point.
+                        // This is a repetition if the side to move is also the
+                        // same...
+                        if chain_list.is_empty() && m.piece().color() == self.to_move {
+                            repetitions += 1;
+                            earliest_repetition_found = move_history_pos;
+
+                            // (The current position counts as a repetition,
+                            // so we check for == 2 rather than == 3)
+                            if repetitions >= 2 {
+                                break;
                             }
                         }
                     }
-                    None => {
-                        debug_assert!(m.from_square() != m.to_square());
-                        chain_list.push(ChainListItem {
-                            from: m.from_square(),
-                            to: m.to_square(),
-                        });
-                    }
                 }
-            } else {
-                break;
+                None => {
+                    debug_assert!(m.from_square() != m.to_square());
+                    chain_list.push(ChainListItem {
+                        from: m.from_square(),
+                        to: m.to_square(),
+                    });
+                }
             }
         }
 
@@ -587,7 +592,14 @@ impl Board {
 
     pub fn current_position_repeated_at_least(&self, times: u32) -> bool {
         let mut repetitions = 0;
-        for (unmake_data, _) in self.move_history.iter().rev().zip(0..self.halfmove_clock) {
+        for (unmake_data, _) in self
+            .move_history
+            .iter()
+            .rev()
+            .zip(0..self.halfmove_clock)
+            .skip(1)
+            .step_by(2)
+        {
             if unmake_data.zobrist_hash == self.zobrist_hash {
                 repetitions += 1;
 
