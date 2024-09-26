@@ -54,16 +54,4 @@ impl<'a, 'b> SpaceSepFormatter<'a, 'b> {
 
         Ok(())
     }
-
-    pub fn push_option_ref<T: Display>(
-        &mut self,
-        name: &str,
-        value: Option<&T>,
-    ) -> std::fmt::Result {
-        if let Some(value) = value {
-            self.push_pair(name, value);
-        }
-
-        Ok(())
-    }
 }

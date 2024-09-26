@@ -1,10 +1,15 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr, time::Duration};
 
 use hardfiskur_core::board::UCIMove;
+use thiserror::Error;
 
 use crate::{
-    uci_info::UCIInfo, uci_option_config::UCIOptionConfig, uci_position::UCIPosition,
-    uci_search_control::UCISearchControl, uci_time_control::UCITimeControl,
+    parse_utils::{split_tokens, try_parse_many, try_parse_next, TokenSlice},
+    uci_info::UCIInfo,
+    uci_option_config::UCIOptionConfig,
+    uci_position::UCIPosition,
+    uci_search_control::UCISearchControl,
+    uci_time_control::UCITimeControl,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,6 +84,115 @@ pub enum UCIMessage {
 
     /// `option ...`
     Option(UCIOptionConfig),
+}
+
+impl UCIMessage {
+    pub fn parse_go(mut tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
+        let mut search_control: Option<UCISearchControl> = None;
+
+        let mut infinite = false;
+        let mut move_time = None;
+
+        let mut white_time = None;
+        let mut black_time = None;
+        let mut white_increment = None;
+        let mut black_increment = None;
+        let mut moves_to_go = None;
+
+        let mut ponder = false;
+
+        while !tokens.is_empty() {
+            let head = tokens[0].0;
+            tokens = &tokens[1..];
+
+            match head {
+                "searchmoves" => {
+                    let search_moves = try_parse_many(&mut tokens);
+                    if !search_moves.is_empty() {
+                        search_control
+                            .get_or_insert_with(Default::default)
+                            .search_moves = search_moves;
+                    }
+                }
+                "ponder" => ponder = true,
+                "wtime" => {
+                    if let Some(ms) = try_parse_next(&mut tokens) {
+                        white_time = Some(Duration::from_millis(ms));
+                    }
+                }
+                "btime" => {
+                    if let Some(ms) = try_parse_next(&mut tokens) {
+                        black_time = Some(Duration::from_millis(ms));
+                    }
+                }
+                "winc" => {
+                    if let Some(ms) = try_parse_next(&mut tokens) {
+                        white_increment = Some(Duration::from_millis(ms));
+                    }
+                }
+                "binc" => {
+                    if let Some(ms) = try_parse_next(&mut tokens) {
+                        black_increment = Some(Duration::from_millis(ms));
+                    }
+                }
+                "movestogo" => moves_to_go = try_parse_next(&mut tokens).or(moves_to_go),
+                "depth" => {
+                    if let Some(depth) = try_parse_next(&mut tokens) {
+                        search_control.get_or_insert_with(Default::default).depth = Some(depth);
+                    }
+                }
+                "nodes" => {
+                    if let Some(nodes) = try_parse_next(&mut tokens) {
+                        search_control.get_or_insert_with(Default::default).nodes = Some(nodes);
+                    }
+                }
+                "mate" => {
+                    if let Some(mates) = try_parse_next(&mut tokens) {
+                        search_control.get_or_insert_with(Default::default).mate = Some(mates);
+                    }
+                }
+                "movetime" => {
+                    if let Some(ms) = try_parse_next(&mut tokens) {
+                        move_time = Some(Duration::from_millis(ms));
+                    }
+                }
+                "infinite" => infinite = true,
+
+                _ => (),
+            }
+        }
+
+        let time_control = if infinite {
+            Some(UCITimeControl::Infinite)
+        } else if let Some(move_time) = move_time {
+            Some(UCITimeControl::MoveTime(move_time))
+        } else if white_time.is_some()
+            || black_time.is_some()
+            || white_increment.is_some()
+            || black_increment.is_some()
+            || moves_to_go.is_some()
+        {
+            Some(UCITimeControl::TimeLeft {
+                white_time,
+                black_time,
+                white_increment,
+                black_increment,
+                moves_to_go,
+            })
+        } else if ponder {
+            Some(UCITimeControl::Ponder)
+        } else {
+            None
+        };
+
+        Ok((
+            tokens,
+            Self::Go {
+                time_control,
+                search_control,
+            },
+        ))
+    }
 }
 
 impl Display for UCIMessage {
@@ -177,6 +291,41 @@ impl Display for UCIMessage {
     }
 }
 
+impl FromStr for UCIMessage {
+    type Err = ParseUCIMessageError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let tokens = split_tokens(s);
+        let mut tokens = &tokens[..];
+
+        while !tokens.is_empty() {
+            let head = tokens[0].0;
+            tokens = &tokens[1..];
+
+            match head {
+                "uci" => return Ok(Self::UCI),
+
+                "debug" => {
+                    let debug = tokens.get(0).map(|(s, _)| *s == "on").unwrap_or(true);
+                    return Ok(Self::Debug(debug));
+                }
+
+                "isready" => return Ok(Self::IsReady),
+
+                "setoption" => {
+                    todo!()
+                }
+
+                // Skip this token and look to see if the remainder can be
+                // interpreted as a command. This is mandated by the spec
+                _ => (),
+            }
+        }
+
+        todo!()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProtectionState {
     Checking,
@@ -193,3 +342,7 @@ impl Display for ProtectionState {
         })
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("Error parsing UCI message")]
+pub struct ParseUCIMessageError;

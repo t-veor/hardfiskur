@@ -4,7 +4,7 @@ use hardfiskur_core::board::UCIMove;
 
 use crate::format_utils::SpaceSepFormatter;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct UCISearchControl {
     pub search_moves: Vec<UCIMove>,
     pub mate: Option<u32>,

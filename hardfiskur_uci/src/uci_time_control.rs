@@ -4,8 +4,8 @@ use crate::format_utils::SpaceSepFormatter;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UCITimeControl {
-    Ponder,
     Infinite,
+    MoveTime(Duration),
     TimeLeft {
         white_time: Option<Duration>,
         black_time: Option<Duration>,
@@ -13,7 +13,7 @@ pub enum UCITimeControl {
         black_increment: Option<Duration>,
         moves_to_go: Option<u32>,
     },
-    MoveTime(Duration),
+    Ponder,
 }
 
 impl Display for UCITimeControl {
