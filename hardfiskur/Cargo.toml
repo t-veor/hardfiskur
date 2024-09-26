@@ -8,6 +8,7 @@ default-run = "hardfiskur"
 eframe = "0.28"
 rand = "0.8"
 rodio = "0.19"
+threadpool = "1.8"
 hardfiskur_core = { path = "../hardfiskur_core" }
 hardfiskur_ui = { path = "../hardfiskur_ui" }
 hardfiskur_engine = { path = "../hardfiskur_engine" }

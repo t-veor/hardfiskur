@@ -1,13 +1,14 @@
-use std::io::Cursor;
+mod search_thread;
+mod sfx_stream;
 
 use eframe::egui::{self, Id, Key, Layout, Vec2};
 use hardfiskur_core::board::{Board, BoardState, Color, DrawReason, Move};
-use hardfiskur_engine::search::simple_search;
 use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
-use rand::prelude::*;
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 
-struct HardfiskurUI {
+use search_thread::SearchThread;
+use sfx_stream::SFXStream;
+
+struct HardfiskurApp {
     chess_ui: ChessBoard,
     board: Board,
 
@@ -17,14 +18,12 @@ struct HardfiskurUI {
     playing: bool,
     state_text: String,
 
-    _output_stream: OutputStream,
-    output_stream_handle: OutputStreamHandle,
+    search_thread: SearchThread,
+    sfx_stream: SFXStream,
 }
 
-impl HardfiskurUI {
+impl HardfiskurApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let (stream, handle) = OutputStream::try_default().unwrap();
-
         Self {
             chess_ui: ChessBoard::new(Id::new("hardfiskur_ui_board")),
             board: Board::starting_position(),
@@ -35,14 +34,24 @@ impl HardfiskurUI {
             playing: true,
             state_text: "".to_string(),
 
-            _output_stream: stream,
-            output_stream_handle: handle,
+            search_thread: SearchThread::new(),
+            sfx_stream: SFXStream::new(),
         }
     }
 
     fn reset(&mut self) {
         self.board = Board::starting_position();
         self.move_history.clear();
+    }
+
+    fn start_search(&mut self, ctx: &egui::Context) {
+        if !self.search_thread.searching() {
+            let ctx = ctx.clone();
+            self.search_thread
+                .send_search_request(&self.board, move || {
+                    ctx.request_repaint();
+                });
+        }
     }
 
     fn make_move(&mut self, the_move: Move) {
@@ -53,23 +62,19 @@ impl HardfiskurUI {
         let san = self.board.get_san(the_move);
 
         if self.board.push_move_repr(the_move) {
-            let sound_file = if the_move.is_capture() {
-                include_bytes!("Capture.ogg").as_slice()
+            if the_move.is_capture() {
+                self.sfx_stream.play_capture();
             } else {
-                include_bytes!("Move.ogg").as_slice()
+                self.sfx_stream.play_move();
             };
-            let sound = Decoder::new(Cursor::new(sound_file))
-                .unwrap()
-                .amplify(0.2)
-                .convert_samples();
-
-            self.output_stream_handle.play_raw(sound).unwrap();
 
             self.move_history.push(match san {
                 Some(san) => format!("{san}"),
                 None => "?".to_string(),
             });
         }
+
+        self.search_thread.cancel_search();
     }
 
     fn undo_move(&mut self) {
@@ -100,8 +105,12 @@ impl HardfiskurUI {
     }
 }
 
-impl eframe::App for HardfiskurUI {
+impl eframe::App for HardfiskurApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if let Some(m) = self.search_thread.try_receive_move() {
+            self.make_move(m);
+        }
+
         self.update_playing();
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -136,13 +145,10 @@ impl eframe::App for HardfiskurUI {
         egui::SidePanel::right("right_panel").show(ctx, |ui| {
             ui.label(&format!("State: {}", self.state_text));
 
-            if ui.button("Random move").clicked()
-                || ctx.input(|input| input.key_pressed(Key::Space))
+            if ui.button("Make move").clicked() || ctx.input(|input| input.key_pressed(Key::Space))
             {
                 if self.playing {
-                    if let Some(the_move) = simple_search(&mut self.board.clone()) {
-                        self.make_move(the_move);
-                    }
+                    self.start_search(ctx);
                 }
             }
 
@@ -173,11 +179,6 @@ impl eframe::App for HardfiskurUI {
     }
 }
 
-fn random_move(board: &Board) -> Option<Move> {
-    let legal_moves = board.legal_moves();
-    legal_moves.choose(&mut rand::thread_rng()).copied()
-}
-
 fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Harðfiskur",
@@ -185,6 +186,6 @@ fn main() -> eframe::Result<()> {
             viewport: egui::ViewportBuilder::default().with_inner_size(Vec2::new(1024.0, 768.0)),
             ..Default::default()
         },
-        Box::new(|cc| Ok(Box::new(HardfiskurUI::new(cc)))),
+        Box::new(|cc| Ok(Box::new(HardfiskurApp::new(cc)))),
     )
 }
