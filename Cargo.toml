@@ -1,14 +1,14 @@
 [workspace]
 members = [
     "hardfiskur_core",
+    "hardfiskur_engine",
     "hardfiskur_uci",
     "hardfiskur_ui",
-
-    "hardfiskur",
+    "hardfiskur_app",
 
     "find_magics",
     "bitboard_attack_viewer",
     "perft",
-    "perft_testsuite", "hardfiskur_engine",
+    "perft_testsuite",
 ]
 resolver = "2"
