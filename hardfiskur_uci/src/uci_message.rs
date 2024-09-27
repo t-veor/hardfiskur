@@ -4,10 +4,7 @@ use hardfiskur_core::board::UCIMove;
 use thiserror::Error;
 
 use crate::{
-    parse_utils::{
-        join_tokens, parse_string_option, split_tokens, take_until, try_parse_many, try_parse_next,
-        Token, TokenSlice,
-    },
+    parse_utils::{parse_string_option, split_tokens, try_parse_many, try_parse_next, TokenSlice},
     uci_info::UCIInfo,
     uci_option_config::UCIOptionConfig,
     uci_position::UCIPosition,
