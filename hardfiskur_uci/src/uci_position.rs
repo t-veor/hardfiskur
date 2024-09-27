@@ -1,9 +1,16 @@
 use std::fmt::Display;
 
 use hardfiskur_core::board::UCIMove;
+use nom::{
+    branch::alt,
+    combinator::{opt, value},
+    multi::{count, many0},
+    sequence::preceded,
+    IResult,
+};
 use thiserror::Error;
 
-use crate::parse_utils::{join_tokens, TokenSlice};
+use crate::parse_utils::{parser_uci_move, token, token_tag};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UCIPosition {
@@ -28,23 +35,17 @@ impl Display for UCIPosition {
 }
 
 impl UCIPosition {
-    pub fn parse(tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIPositionError> {
-        let (tokens, base) = UCIPositionBase::parse(tokens)?;
+    pub fn parser(input: &str) -> IResult<&str, Self> {
+        let (input, base) = UCIPositionBase::parser(input)?;
+        let (input, moves) = opt(preceded(token_tag("moves"), many0(parser_uci_move)))(input)?;
 
-        let (tokens, moves) = match tokens {
-            [("moves", _), rest @ ..] => {
-                let mut moves = Vec::<UCIMove>::with_capacity(rest.len());
-                for (m, _) in rest {
-                    if let Ok(m) = m.parse() {
-                        moves.push(m);
-                    }
-                }
-                ([].as_slice(), moves)
-            }
-            rest => (rest, Vec::new()),
-        };
-
-        Ok((tokens, Self { base, moves }))
+        Ok((
+            input,
+            Self {
+                base,
+                moves: moves.unwrap_or_default(),
+            },
+        ))
     }
 }
 
@@ -55,24 +56,18 @@ pub enum UCIPositionBase {
 }
 
 impl UCIPositionBase {
-    pub fn parse(tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIPositionError> {
-        match tokens {
-            [("startpos", _), rest @ ..] => Ok((rest, Self::StartPos)),
-            [("fen", _), board, color, castling, en_passant, halfmove_clock, fullmoves, rest @ ..] => {
-                Ok((
-                    rest,
-                    Self::Fen(join_tokens(&[
-                        *board,
-                        *color,
-                        *castling,
-                        *en_passant,
-                        *halfmove_clock,
-                        *fullmoves,
-                    ])),
-                ))
-            }
-            _ => Err(ParseUCIPositionError),
-        }
+    pub fn parser(input: &str) -> IResult<&str, Self> {
+        alt((
+            value(Self::StartPos, token_tag("startpos")),
+            Self::parser_fen,
+        ))(input)
+    }
+
+    fn parser_fen(input: &str) -> IResult<&str, Self> {
+        let (input, _) = token_tag("fen")(input)?;
+        let (input, fen_parts) = count(token, 6)(input)?;
+
+        Ok((input, Self::Fen(fen_parts.join(" "))))
     }
 }
 

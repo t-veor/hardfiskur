@@ -1,10 +1,21 @@
 use std::{fmt::Display, str::FromStr, time::Duration};
 
 use hardfiskur_core::board::UCIMove;
+use nom::{
+    branch::alt,
+    character::complete::{u32, u64},
+    combinator::{success, verify},
+    multi::{many0, many_till},
+    sequence::preceded,
+    IResult, Parser,
+};
 use thiserror::Error;
 
 use crate::{
-    parse_utils::{parse_string_option, split_tokens, try_parse_many, try_parse_next, TokenSlice},
+    parse_utils::{
+        keyworded_options, parser_uci_move, take_tokens_till, token, token_tag,
+        try_parse_and_discard_rest,
+    },
     uci_info::UCIInfo,
     uci_option_config::UCIOptionConfig,
     uci_position::UCIPosition,
@@ -87,77 +98,116 @@ pub enum UCIMessage {
 }
 
 impl UCIMessage {
-    fn parse_debug(tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
-        let debug = tokens.get(0).map(|(s, _)| *s == "on").unwrap_or(true);
-        Ok((&[], Self::Debug(debug)))
+    fn parser_debug_body(input: &str) -> IResult<&str, Self> {
+        let on = match token(input) {
+            Ok((_, s)) => s == "on",
+            Err(_) => true,
+        };
+
+        Ok(("", Self::Debug(on)))
     }
 
-    fn parse_set_option(
-        mut tokens: TokenSlice,
-    ) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
-        let is_keyword = |t: &str| matches!(t, "name" | "value");
+    fn parser_set_option_body(input: &str) -> IResult<&str, Self> {
+        let (input, _) = token_tag("name")(input)?;
+        let (input, name) = take_tokens_till(token_tag("value"))(input)?;
 
-        let mut name = None;
-        let mut value = None;
-
-        while !tokens.is_empty() {
-            let head = tokens[0].0;
-            tokens = &tokens[1..];
-            match head {
-                "name" => {
-                    let (rest, name_str) = parse_string_option(is_keyword, tokens);
-                    name = Some(name_str);
-                    tokens = rest;
-                }
-                "value" => {
-                    let (rest, value_str) = parse_string_option(is_keyword, tokens);
-                    value = Some(value_str);
-                    tokens = rest;
-                }
-
-                _ => (),
-            }
-        }
-
-        if let Some(name) = name {
-            Ok((&[], Self::SetOption { name, value }))
+        let (input, value) = if let Ok((input, _)) = token_tag("value")(input) {
+            (input, Some(input.to_string()))
         } else {
-            Err(ParseUCIMessageError)
-        }
+            (input, None)
+        };
+
+        Ok((
+            input,
+            Self::SetOption {
+                name: name.to_string(),
+                value,
+            },
+        ))
     }
 
-    fn parse_register(mut tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
-        let is_keyword = |t: &str| matches!(t, "later" | "name" | "code");
+    fn parser_register_body(input: &str) -> IResult<&str, Self> {
+        if token_tag("later")(input).is_ok() {
+            // Shortcut, return later = true
+            return Ok((
+                "",
+                Self::Register {
+                    later: true,
+                    name: None,
+                    code: None,
+                },
+            ));
+        }
 
-        let mut later = false;
         let mut name = None;
         let mut code = None;
 
-        while !tokens.is_empty() {
-            let head = tokens[0].0;
-            tokens = &tokens[1..];
-            match head {
-                "later" => later = true,
-                "name" => {
-                    let (rest, name_str) = parse_string_option(is_keyword, tokens);
-                    name = Some(name_str);
-                    tokens = rest;
-                }
-                "code" => {
-                    let (rest, code_str) = parse_string_option(is_keyword, tokens);
-                    code = Some(code_str);
-                    tokens = rest;
+        let mut name_found = false;
+        let mut code_found = false;
+
+        let (mut input, _) =
+            take_tokens_till(verify(token, |s| matches!(s, "name" | "code")))(input)?;
+
+        while !input.is_empty() {
+            match verify(token, |s| matches!(s, "name" | "code"))(input) {
+                Ok((rest, t)) => {
+                    match t {
+                        "name" => name_found = true,
+                        _ => code_found = true,
+                    }
+
+                    let (rest, value) = take_tokens_till(verify(token, |s: &str| {
+                        !name_found && s == "name" || !code_found && s == "code"
+                    }))(rest)?;
+
+                    match t {
+                        "name" => name = Some(value.to_string()),
+                        _ => code = Some(value.to_string()),
+                    }
+
+                    input = rest;
                 }
 
-                _ => (),
+                // Must be EOF here, as we always go until we hit "name", "code", or EOF
+                Err(_) => break,
             }
         }
 
-        Ok((&[], Self::Register { later, name, code }))
+        Ok((
+            input,
+            Self::Register {
+                later: false,
+                name,
+                code,
+            },
+        ))
     }
 
-    fn parse_go(mut tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
-        let mut search_control: Option<UCISearchControl> = None;
+    fn parser_go_body(input: &str) -> IResult<&str, Self> {
+        let is_keyword = verify(token, |&s| {
+            matches!(
+                s,
+                "searchmoves"
+                    | "ponder"
+                    | "wtime"
+                    | "btime"
+                    | "winc"
+                    | "binc"
+                    | "movestogo"
+                    | "depth"
+                    | "nodes"
+                    | "mate"
+                    | "movetime"
+                    | "infinite"
+            )
+        });
+
+        let (input, options) = keyworded_options(is_keyword)(input)?;
+
+        let mut search_moves = Vec::new();
+        let mut mate = None;
+        let mut depth = None;
+        let mut nodes = None;
 
         let mut infinite = false;
         let mut move_time = None;
@@ -170,66 +220,50 @@ impl UCIMessage {
 
         let mut ponder = false;
 
-        while !tokens.is_empty() {
-            let head = tokens[0].0;
-            tokens = &tokens[1..];
-
-            match head {
+        for (option_name, value) in options {
+            match option_name {
                 "searchmoves" => {
-                    let search_moves = try_parse_many(&mut tokens);
-                    if !search_moves.is_empty() {
-                        search_control
-                            .get_or_insert_with(Default::default)
-                            .search_moves = search_moves;
-                    }
+                    search_moves = try_parse_and_discard_rest(many0(parser_uci_move), value)
+                        .unwrap_or_default()
                 }
                 "ponder" => ponder = true,
                 "wtime" => {
-                    if let Some(ms) = try_parse_next(&mut tokens) {
-                        white_time = Some(Duration::from_millis(ms));
-                    }
+                    white_time = try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
                 }
                 "btime" => {
-                    if let Some(ms) = try_parse_next(&mut tokens) {
-                        black_time = Some(Duration::from_millis(ms));
-                    }
+                    black_time = try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
                 }
                 "winc" => {
-                    if let Some(ms) = try_parse_next(&mut tokens) {
-                        white_increment = Some(Duration::from_millis(ms));
-                    }
+                    white_increment =
+                        try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
                 }
                 "binc" => {
-                    if let Some(ms) = try_parse_next(&mut tokens) {
-                        black_increment = Some(Duration::from_millis(ms));
-                    }
+                    black_increment =
+                        try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
                 }
-                "movestogo" => moves_to_go = try_parse_next(&mut tokens).or(moves_to_go),
-                "depth" => {
-                    if let Some(depth) = try_parse_next(&mut tokens) {
-                        search_control.get_or_insert_with(Default::default).depth = Some(depth);
-                    }
-                }
-                "nodes" => {
-                    if let Some(nodes) = try_parse_next(&mut tokens) {
-                        search_control.get_or_insert_with(Default::default).nodes = Some(nodes);
-                    }
-                }
-                "mate" => {
-                    if let Some(mates) = try_parse_next(&mut tokens) {
-                        search_control.get_or_insert_with(Default::default).mate = Some(mates);
-                    }
-                }
+                "movestogo" => moves_to_go = try_parse_and_discard_rest(u32, value),
+                "depth" => depth = try_parse_and_discard_rest(u32, value),
+                "nodes" => nodes = try_parse_and_discard_rest(u64, value),
+                "mate" => mate = try_parse_and_discard_rest(u32, value),
                 "movetime" => {
-                    if let Some(ms) = try_parse_next(&mut tokens) {
-                        move_time = Some(Duration::from_millis(ms));
-                    }
+                    move_time = try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
                 }
                 "infinite" => infinite = true,
-
-                _ => (),
+                _ => unreachable!(),
             }
         }
+
+        let search_control =
+            if !search_moves.is_empty() || mate.is_some() || depth.is_some() || nodes.is_some() {
+                Some(UCISearchControl {
+                    search_moves,
+                    mate,
+                    depth,
+                    nodes,
+                })
+            } else {
+                None
+            };
 
         let time_control = if infinite {
             Some(UCITimeControl::Infinite)
@@ -255,7 +289,7 @@ impl UCIMessage {
         };
 
         Ok((
-            tokens,
+            input,
             Self::Go {
                 time_control,
                 search_control,
@@ -364,49 +398,32 @@ impl FromStr for UCIMessage {
     type Err = ParseUCIMessageError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let tokens = split_tokens(s);
-        let mut tokens = &tokens[..];
+        let command_parser = alt((
+            preceded(token_tag("uci"), success(Self::UCI)),
+            preceded(token_tag("debug"), Self::parser_debug_body),
+            preceded(token_tag("isready"), success(Self::IsReady)),
+            preceded(token_tag("setoption"), Self::parser_set_option_body),
+            preceded(token_tag("register"), Self::parser_register_body),
+            preceded(token_tag("ucinewgame"), success(Self::UCINewGame)),
+            preceded(
+                token_tag("position"),
+                UCIPosition::parser.map(Self::Position),
+            ),
+            preceded(token_tag("go"), Self::parser_go_body),
+            preceded(token_tag("stop"), success(Self::Stop)),
+            preceded(token_tag("ponderhit"), success(Self::PonderHit)),
+            preceded(token_tag("quit"), success(Self::Quit)),
+            // TODO: parse engine -> gui commands
+        ));
 
-        while !tokens.is_empty() {
-            let head = tokens[0].0;
-            tokens = &tokens[1..];
+        // many_till(token, ...) skips any initial tokens it couldn't parse.
+        // This behavior is mandated by the spec
+        let (_, (_, message)) = many_till(token, command_parser)
+            .parse(s)
+            .map_err(|_| ParseUCIMessageError)?;
 
-            match head {
-                "uci" => return Ok(Self::UCI),
-
-                "debug" => return Ok(Self::parse_debug(tokens)?.1),
-
-                "isready" => return Ok(Self::IsReady),
-
-                "setoption" => return Ok(Self::parse_set_option(tokens)?.1),
-
-                "register" => return Ok(Self::parse_register(tokens)?.1),
-
-                "ucinewgame" => return Ok(Self::UCINewGame),
-
-                "position" => {
-                    return Ok(Self::Position(
-                        UCIPosition::parse(tokens)
-                            .map_err(|_| ParseUCIMessageError)?
-                            .1,
-                    ))
-                }
-
-                "go" => return Ok(Self::parse_go(tokens)?.1),
-
-                "stop" => return Ok(Self::Stop),
-
-                "ponderhit" => return Ok(Self::PonderHit),
-
-                "quit" => return Ok(Self::Quit),
-
-                // Skip this token and look to see if the remainder can be
-                // interpreted as a command. This is mandated by the spec
-                _ => (),
-            }
-        }
-
-        Err(ParseUCIMessageError)
+        // Ignore unparseable stuff afterwards
+        Ok(message)
     }
 }
 

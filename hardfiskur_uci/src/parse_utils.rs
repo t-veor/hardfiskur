@@ -1,87 +1,104 @@
 use std::str::FromStr;
 
-pub type Token<'a> = (&'a str, &'a str);
-pub type TokenSlice<'a> = &'a [Token<'a>];
+use hardfiskur_core::board::UCIMove;
+use nom::{
+    bytes::complete::take_till1,
+    character::complete::space0,
+    combinator::fail,
+    error::{context, Error, ErrorKind, ParseError},
+    error_position, IResult, Parser,
+};
 
-pub fn split_tokens(s: &str) -> Vec<Token> {
-    let s = s.trim_ascii_start();
+pub fn token(input: &str) -> IResult<&str, &str> {
+    let (input, (_, result, _)) = token_full(input)?;
+    Ok((input, result))
+}
 
-    let mut spans = Vec::new();
+pub fn token_full(input: &str) -> IResult<&str, (&str, &str, &str)> {
+    let (input, preceding_ws) = space0(input)?;
+    let (input, result) = take_till1(|c: char| c.is_ascii_whitespace())(input)?;
+    let (input, following_ws) = space0(input)?;
 
-    let mut last_span_start = 0;
-    let mut last_is_whitespace = false;
+    Ok((input, (preceding_ws, result, following_ws)))
+}
 
-    for (i, b) in s.bytes().enumerate() {
-        if last_is_whitespace != b.is_ascii_whitespace() {
-            if last_span_start < i {
-                let span = &s[last_span_start..i];
-                spans.push(span);
+pub fn token_tag<'a>(tag: &'a str) -> impl Fn(&str) -> IResult<&str, &str> + 'a {
+    move |input: &str| -> IResult<&str, &str> {
+        let (rest, t) = token(input)?;
+        if t == tag {
+            Ok((rest, t))
+        } else {
+            Err(nom::Err::Error(error_position!(input, ErrorKind::Tag)))
+        }
+    }
+}
+
+pub fn keyworded_options<'a, E: ParseError<&'a str>>(
+    mut keyword_parser: impl Parser<&'a str, &'a str, E>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<(&'a str, &'a str)>> {
+    move |mut input: &str| {
+        let mut options = Vec::new();
+
+        while !input.is_empty() {
+            let rest = if let Ok((rest, keyword)) = keyword_parser.parse(input) {
+                let (rest, value) = take_tokens_till_ref(&mut keyword_parser)(rest)?;
+                options.push((keyword, value));
+                rest
+            } else {
+                // This should only happen on the first iteration -- just skip
+                // tokens until we get to a keyword.
+                let (rest, _) = take_tokens_till_ref(&mut keyword_parser)(input)?;
+                rest
+            };
+            input = rest;
+        }
+
+        Ok((input, options))
+    }
+}
+
+pub fn take_tokens_till<'a, E: ParseError<&'a str>>(
+    mut recognizer: impl Parser<&'a str, &'a str, E>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str> {
+    move |input: &str| take_tokens_till_ref(&mut recognizer)(input)
+}
+
+pub fn take_tokens_till_ref<'a, E: ParseError<&'a str>>(
+    recognizer: &mut impl Parser<&'a str, &'a str, E>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str> + '_ {
+    move |original_input: &str| {
+        let mut input = original_input;
+
+        let mut curr_token_length = 0;
+
+        while !input.is_empty() {
+            if let Ok(_) = recognizer.parse(input) {
+                break;
+            } else {
+                let (rest, (a, b, c)) = token_full(input)?;
+                curr_token_length += a.len() + b.len() + c.len();
+                input = rest;
             }
-
-            last_is_whitespace = b.is_ascii_whitespace();
-            last_span_start = i;
         }
-    }
 
-    if last_span_start < s.len() {
-        let span = &s[last_span_start..];
-        spans.push(span);
-    }
-
-    spans
-        .chunks(2)
-        .map(|pair| match pair {
-            &[word, whitespace] => (word, whitespace),
-            &[word] => (word, ""),
-            _ => unreachable!(),
-        })
-        .collect()
-}
-
-pub fn join_tokens(tokens: &[Token]) -> String {
-    tokens.iter().copied().flat_map(|(a, b)| [a, b]).collect()
-}
-
-pub fn try_parse_next<T: FromStr>(tokens: &mut TokenSlice) -> Option<T> {
-    if let Some(value) = tokens.get(0).and_then(|(s, _)| s.parse().ok()) {
-        *tokens = &tokens[1..];
-        Some(value)
-    } else {
-        None
+        Ok((input, original_input[..curr_token_length].trim_ascii()))
     }
 }
 
-pub fn try_parse_many<T: FromStr>(tokens: &mut TokenSlice) -> Vec<T> {
-    let mut values = Vec::new();
-
-    while let Some(value) = try_parse_next(tokens) {
-        values.push(value);
+pub fn parser_uci_move(input: &str) -> IResult<&str, UCIMove> {
+    let (input, t) = token(input)?;
+    match UCIMove::from_str(t) {
+        Ok(m) => Ok((input, m)),
+        Err(_) => context("expected valid uci move", fail)(input),
     }
-
-    values
 }
 
-pub fn take_until(
-    predicate: impl Fn(Token) -> bool,
-    tokens: TokenSlice,
-) -> (TokenSlice, TokenSlice) {
-    for (i, token) in tokens.iter().enumerate() {
-        if predicate(*token) {
-            return (&tokens[i..], &tokens[..i]);
-        }
+pub fn try_parse_and_discard_rest<'a, O>(
+    mut parser: impl Parser<&'a str, O, Error<&'a str>>,
+    input: &'a str,
+) -> Option<O> {
+    match parser.parse(input) {
+        Ok((_, value)) => Some(value),
+        Err(_) => None,
     }
-
-    (&[], tokens)
-}
-
-pub fn parse_string_option(
-    keyword_predicate: impl Fn(&str) -> bool,
-    tokens: TokenSlice,
-) -> (TokenSlice, String) {
-    let (rest, string_tokens) = take_until(|t| keyword_predicate(t.0), tokens);
-
-    (
-        rest,
-        join_tokens(string_tokens).trim_ascii_end().to_string(),
-    )
 }
