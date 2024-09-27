@@ -20,7 +20,7 @@ impl Display for UCISearchControl {
             formatter.push_str("searchmoves")?;
 
             for m in self.search_moves.iter() {
-                formatter.push(m);
+                formatter.push(m)?;
             }
         }
 

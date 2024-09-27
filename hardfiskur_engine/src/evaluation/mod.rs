@@ -1,6 +1,6 @@
 pub mod piece_tables;
 
-use hardfiskur_core::board::{Board, Color, Move, PieceType};
+use hardfiskur_core::board::{Board, Color};
 use piece_tables::{material_score, phase_modifier, piece_square_table, FULL_ENDGAME_PHASE};
 
 use crate::score::Score;

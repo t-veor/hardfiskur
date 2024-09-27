@@ -1,4 +1,4 @@
-use hardfiskur_core::board::{Board, Move, PieceType};
+use hardfiskur_core::board::{Board, Move};
 
 use crate::evaluation::piece_tables::material_score;
 

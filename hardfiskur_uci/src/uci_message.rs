@@ -4,7 +4,10 @@ use hardfiskur_core::board::UCIMove;
 use thiserror::Error;
 
 use crate::{
-    parse_utils::{split_tokens, try_parse_many, try_parse_next, TokenSlice},
+    parse_utils::{
+        join_tokens, parse_string_option, split_tokens, take_until, try_parse_many, try_parse_next,
+        Token, TokenSlice,
+    },
     uci_info::UCIInfo,
     uci_option_config::UCIOptionConfig,
     uci_position::UCIPosition,
@@ -87,7 +90,76 @@ pub enum UCIMessage {
 }
 
 impl UCIMessage {
-    pub fn parse_go(mut tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
+    fn parse_debug(tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
+        let debug = tokens.get(0).map(|(s, _)| *s == "on").unwrap_or(true);
+        Ok((&[], Self::Debug(debug)))
+    }
+
+    fn parse_set_option(
+        mut tokens: TokenSlice,
+    ) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
+        let is_keyword = |t: &str| matches!(t, "name" | "value");
+
+        let mut name = None;
+        let mut value = None;
+
+        while !tokens.is_empty() {
+            let head = tokens[0].0;
+            tokens = &tokens[1..];
+            match head {
+                "name" => {
+                    let (rest, name_str) = parse_string_option(is_keyword, tokens);
+                    name = Some(name_str);
+                    tokens = rest;
+                }
+                "value" => {
+                    let (rest, value_str) = parse_string_option(is_keyword, tokens);
+                    value = Some(value_str);
+                    tokens = rest;
+                }
+
+                _ => (),
+            }
+        }
+
+        if let Some(name) = name {
+            Ok((&[], Self::SetOption { name, value }))
+        } else {
+            Err(ParseUCIMessageError)
+        }
+    }
+
+    fn parse_register(mut tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
+        let is_keyword = |t: &str| matches!(t, "later" | "name" | "code");
+
+        let mut later = false;
+        let mut name = None;
+        let mut code = None;
+
+        while !tokens.is_empty() {
+            let head = tokens[0].0;
+            tokens = &tokens[1..];
+            match head {
+                "later" => later = true,
+                "name" => {
+                    let (rest, name_str) = parse_string_option(is_keyword, tokens);
+                    name = Some(name_str);
+                    tokens = rest;
+                }
+                "code" => {
+                    let (rest, code_str) = parse_string_option(is_keyword, tokens);
+                    code = Some(code_str);
+                    tokens = rest;
+                }
+
+                _ => (),
+            }
+        }
+
+        Ok((&[], Self::Register { later, name, code }))
+    }
+
+    fn parse_go(mut tokens: TokenSlice) -> Result<(TokenSlice, Self), ParseUCIMessageError> {
         let mut search_control: Option<UCISearchControl> = None;
 
         let mut infinite = false;
@@ -305,16 +377,31 @@ impl FromStr for UCIMessage {
             match head {
                 "uci" => return Ok(Self::UCI),
 
-                "debug" => {
-                    let debug = tokens.get(0).map(|(s, _)| *s == "on").unwrap_or(true);
-                    return Ok(Self::Debug(debug));
-                }
+                "debug" => return Ok(Self::parse_debug(tokens)?.1),
 
                 "isready" => return Ok(Self::IsReady),
 
-                "setoption" => {
-                    todo!()
+                "setoption" => return Ok(Self::parse_set_option(tokens)?.1),
+
+                "register" => return Ok(Self::parse_register(tokens)?.1),
+
+                "ucinewgame" => return Ok(Self::UCINewGame),
+
+                "position" => {
+                    return Ok(Self::Position(
+                        UCIPosition::parse(tokens)
+                            .map_err(|_| ParseUCIMessageError)?
+                            .1,
+                    ))
                 }
+
+                "go" => return Ok(Self::parse_go(tokens)?.1),
+
+                "stop" => return Ok(Self::Stop),
+
+                "ponderhit" => return Ok(Self::PonderHit),
+
+                "quit" => return Ok(Self::Quit),
 
                 // Skip this token and look to see if the remainder can be
                 // interpreted as a command. This is mandated by the spec
@@ -322,7 +409,7 @@ impl FromStr for UCIMessage {
             }
         }
 
-        todo!()
+        Err(ParseUCIMessageError)
     }
 }
 

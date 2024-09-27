@@ -18,7 +18,7 @@ pub fn split_tokens(s: &str) -> Vec<Token> {
                 spans.push(span);
             }
 
-            last_is_whitespace = b.is_ascii();
+            last_is_whitespace = b.is_ascii_whitespace();
             last_span_start = i;
         }
     }
@@ -59,4 +59,29 @@ pub fn try_parse_many<T: FromStr>(tokens: &mut TokenSlice) -> Vec<T> {
     }
 
     values
+}
+
+pub fn take_until(
+    predicate: impl Fn(Token) -> bool,
+    tokens: TokenSlice,
+) -> (TokenSlice, TokenSlice) {
+    for (i, token) in tokens.iter().enumerate() {
+        if predicate(*token) {
+            return (&tokens[i..], &tokens[..i]);
+        }
+    }
+
+    (&[], tokens)
+}
+
+pub fn parse_string_option(
+    keyword_predicate: impl Fn(&str) -> bool,
+    tokens: TokenSlice,
+) -> (TokenSlice, String) {
+    let (rest, string_tokens) = take_until(|t| keyword_predicate(t.0), tokens);
+
+    (
+        rest,
+        join_tokens(string_tokens).trim_ascii_end().to_string(),
+    )
 }
