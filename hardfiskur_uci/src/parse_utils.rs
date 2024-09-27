@@ -93,7 +93,7 @@ pub fn parser_uci_move(input: &str) -> IResult<&str, UCIMove> {
     }
 }
 
-pub fn try_parse_and_discard_rest<'a, O>(
+pub fn try_opt_once<'a, O>(
     mut parser: impl Parser<&'a str, O, Error<&'a str>>,
     input: &'a str,
 ) -> Option<O> {

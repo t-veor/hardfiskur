@@ -4,7 +4,7 @@ use hardfiskur_core::board::UCIMove;
 use nom::{
     branch::alt,
     character::complete::{u32, u64},
-    combinator::{success, verify},
+    combinator::{success, value, verify},
     multi::{many0, many_till},
     sequence::preceded,
     IResult, Parser,
@@ -13,8 +13,7 @@ use thiserror::Error;
 
 use crate::{
     parse_utils::{
-        keyworded_options, parser_uci_move, take_tokens_till, token, token_tag,
-        try_parse_and_discard_rest,
+        keyworded_options, parser_uci_move, take_tokens_till, token, token_tag, try_opt_once,
     },
     uci_info::UCIInfo,
     uci_option_config::UCIOptionConfig,
@@ -223,31 +222,18 @@ impl UCIMessage {
         for (option_name, value) in options {
             match option_name {
                 "searchmoves" => {
-                    search_moves = try_parse_and_discard_rest(many0(parser_uci_move), value)
-                        .unwrap_or_default()
+                    search_moves = try_opt_once(many0(parser_uci_move), value).unwrap_or_default()
                 }
                 "ponder" => ponder = true,
-                "wtime" => {
-                    white_time = try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
-                }
-                "btime" => {
-                    black_time = try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
-                }
-                "winc" => {
-                    white_increment =
-                        try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
-                }
-                "binc" => {
-                    black_increment =
-                        try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
-                }
-                "movestogo" => moves_to_go = try_parse_and_discard_rest(u32, value),
-                "depth" => depth = try_parse_and_discard_rest(u32, value),
-                "nodes" => nodes = try_parse_and_discard_rest(u64, value),
-                "mate" => mate = try_parse_and_discard_rest(u32, value),
-                "movetime" => {
-                    move_time = try_parse_and_discard_rest(u64.map(Duration::from_millis), value)
-                }
+                "wtime" => white_time = try_opt_once(u64.map(Duration::from_millis), value),
+                "btime" => black_time = try_opt_once(u64.map(Duration::from_millis), value),
+                "winc" => white_increment = try_opt_once(u64.map(Duration::from_millis), value),
+                "binc" => black_increment = try_opt_once(u64.map(Duration::from_millis), value),
+                "movestogo" => moves_to_go = try_opt_once(u32, value),
+                "depth" => depth = try_opt_once(u32, value),
+                "nodes" => nodes = try_opt_once(u64, value),
+                "mate" => mate = try_opt_once(u32, value),
+                "movetime" => move_time = try_opt_once(u64.map(Duration::from_millis), value),
                 "infinite" => infinite = true,
                 _ => unreachable!(),
             }
@@ -295,6 +281,92 @@ impl UCIMessage {
                 search_control,
             },
         ))
+    }
+
+    fn parser_id_body(input: &str) -> IResult<&str, Self> {
+        let (input, id_type) = alt((token_tag("name"), token_tag("author")))(input)?;
+
+        let value = input.trim_ascii().to_string();
+
+        Ok((
+            "",
+            match id_type {
+                "name" => Self::Id {
+                    name: Some(value),
+                    author: None,
+                },
+                "author" => Self::Id {
+                    name: None,
+                    author: Some(value),
+                },
+                _ => unreachable!(),
+            },
+        ))
+    }
+
+    fn parser_best_move_body(input: &str) -> IResult<&str, Self> {
+        let (input, best_move) = parser_uci_move(input)?;
+
+        let (input, ponder) = match token_tag("ponder")(input) {
+            Ok((input, _)) => {
+                let (input, ponder_move) = parser_uci_move(input)?;
+                (input, Some(ponder_move))
+            }
+            Err(_) => (input, None),
+        };
+
+        Ok((input, Self::BestMove { best_move, ponder }))
+    }
+}
+
+impl FromStr for UCIMessage {
+    type Err = ParseUCIMessageError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let command_parser = alt((
+            // gui -> engine commands
+            preceded(token_tag("uci"), success(Self::UCI)),
+            preceded(token_tag("debug"), Self::parser_debug_body),
+            preceded(token_tag("isready"), success(Self::IsReady)),
+            preceded(token_tag("setoption"), Self::parser_set_option_body),
+            preceded(token_tag("register"), Self::parser_register_body),
+            preceded(token_tag("ucinewgame"), success(Self::UCINewGame)),
+            preceded(
+                token_tag("position"),
+                UCIPosition::parser.map(Self::Position),
+            ),
+            preceded(token_tag("go"), Self::parser_go_body),
+            preceded(token_tag("stop"), success(Self::Stop)),
+            preceded(token_tag("ponderhit"), success(Self::PonderHit)),
+            preceded(token_tag("quit"), success(Self::Quit)),
+            // engine -> gui commands
+            preceded(token_tag("id"), Self::parser_id_body),
+            preceded(token_tag("uciok"), success(Self::UCIOk)),
+            preceded(token_tag("readyok"), success(Self::ReadyOk)),
+            preceded(token_tag("bestmove"), Self::parser_best_move_body),
+            preceded(
+                token_tag("copyprotection"),
+                ProtectionState::parser.map(Self::CopyProtection),
+            ),
+            preceded(
+                token_tag("registration"),
+                ProtectionState::parser.map(Self::Registration),
+            ),
+            preceded(token_tag("info"), UCIInfo::parser.map(Self::Info)),
+            preceded(
+                token_tag("option"),
+                UCIOptionConfig::parser.map(Self::Option),
+            ),
+        ));
+
+        // many_till(token, ...) skips any initial tokens it couldn't parse.
+        // This behavior is mandated by the spec
+        let (_, (_, message)) = many_till(token, command_parser)
+            .parse(s)
+            .map_err(|_| ParseUCIMessageError)?;
+
+        // Ignore unparseable stuff afterwards
+        Ok(message)
     }
 }
 
@@ -394,44 +466,21 @@ impl Display for UCIMessage {
     }
 }
 
-impl FromStr for UCIMessage {
-    type Err = ParseUCIMessageError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let command_parser = alt((
-            preceded(token_tag("uci"), success(Self::UCI)),
-            preceded(token_tag("debug"), Self::parser_debug_body),
-            preceded(token_tag("isready"), success(Self::IsReady)),
-            preceded(token_tag("setoption"), Self::parser_set_option_body),
-            preceded(token_tag("register"), Self::parser_register_body),
-            preceded(token_tag("ucinewgame"), success(Self::UCINewGame)),
-            preceded(
-                token_tag("position"),
-                UCIPosition::parser.map(Self::Position),
-            ),
-            preceded(token_tag("go"), Self::parser_go_body),
-            preceded(token_tag("stop"), success(Self::Stop)),
-            preceded(token_tag("ponderhit"), success(Self::PonderHit)),
-            preceded(token_tag("quit"), success(Self::Quit)),
-            // TODO: parse engine -> gui commands
-        ));
-
-        // many_till(token, ...) skips any initial tokens it couldn't parse.
-        // This behavior is mandated by the spec
-        let (_, (_, message)) = many_till(token, command_parser)
-            .parse(s)
-            .map_err(|_| ParseUCIMessageError)?;
-
-        // Ignore unparseable stuff afterwards
-        Ok(message)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProtectionState {
     Checking,
     Ok,
     Error,
+}
+
+impl ProtectionState {
+    fn parser(input: &str) -> IResult<&str, Self> {
+        alt((
+            value(Self::Checking, token_tag("checking")),
+            value(Self::Ok, token_tag("ok")),
+            value(Self::Error, token_tag("error")),
+        ))(input)
+    }
 }
 
 impl Display for ProtectionState {

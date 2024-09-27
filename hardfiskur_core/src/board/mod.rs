@@ -263,9 +263,21 @@ impl Board {
         let legal_moves = self.legal_moves();
 
         legal_moves.into_iter().find(|m| {
-            m.from_square() == from
+            if m.from_square() == from
                 && m.to_square() == to
                 && m.promotion().map(|piece| piece.piece_type()) == promotion
+            {
+                return true;
+            }
+
+            // Special case -- a move where the king "captures" its own rook can
+            // be interpreted as a castle.
+            // TODO: test this
+            if m.is_castle() && m.from_square() == from && m.castling_rook_squares().0 == to {
+                return true;
+            }
+
+            false
         })
     }
 
