@@ -1,16 +1,7 @@
 use std::fmt::Display;
 
 use hardfiskur_core::board::UCIMove;
-use nom::{
-    branch::alt,
-    combinator::{opt, value},
-    multi::{count, many0},
-    sequence::preceded,
-    IResult,
-};
 use thiserror::Error;
-
-use crate::parse_utils::{parser_uci_move, token, token_tag};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UCIPosition {
@@ -34,41 +25,10 @@ impl Display for UCIPosition {
     }
 }
 
-impl UCIPosition {
-    pub fn parser(input: &str) -> IResult<&str, Self> {
-        let (input, base) = UCIPositionBase::parser(input)?;
-        let (input, moves) = opt(preceded(token_tag("moves"), many0(parser_uci_move)))(input)?;
-
-        Ok((
-            input,
-            Self {
-                base,
-                moves: moves.unwrap_or_default(),
-            },
-        ))
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UCIPositionBase {
     StartPos,
     Fen(String),
-}
-
-impl UCIPositionBase {
-    pub fn parser(input: &str) -> IResult<&str, Self> {
-        alt((
-            value(Self::StartPos, token_tag("startpos")),
-            Self::parser_fen,
-        ))(input)
-    }
-
-    fn parser_fen(input: &str) -> IResult<&str, Self> {
-        let (input, _) = token_tag("fen")(input)?;
-        let (input, fen_parts) = count(token, 6)(input)?;
-
-        Ok((input, Self::Fen(fen_parts.join(" "))))
-    }
 }
 
 impl Display for UCIPositionBase {

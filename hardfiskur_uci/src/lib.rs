@@ -1,5 +1,5 @@
 mod format_utils;
-mod parse_utils;
+mod parsing;
 mod uci_info;
 mod uci_message;
 mod uci_option_config;

@@ -84,7 +84,7 @@ pub fn take_tokens_until<'a, E: ParseError<&'a str>>(
     }
 }
 
-pub fn parser_uci_move(input: &str) -> IResult<&str, UCIMove> {
+pub fn token_uci_move(input: &str) -> IResult<&str, UCIMove> {
     let (input, t) = token(input)?;
     match UCIMove::from_str(t) {
         Ok(m) => Ok((input, m)),
