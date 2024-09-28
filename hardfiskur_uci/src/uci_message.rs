@@ -3,7 +3,6 @@ use std::{fmt::Display, str::FromStr, time::Duration};
 use hardfiskur_core::board::UCIMove;
 use nom::{
     branch::alt,
-    character::complete::{u32, u64},
     combinator::{opt, rest, success, value},
     multi::{many0, many_till},
     sequence::{pair, preceded, tuple},
@@ -13,7 +12,9 @@ use nom_permutation::permutation_opt;
 use thiserror::Error;
 
 use crate::{
-    parse_utils::{millis, parser_uci_move, take_tokens_till, token, token_tag},
+    parse_utils::{
+        parser_uci_move, take_tokens_till, token, token_millis, token_tag, token_u32, token_u64,
+    },
     uci_info::UCIInfo,
     uci_option_config::UCIOptionConfig,
     uci_position::UCIPosition,
@@ -145,15 +146,15 @@ impl UCIMessage {
         permutation_opt((
             preceded(token_tag("searchmoves"), many0(parser_uci_move)),
             token_tag("ponder"),
-            preceded(token_tag("wtime"), millis),
-            preceded(token_tag("btime"), millis),
-            preceded(token_tag("winc"), millis),
-            preceded(token_tag("binc"), millis),
-            preceded(token_tag("movestogo"), u32),
-            preceded(token_tag("depth"), u32),
-            preceded(token_tag("nodes"), u64),
-            preceded(token_tag("mate"), u32),
-            preceded(token_tag("movetime"), millis),
+            preceded(token_tag("wtime"), token_millis),
+            preceded(token_tag("btime"), token_millis),
+            preceded(token_tag("winc"), token_millis),
+            preceded(token_tag("binc"), token_millis),
+            preceded(token_tag("movestogo"), token_u32),
+            preceded(token_tag("depth"), token_u32),
+            preceded(token_tag("nodes"), token_u64),
+            preceded(token_tag("mate"), token_u32),
+            preceded(token_tag("movetime"), token_millis),
             token_tag("infinite"),
         ))
         .map(

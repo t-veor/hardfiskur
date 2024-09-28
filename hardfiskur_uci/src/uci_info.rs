@@ -3,8 +3,7 @@ use std::{fmt::Display, time::Duration};
 use hardfiskur_core::board::UCIMove;
 use nom::{
     branch::alt,
-    character::complete::{i32, u32, u64},
-    combinator::{opt, recognize, rest, success, verify},
+    combinator::{opt, rest, success},
     multi::many0,
     sequence::{pair, preceded},
     IResult, Parser,
@@ -13,7 +12,7 @@ use nom_permutation::permutation_opt;
 
 use crate::{
     format_utils::SpaceSepFormatter,
-    parse_utils::{keyworded_options, millis, parser_uci_move, token, token_tag, try_opt_once},
+    parse_utils::{parser_uci_move, token_i32, token_millis, token_tag, token_u32, token_u64},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -28,8 +27,8 @@ impl UCIInfoScore {
     pub fn parser(input: &str) -> IResult<&str, Self> {
         pair(
             alt((
-                preceded(token_tag("cp"), i32).map(|cp| (Some(cp), None)),
-                preceded(token_tag("mate"), i32).map(|mate| (None, Some(mate))),
+                preceded(token_tag("cp"), token_i32).map(|cp| (Some(cp), None)),
+                preceded(token_tag("mate"), token_i32).map(|mate| (None, Some(mate))),
             )),
             alt((
                 token_tag("lowerbound").map(|_| (true, false)),
@@ -74,7 +73,7 @@ pub struct UCIInfoCurrLine {
 
 impl UCIInfoCurrLine {
     pub fn parser(input: &str) -> IResult<&str, Self> {
-        let (input, cpu_nr) = opt(u32)(input)?;
+        let (input, cpu_nr) = opt(token_u32)(input)?;
         let (input, moves) = many0(parser_uci_move)(input)?;
 
         Ok((input, Self { cpu_nr, moves }))
@@ -121,20 +120,20 @@ pub struct UCIInfo {
 impl UCIInfo {
     pub fn parser(input: &str) -> IResult<&str, Self> {
         permutation_opt((
-            preceded(token_tag("depth"), u32),
-            preceded(token_tag("seldepth"), u32),
-            preceded(token_tag("time"), millis),
-            preceded(token_tag("nodes"), u64),
+            preceded(token_tag("depth"), token_u32),
+            preceded(token_tag("seldepth"), token_u32),
+            preceded(token_tag("time"), token_millis),
+            preceded(token_tag("nodes"), token_u64),
             preceded(token_tag("pv"), many0(parser_uci_move)),
-            preceded(token_tag("multipv"), u32),
+            preceded(token_tag("multipv"), token_u32),
             preceded(token_tag("score"), UCIInfoScore::parser),
             preceded(token_tag("currmove"), parser_uci_move),
-            preceded(token_tag("currmovenumber"), u32),
-            preceded(token_tag("hashfull"), u32),
-            preceded(token_tag("nps"), u64),
-            preceded(token_tag("tbhits"), u64),
-            preceded(token_tag("sbhits"), u64),
-            preceded(token_tag("cpuload"), u32),
+            preceded(token_tag("currmovenumber"), token_u32),
+            preceded(token_tag("hashfull"), token_u32),
+            preceded(token_tag("nps"), token_u64),
+            preceded(token_tag("tbhits"), token_u64),
+            preceded(token_tag("sbhits"), token_u64),
+            preceded(token_tag("cpuload"), token_u32),
             preceded(token_tag("refutation"), many0(parser_uci_move)),
             preceded(token_tag("currline"), UCIInfoCurrLine::parser),
             preceded(token_tag("string"), rest.map(str::trim)),

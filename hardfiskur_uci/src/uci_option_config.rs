@@ -2,14 +2,15 @@ use std::fmt::Display;
 
 use nom::{
     branch::alt,
-    character::complete::i64,
-    combinator::{fail, value, verify},
-    IResult,
+    combinator::{map_opt, opt, rest},
+    multi::many0,
+    sequence::{preceded, tuple},
+    IResult, Parser,
 };
 
 use crate::{
     format_utils::SpaceSepFormatter,
-    parse_utils::{keyworded_options, token, token_tag, try_opt_once},
+    parse_utils::{take_tokens_till, take_tokens_until, token_i64, token_tag},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,51 +40,61 @@ pub enum UCIOptionConfig {
 }
 
 impl UCIOptionConfig {
-    pub fn parser(original_input: &str) -> IResult<&str, Self> {
-        let is_keyword = verify(token, |s: &str| {
-            matches!(s, "name" | "type" | "default" | "min" | "max" | "var")
-        });
+    pub fn parser(input: &str) -> IResult<&str, Self> {
+        let parser = tuple((
+            preceded(token_tag("name"), take_tokens_till(token_tag("type"))),
+            preceded(
+                token_tag("type"),
+                alt((
+                    token_tag("check"),
+                    token_tag("spin"),
+                    token_tag("combo"),
+                    token_tag("string"),
+                    token_tag("button"),
+                )),
+            ),
+            opt(preceded(
+                token_tag("default"),
+                alt((
+                    take_tokens_until(token_tag("min")),
+                    take_tokens_until(token_tag("max")),
+                    take_tokens_until(token_tag("var")),
+                    rest.map(str::trim),
+                )),
+            )),
+            opt(preceded(token_tag("min"), token_i64)),
+            opt(preceded(token_tag("max"), token_i64)),
+            many0(preceded(
+                token_tag("var"),
+                take_tokens_till(token_tag("var")),
+            )),
+        ));
 
-        let (input, options) = keyworded_options(is_keyword)(original_input)?;
+        map_opt(parser, |(name, option_type, default, min, max, var)| {
+            Self::from_raw_options(name, option_type, default, min, max, var)
+        })(input)
+    }
 
-        let mut name = None;
-        let mut option_type = None;
-        let mut default = None;
-        let mut min = None;
-        let mut max = None;
-        let mut var = Vec::new();
+    fn from_raw_options(
+        name: &str,
+        option_type: &str,
+        default: Option<&str>,
+        min: Option<i64>,
+        max: Option<i64>,
+        var: Vec<&str>,
+    ) -> Option<Self> {
+        let name = name.to_string();
 
-        for (option_name, value) in options {
-            match option_name {
-                "name" => name = Some(value.to_string()),
-                "type" => option_type = Some(value),
-                "default" => default = Some(value),
-                "min" => min = try_opt_once(i64, value),
-                "max" => max = try_opt_once(i64, value),
-                "var" => var.push(value.to_string()),
-                _ => unreachable!(),
-            }
-        }
-
-        let name = match name {
-            Some(name) => name,
-            None => return fail(original_input),
-        };
-
-        let result = if option_type == Some("check") {
-            let default = default.and_then(|s| {
-                try_opt_once(
-                    alt((
-                        value(true, token_tag("true")),
-                        value(false, token_tag("false")),
-                    )),
-                    s,
-                )
+        let result = if option_type == "check" {
+            let default = default.and_then(|s| match s {
+                "true" => Some(true),
+                "false" => Some(false),
+                _ => None,
             });
 
             Self::Check { name, default }
-        } else if option_type == Some("spin") {
-            let default = default.and_then(|s| try_opt_once(i64, s));
+        } else if option_type == "spin" {
+            let default = default.and_then(|s| s.parse().ok());
 
             Self::Spin {
                 name,
@@ -91,12 +102,16 @@ impl UCIOptionConfig {
                 min,
                 max,
             }
-        } else if option_type == Some("combo") {
+        } else if option_type == "combo" {
             let default = default.map(|s| s.to_string());
-            Self::Combo { name, default, var }
-        } else if option_type == Some("button") {
+            Self::Combo {
+                name,
+                default,
+                var: var.into_iter().map(|s| s.to_string()).collect(),
+            }
+        } else if option_type == "button" {
             Self::Button { name }
-        } else if option_type == Some("string") {
+        } else if option_type == "string" {
             let default = default.map(|s| {
                 if s == "<empty>" {
                     "".to_string()
@@ -106,10 +121,10 @@ impl UCIOptionConfig {
             });
             Self::String { name, default }
         } else {
-            return fail(original_input);
+            return None;
         };
 
-        Ok((input, result))
+        Some(result)
     }
 }
 
