@@ -4,15 +4,16 @@ use hardfiskur_core::board::UCIMove;
 use nom::{
     branch::alt,
     character::complete::{i32, u32, u64},
-    combinator::{opt, recognize, rest, verify},
+    combinator::{opt, recognize, rest, success, verify},
     multi::many0,
-    sequence::pair,
+    sequence::{pair, preceded},
     IResult, Parser,
 };
+use nom_permutation::permutation_opt;
 
 use crate::{
     format_utils::SpaceSepFormatter,
-    parse_utils::{keyworded_options, parser_uci_move, token, token_tag, try_opt_once},
+    parse_utils::{keyworded_options, millis, parser_uci_move, token, token_tag, try_opt_once},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -25,24 +26,24 @@ pub struct UCIInfoScore {
 
 impl UCIInfoScore {
     pub fn parser(input: &str) -> IResult<&str, Self> {
-        let is_keyword = verify(token, |s: &str| {
-            matches!(s, "cp" | "mate" | "lowerbound" | "upperbound")
-        });
-
-        let (input, options) = keyworded_options(is_keyword)(input)?;
-
-        let mut score = Self::default();
-        for (option_name, value) in options {
-            match option_name {
-                "cp" => score.cp = try_opt_once(i32, value),
-                "mate" => score.mate = try_opt_once(i32, value),
-                "lowerbound" => score.lower_bound = true,
-                "upperbound" => score.upper_bound = true,
-                _ => unreachable!(),
-            }
-        }
-
-        Ok((input, score))
+        pair(
+            alt((
+                preceded(token_tag("cp"), i32).map(|cp| (Some(cp), None)),
+                preceded(token_tag("mate"), i32).map(|mate| (None, Some(mate))),
+            )),
+            alt((
+                token_tag("lowerbound").map(|_| (true, false)),
+                token_tag("upperbound").map(|_| (false, true)),
+                success((false, false)),
+            )),
+        )
+        .map(|((cp, mate), (lower_bound, upper_bound))| Self {
+            cp,
+            mate,
+            lower_bound,
+            upper_bound,
+        })
+        .parse(input)
     }
 }
 
@@ -107,7 +108,7 @@ pub struct UCIInfo {
     pub score: Option<UCIInfoScore>,
     pub curr_move: Option<UCIMove>,
     pub curr_move_number: Option<u32>,
-    pub hashfull: Option<u32>,
+    pub hash_full: Option<u32>,
     pub nps: Option<u64>,
     pub tb_hits: Option<u64>,
     pub sb_hits: Option<u64>,
@@ -119,72 +120,65 @@ pub struct UCIInfo {
 
 impl UCIInfo {
     pub fn parser(input: &str) -> IResult<&str, Self> {
-        let is_keyword = alt((
-            verify(token, |s: &str| {
-                matches!(
-                    s,
-                    "depth"
-                        | "seldepth"
-                        | "time"
-                        | "nodes"
-                        | "pv"
-                        | "multipv"
-                        | "score"
-                        | "currmove"
-                        | "currmovenumber"
-                        | "hashfull"
-                        | "nps"
-                        | "tbhits"
-                        | "sbhits"
-                        | "cpuload"
-                        | "refutation"
-                        | "currline"
-                )
-            }),
-            // Special "string" parser, just match the entire rest of the line
-            recognize(pair(token_tag("string"), rest)),
-        ));
-
-        let (input, options) = keyworded_options(is_keyword)(input)?;
-
-        let mut info = Self::default();
-
-        for (option_name, value) in options {
-            match option_name {
-                "depth" => info.depth = try_opt_once(u32, value),
-                "seldepth" => info.sel_depth = try_opt_once(u32, value),
-                "time" => info.time = try_opt_once(u64.map(Duration::from_millis), value),
-                "nodes" => info.nodes = try_opt_once(u64, value),
-                "pv" => info.pv = try_opt_once(many0(parser_uci_move), value).unwrap_or_default(),
-                "multipv" => info.multi_pv = try_opt_once(u32, value),
-                "score" => info.score = try_opt_once(UCIInfoScore::parser, value),
-                "currmove" => info.curr_move = try_opt_once(parser_uci_move, value),
-                "currmovenumber" => info.curr_move_number = try_opt_once(u32, value),
-                "hashfull" => info.hashfull = try_opt_once(u32, value),
-                "nps" => info.nps = try_opt_once(u64, value),
-                "tbhits" => info.tb_hits = try_opt_once(u64, value),
-                "sbhits" => info.sb_hits = try_opt_once(u64, value),
-                "cpuload" => info.cpu_load = try_opt_once(u32, value),
-                "refutation" => {
-                    info.refutation =
-                        try_opt_once(many0(parser_uci_move), value).unwrap_or_default()
-                }
-                "currline" => info.curr_line = try_opt_once(UCIInfoCurrLine::parser, value),
-
-                // special string tag
-                _ => {
-                    info.string = Some(
-                        option_name
-                            .strip_prefix("string")
-                            .unwrap_or(option_name)
-                            .trim_ascii()
-                            .to_string(),
-                    );
-                }
-            }
-        }
-
-        Ok((input, info))
+        permutation_opt((
+            preceded(token_tag("depth"), u32),
+            preceded(token_tag("seldepth"), u32),
+            preceded(token_tag("time"), millis),
+            preceded(token_tag("nodes"), u64),
+            preceded(token_tag("pv"), many0(parser_uci_move)),
+            preceded(token_tag("multipv"), u32),
+            preceded(token_tag("score"), UCIInfoScore::parser),
+            preceded(token_tag("currmove"), parser_uci_move),
+            preceded(token_tag("currmovenumber"), u32),
+            preceded(token_tag("hashfull"), u32),
+            preceded(token_tag("nps"), u64),
+            preceded(token_tag("tbhits"), u64),
+            preceded(token_tag("sbhits"), u64),
+            preceded(token_tag("cpuload"), u32),
+            preceded(token_tag("refutation"), many0(parser_uci_move)),
+            preceded(token_tag("currline"), UCIInfoCurrLine::parser),
+            preceded(token_tag("string"), rest.map(str::trim)),
+        ))
+        .map(
+            |(
+                depth,
+                sel_depth,
+                time,
+                nodes,
+                pv,
+                multi_pv,
+                score,
+                curr_move,
+                curr_move_number,
+                hash_full,
+                nps,
+                tb_hits,
+                sb_hits,
+                cpu_load,
+                refutation,
+                curr_line,
+                string,
+            )| Self {
+                depth,
+                sel_depth,
+                time,
+                nodes,
+                pv: pv.unwrap_or_default(),
+                multi_pv,
+                score,
+                curr_move,
+                curr_move_number,
+                hash_full,
+                nps,
+                tb_hits,
+                sb_hits,
+                cpu_load,
+                refutation: refutation.unwrap_or_default(),
+                curr_line,
+                string: string.map(|s| s.to_string()),
+            },
+        )
+        .parse(input)
     }
 }
 
@@ -208,7 +202,7 @@ impl Display for UCIInfo {
         formatter.push_option("score", self.score.as_ref())?;
         formatter.push_option("currmove", self.curr_move)?;
         formatter.push_option("currmovenumber", self.curr_move_number)?;
-        formatter.push_option("hashfull", self.hashfull)?;
+        formatter.push_option("hashfull", self.hash_full)?;
         formatter.push_option("nps", self.nps)?;
         formatter.push_option("tbhits", self.tb_hits)?;
         formatter.push_option("sbhits", self.sb_hits)?;

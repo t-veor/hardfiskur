@@ -4,17 +4,16 @@ use hardfiskur_core::board::UCIMove;
 use nom::{
     branch::alt,
     character::complete::{u32, u64},
-    combinator::{success, value, verify},
+    combinator::{opt, rest, success, value},
     multi::{many0, many_till},
-    sequence::preceded,
+    sequence::{pair, preceded, tuple},
     IResult, Parser,
 };
+use nom_permutation::permutation_opt;
 use thiserror::Error;
 
 use crate::{
-    parse_utils::{
-        keyworded_options, parser_uci_move, take_tokens_till, token, token_tag, try_opt_once,
-    },
+    parse_utils::{millis, parser_uci_move, take_tokens_till, token, token_tag},
     uci_info::UCIInfo,
     uci_option_config::UCIOptionConfig,
     uci_position::UCIPosition,
@@ -109,136 +108,102 @@ impl UCIMessage {
     fn parser_set_option_body(input: &str) -> IResult<&str, Self> {
         let (input, _) = token_tag("name")(input)?;
         let (input, name) = take_tokens_till(token_tag("value"))(input)?;
-
-        let (input, value) = if let Ok((input, _)) = token_tag("value")(input) {
-            (input, Some(input.to_string()))
-        } else {
-            (input, None)
-        };
+        let (input, value) = opt(preceded(token_tag("value"), rest))(input)?;
 
         Ok((
             input,
             Self::SetOption {
                 name: name.to_string(),
-                value,
+                value: value.map(|s| s.trim().to_string()),
             },
         ))
     }
 
     fn parser_register_body(input: &str) -> IResult<&str, Self> {
-        if token_tag("later")(input).is_ok() {
-            // Shortcut, return later = true
-            return Ok((
-                "",
-                Self::Register {
-                    later: true,
-                    name: None,
-                    code: None,
-                },
-            ));
-        }
-
-        let mut name = None;
-        let mut code = None;
-
-        let mut name_found = false;
-        let mut code_found = false;
-
-        let (mut input, _) =
-            take_tokens_till(verify(token, |s| matches!(s, "name" | "code")))(input)?;
-
-        while !input.is_empty() {
-            match verify(token, |s| matches!(s, "name" | "code"))(input) {
-                Ok((rest, t)) => {
-                    match t {
-                        "name" => name_found = true,
-                        _ => code_found = true,
-                    }
-
-                    let (rest, value) = take_tokens_till(verify(token, |s: &str| {
-                        !name_found && s == "name" || !code_found && s == "code"
-                    }))(rest)?;
-
-                    match t {
-                        "name" => name = Some(value.to_string()),
-                        _ => code = Some(value.to_string()),
-                    }
-
-                    input = rest;
-                }
-
-                // Must be EOF here, as we always go until we hit "name", "code", or EOF
-                Err(_) => break,
-            }
-        }
-
-        Ok((
-            input,
-            Self::Register {
+        alt((
+            pair(token_tag("register"), token_tag("later")).map(|_| Self::Register {
+                later: true,
+                name: None,
+                code: None,
+            }),
+            tuple((
+                opt(preceded(
+                    token_tag("name"),
+                    take_tokens_till(token_tag("code")),
+                )),
+                opt(preceded(token_tag("code"), rest.map(str::trim))),
+            ))
+            .map(|(name, code)| Self::Register {
                 later: false,
-                name,
-                code,
-            },
-        ))
+                name: name.map(|s| s.to_string()),
+                code: code.map(|s| s.to_string()),
+            }),
+        ))(input)
     }
 
     fn parser_go_body(input: &str) -> IResult<&str, Self> {
-        let is_keyword = verify(token, |&s| {
-            matches!(
-                s,
-                "searchmoves"
-                    | "ponder"
-                    | "wtime"
-                    | "btime"
-                    | "winc"
-                    | "binc"
-                    | "movestogo"
-                    | "depth"
-                    | "nodes"
-                    | "mate"
-                    | "movetime"
-                    | "infinite"
-            )
-        });
+        permutation_opt((
+            preceded(token_tag("searchmoves"), many0(parser_uci_move)),
+            token_tag("ponder"),
+            preceded(token_tag("wtime"), millis),
+            preceded(token_tag("btime"), millis),
+            preceded(token_tag("winc"), millis),
+            preceded(token_tag("binc"), millis),
+            preceded(token_tag("movestogo"), u32),
+            preceded(token_tag("depth"), u32),
+            preceded(token_tag("nodes"), u64),
+            preceded(token_tag("mate"), u32),
+            preceded(token_tag("movetime"), millis),
+            token_tag("infinite"),
+        ))
+        .map(
+            |(
+                search_moves,
+                ponder,
+                white_time,
+                black_time,
+                white_increment,
+                black_increment,
+                moves_to_go,
+                depth,
+                nodes,
+                mate,
+                move_time,
+                infinite,
+            )| {
+                Self::create_go_command(
+                    search_moves.unwrap_or_default(),
+                    ponder.is_some(),
+                    white_time,
+                    black_time,
+                    white_increment,
+                    black_increment,
+                    moves_to_go,
+                    depth,
+                    nodes,
+                    mate,
+                    move_time,
+                    infinite.is_some(),
+                )
+            },
+        )
+        .parse(input)
+    }
 
-        let (input, options) = keyworded_options(is_keyword)(input)?;
-
-        let mut search_moves = Vec::new();
-        let mut mate = None;
-        let mut depth = None;
-        let mut nodes = None;
-
-        let mut infinite = false;
-        let mut move_time = None;
-
-        let mut white_time = None;
-        let mut black_time = None;
-        let mut white_increment = None;
-        let mut black_increment = None;
-        let mut moves_to_go = None;
-
-        let mut ponder = false;
-
-        for (option_name, value) in options {
-            match option_name {
-                "searchmoves" => {
-                    search_moves = try_opt_once(many0(parser_uci_move), value).unwrap_or_default()
-                }
-                "ponder" => ponder = true,
-                "wtime" => white_time = try_opt_once(u64.map(Duration::from_millis), value),
-                "btime" => black_time = try_opt_once(u64.map(Duration::from_millis), value),
-                "winc" => white_increment = try_opt_once(u64.map(Duration::from_millis), value),
-                "binc" => black_increment = try_opt_once(u64.map(Duration::from_millis), value),
-                "movestogo" => moves_to_go = try_opt_once(u32, value),
-                "depth" => depth = try_opt_once(u32, value),
-                "nodes" => nodes = try_opt_once(u64, value),
-                "mate" => mate = try_opt_once(u32, value),
-                "movetime" => move_time = try_opt_once(u64.map(Duration::from_millis), value),
-                "infinite" => infinite = true,
-                _ => unreachable!(),
-            }
-        }
-
+    fn create_go_command(
+        search_moves: Vec<UCIMove>,
+        ponder: bool,
+        white_time: Option<Duration>,
+        black_time: Option<Duration>,
+        white_increment: Option<Duration>,
+        black_increment: Option<Duration>,
+        moves_to_go: Option<u32>,
+        depth: Option<u32>,
+        nodes: Option<u64>,
+        mate: Option<u32>,
+        move_time: Option<Duration>,
+        infinite: bool,
+    ) -> Self {
         let search_control =
             if !search_moves.is_empty() || mate.is_some() || depth.is_some() || nodes.is_some() {
                 Some(UCISearchControl {
@@ -274,48 +239,32 @@ impl UCIMessage {
             None
         };
 
-        Ok((
-            input,
-            Self::Go {
-                time_control,
-                search_control,
-            },
-        ))
+        Self::Go {
+            time_control,
+            search_control,
+        }
     }
 
     fn parser_id_body(input: &str) -> IResult<&str, Self> {
-        let (input, id_type) = alt((token_tag("name"), token_tag("author")))(input)?;
-
-        let value = input.trim_ascii().to_string();
-
-        Ok((
-            "",
-            match id_type {
-                "name" => Self::Id {
-                    name: Some(value),
-                    author: None,
-                },
-                "author" => Self::Id {
-                    name: None,
-                    author: Some(value),
-                },
-                _ => unreachable!(),
-            },
-        ))
+        alt((
+            preceded(token_tag("name"), rest.map(str::trim)).map(|name| Self::Id {
+                name: Some(name.to_string()),
+                author: None,
+            }),
+            preceded(token_tag("author"), rest.map(str::trim)).map(|author| Self::Id {
+                name: None,
+                author: Some(author.to_string()),
+            }),
+        ))(input)
     }
 
     fn parser_best_move_body(input: &str) -> IResult<&str, Self> {
-        let (input, best_move) = parser_uci_move(input)?;
-
-        let (input, ponder) = match token_tag("ponder")(input) {
-            Ok((input, _)) => {
-                let (input, ponder_move) = parser_uci_move(input)?;
-                (input, Some(ponder_move))
-            }
-            Err(_) => (input, None),
-        };
-
-        Ok((input, Self::BestMove { best_move, ponder }))
+        tuple((
+            parser_uci_move,
+            opt(preceded(token_tag("ponder"), parser_uci_move)),
+        ))
+        .map(|(best_move, ponder)| Self::BestMove { best_move, ponder })
+        .parse(input)
     }
 }
 
@@ -361,9 +310,8 @@ impl FromStr for UCIMessage {
 
         // many_till(token, ...) skips any initial tokens it couldn't parse.
         // This behavior is mandated by the spec
-        let (_, (_, message)) = many_till(token, command_parser)
-            .parse(s)
-            .map_err(|_| ParseUCIMessageError)?;
+        let (_, (_, message)) =
+            dbg!(many_till(token, command_parser).parse(s)).map_err(|_| ParseUCIMessageError)?;
 
         // Ignore unparseable stuff afterwards
         Ok(message)

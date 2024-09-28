@@ -1,25 +1,27 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
 use hardfiskur_core::board::UCIMove;
 use nom::{
     bytes::complete::take_till1,
-    character::complete::space0,
+    character::complete::{space0, u64},
     combinator::fail,
     error::{context, Error, ErrorKind, ParseError},
     error_position, IResult, Parser,
 };
 
 pub fn token(input: &str) -> IResult<&str, &str> {
-    let (input, (_, result, _)) = token_full(input)?;
+    let (input, (result, _)) = token_and_len(input)?;
     Ok((input, result))
 }
 
-pub fn token_full(input: &str) -> IResult<&str, (&str, &str, &str)> {
+pub fn token_and_len(input: &str) -> IResult<&str, (&str, usize)> {
     let (input, preceding_ws) = space0(input)?;
-    let (input, result) = take_till1(|c: char| c.is_ascii_whitespace())(input)?;
+    let (input, result) = take_till1(|c: char| c.is_whitespace())(input)?;
     let (input, following_ws) = space0(input)?;
 
-    Ok((input, (preceding_ws, result, following_ws)))
+    let total_len = preceding_ws.len() + result.len() + following_ws.len();
+
+    Ok((input, (result, total_len)))
 }
 
 pub fn token_tag<'a>(tag: &'a str) -> impl Fn(&str) -> IResult<&str, &str> + 'a {
@@ -75,13 +77,13 @@ pub fn take_tokens_till_ref<'a, E: ParseError<&'a str>>(
             if let Ok(_) = recognizer.parse(input) {
                 break;
             } else {
-                let (rest, (a, b, c)) = token_full(input)?;
-                curr_token_length += a.len() + b.len() + c.len();
+                let (rest, (_, token_len)) = token_and_len(input)?;
+                curr_token_length += token_len;
                 input = rest;
             }
         }
 
-        Ok((input, original_input[..curr_token_length].trim_ascii()))
+        Ok((input, original_input[..curr_token_length].trim()))
     }
 }
 
@@ -101,4 +103,10 @@ pub fn try_opt_once<'a, O>(
         Ok((_, value)) => Some(value),
         Err(_) => None,
     }
+}
+
+pub fn millis(input: &str) -> IResult<&str, Duration> {
+    // Split up to help the type inference
+    let (input, x) = u64(input)?;
+    Ok((input, Duration::from_millis(x)))
 }

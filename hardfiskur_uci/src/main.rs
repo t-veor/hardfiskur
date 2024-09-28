@@ -7,7 +7,7 @@ fn main() {
         let mut s = String::new();
         stdin().read_line(&mut s).unwrap();
 
-        let parsed = UCIMessage::from_str(s.trim_ascii_end());
+        let parsed = UCIMessage::from_str(s.trim_end());
         match parsed {
             Ok(msg) => println!("{msg:#?}"),
             Err(e) => println!("{e}"),
