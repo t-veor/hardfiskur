@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
 use hardfiskur_core::board::UCIMove;
-use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UCIPosition {
@@ -39,7 +38,3 @@ impl Display for UCIPositionBase {
         }
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
-#[error("Error parsing UCI position string")]
-pub struct ParseUCIPositionError;
