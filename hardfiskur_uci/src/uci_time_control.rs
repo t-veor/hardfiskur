@@ -16,6 +16,42 @@ pub enum UCITimeControl {
     Ponder,
 }
 
+impl UCITimeControl {
+    pub(crate) fn from_raw(
+        ponder: bool,
+        white_time: Option<Duration>,
+        black_time: Option<Duration>,
+        white_increment: Option<Duration>,
+        black_increment: Option<Duration>,
+        moves_to_go: Option<u32>,
+        move_time: Option<Duration>,
+        infinite: bool,
+    ) -> Option<Self> {
+        if infinite {
+            Some(UCITimeControl::Infinite)
+        } else if let Some(move_time) = move_time {
+            Some(UCITimeControl::MoveTime(move_time))
+        } else if white_time.is_some()
+            || black_time.is_some()
+            || white_increment.is_some()
+            || black_increment.is_some()
+            || moves_to_go.is_some()
+        {
+            Some(UCITimeControl::TimeLeft {
+                white_time,
+                black_time,
+                white_increment,
+                black_increment,
+                moves_to_go,
+            })
+        } else if ponder {
+            Some(UCITimeControl::Ponder)
+        } else {
+            None
+        }
+    }
+}
+
 impl Display for UCITimeControl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

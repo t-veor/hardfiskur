@@ -172,78 +172,27 @@ impl UCIMessage {
                 move_time,
                 infinite,
             )| {
-                Self::create_go_command(
-                    search_moves.unwrap_or_default(),
-                    ponder.is_some(),
-                    white_time,
-                    black_time,
-                    white_increment,
-                    black_increment,
-                    moves_to_go,
-                    depth,
-                    nodes,
-                    mate,
-                    move_time,
-                    infinite.is_some(),
-                )
+                Self::Go {
+                    time_control: UCITimeControl::from_raw(
+                        ponder.is_some(),
+                        white_time,
+                        black_time,
+                        white_increment,
+                        black_increment,
+                        moves_to_go,
+                        move_time,
+                        infinite.is_some(),
+                    ),
+                    search_control: UCISearchControl::from_raw(
+                        search_moves.unwrap_or_default(),
+                        mate,
+                        depth,
+                        nodes,
+                    ),
+                }
             },
         )
         .parse(input)
-    }
-
-    fn create_go_command(
-        search_moves: Vec<UCIMove>,
-        ponder: bool,
-        white_time: Option<Duration>,
-        black_time: Option<Duration>,
-        white_increment: Option<Duration>,
-        black_increment: Option<Duration>,
-        moves_to_go: Option<u32>,
-        depth: Option<u32>,
-        nodes: Option<u64>,
-        mate: Option<u32>,
-        move_time: Option<Duration>,
-        infinite: bool,
-    ) -> Self {
-        let search_control =
-            if !search_moves.is_empty() || mate.is_some() || depth.is_some() || nodes.is_some() {
-                Some(UCISearchControl {
-                    search_moves,
-                    mate,
-                    depth,
-                    nodes,
-                })
-            } else {
-                None
-            };
-
-        let time_control = if infinite {
-            Some(UCITimeControl::Infinite)
-        } else if let Some(move_time) = move_time {
-            Some(UCITimeControl::MoveTime(move_time))
-        } else if white_time.is_some()
-            || black_time.is_some()
-            || white_increment.is_some()
-            || black_increment.is_some()
-            || moves_to_go.is_some()
-        {
-            Some(UCITimeControl::TimeLeft {
-                white_time,
-                black_time,
-                white_increment,
-                black_increment,
-                moves_to_go,
-            })
-        } else if ponder {
-            Some(UCITimeControl::Ponder)
-        } else {
-            None
-        };
-
-        Self::Go {
-            time_control,
-            search_control,
-        }
     }
 
     fn parser_id_body(input: &str) -> IResult<&str, Self> {

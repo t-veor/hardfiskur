@@ -12,6 +12,28 @@ pub struct UCISearchControl {
     pub nodes: Option<u64>,
 }
 
+impl UCISearchControl {
+    pub(crate) fn from_raw(
+        search_moves: Vec<UCIMove>,
+        mate: Option<u32>,
+        depth: Option<u32>,
+        nodes: Option<u64>,
+    ) -> Option<Self> {
+        let result = Self {
+            search_moves,
+            mate,
+            depth,
+            nodes,
+        };
+
+        if result == Default::default() {
+            None
+        } else {
+            Some(result)
+        }
+    }
+}
+
 impl Display for UCISearchControl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut formatter = SpaceSepFormatter::new(f);
