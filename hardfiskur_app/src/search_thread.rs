@@ -39,7 +39,7 @@ impl SearchThread {
         let search_gen = self.search_gen;
 
         self.thread_pool.execute(move || {
-            let search_result = simple_search(&mut board);
+            let (_score, search_result) = simple_search(&mut board);
             tx.send((search_result, search_gen)).unwrap();
             waker();
         });

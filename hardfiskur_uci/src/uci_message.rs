@@ -1,11 +1,12 @@
 use std::{fmt::Display, str::FromStr};
 
 use hardfiskur_core::board::UCIMove;
+use hardfiskur_engine::score::Score;
 use thiserror::Error;
 
 use crate::{
     parsing, uci_info::UCIInfo, uci_option_config::UCIOptionConfig, uci_position::UCIPosition,
-    uci_search_control::UCISearchControl, uci_time_control::UCITimeControl,
+    uci_search_control::UCISearchControl, uci_time_control::UCITimeControl, UCIInfoScore,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,6 +103,19 @@ impl UCIMessage {
             best_move,
             ponder: None,
         }
+    }
+
+    pub fn info_score(score: Score) -> Self {
+        let score_info = UCIInfoScore {
+            cp: score.as_centipawns().map(|i| i as i32),
+            mate: score.as_mate_in().map(|i| i as i32),
+            ..Default::default()
+        };
+
+        Self::Info(UCIInfo {
+            score: Some(score_info),
+            ..Default::default()
+        })
     }
 }
 

@@ -65,7 +65,8 @@ fn main() {
             } => {
                 let mut board = current_board.clone();
                 threadpool.execute(move || {
-                    if let Some(m) = simple_search(&mut board) {
+                    if let (score, Some(m)) = simple_search(&mut board) {
+                        println!("{}", UCIMessage::info_score(score));
                         println!("{}", UCIMessage::best_move(m.into()))
                     }
                 });
