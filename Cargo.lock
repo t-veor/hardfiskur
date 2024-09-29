@@ -1861,6 +1861,7 @@ dependencies = [
  "hardfiskur_core",
  "nom",
  "nom_permutation",
+ "pretty_assertions",
  "thiserror",
 ]
 

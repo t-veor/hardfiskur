@@ -3,19 +3,23 @@ mod option;
 mod position;
 pub mod utils;
 
+#[cfg(test)]
+mod test;
+
 use info::info_body;
 use nom::{
     branch::alt,
     combinator::{opt, rest, success, value},
     multi::{many0, many_till},
-    sequence::{pair, preceded, tuple},
+    sequence::{preceded, tuple},
     IResult, Parser,
 };
 use nom_permutation::permutation_opt;
 use option::option_body;
 use position::position_body;
 use utils::{
-    take_tokens_till, token, token_millis, token_tag, token_u32, token_u64, token_uci_move,
+    take_tokens_till, token, token_millis_ignore_negative, token_tag, token_u32, token_u64,
+    token_uci_move,
 };
 
 use crate::{uci_message::ProtectionState, UCIMessage, UCISearchControl, UCITimeControl};
@@ -45,7 +49,7 @@ fn set_option_body(input: &str) -> IResult<&str, UCIMessage> {
 
 fn register_body(input: &str) -> IResult<&str, UCIMessage> {
     alt((
-        pair(token_tag("register"), token_tag("later")).map(|_| UCIMessage::Register {
+        token_tag("later").map(|_| UCIMessage::Register {
             later: true,
             name: None,
             code: None,
@@ -69,15 +73,15 @@ fn go_body(input: &str) -> IResult<&str, UCIMessage> {
     permutation_opt((
         preceded(token_tag("searchmoves"), many0(token_uci_move)),
         token_tag("ponder"),
-        preceded(token_tag("wtime"), token_millis),
-        preceded(token_tag("btime"), token_millis),
-        preceded(token_tag("winc"), token_millis),
-        preceded(token_tag("binc"), token_millis),
+        preceded(token_tag("wtime"), token_millis_ignore_negative),
+        preceded(token_tag("btime"), token_millis_ignore_negative),
+        preceded(token_tag("winc"), token_millis_ignore_negative),
+        preceded(token_tag("binc"), token_millis_ignore_negative),
         preceded(token_tag("movestogo"), token_u32),
         preceded(token_tag("depth"), token_u32),
         preceded(token_tag("nodes"), token_u64),
         preceded(token_tag("mate"), token_u32),
-        preceded(token_tag("movetime"), token_millis),
+        preceded(token_tag("movetime"), token_millis_ignore_negative),
         token_tag("infinite"),
     ))
     .map(
@@ -98,12 +102,12 @@ fn go_body(input: &str) -> IResult<&str, UCIMessage> {
             UCIMessage::Go {
                 time_control: UCITimeControl::from_raw(
                     ponder.is_some(),
-                    white_time,
-                    black_time,
-                    white_increment,
-                    black_increment,
+                    white_time.flatten(),
+                    black_time.flatten(),
+                    white_increment.flatten(),
+                    black_increment.flatten(),
                     moves_to_go,
-                    move_time,
+                    move_time.flatten(),
                     infinite.is_some(),
                 ),
                 search_control: UCISearchControl::from_raw(

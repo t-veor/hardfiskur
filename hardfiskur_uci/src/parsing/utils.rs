@@ -108,6 +108,11 @@ pub fn token_u64(input: &str) -> IResult<&str, u64> {
     tokenize(u64)(input)
 }
 
-pub fn token_millis(input: &str) -> IResult<&str, Duration> {
-    token_u64.map(Duration::from_millis).parse(input)
+pub fn token_millis_ignore_negative(input: &str) -> IResult<&str, Option<Duration>> {
+    let (input, millis) = token_i64(input)?;
+    if millis < 0 {
+        Ok((input, None))
+    } else {
+        Ok((input, Some(Duration::from_millis(millis as u64))))
+    }
 }

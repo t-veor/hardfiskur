@@ -10,3 +10,6 @@ thiserror = "1.0"
 nom = "7.1"
 nom_permutation = "0.1"
 hardfiskur_core = { path = "../hardfiskur_core" }
+
+[dev-dependencies]
+pretty_assertions = "1.4.0"

@@ -57,11 +57,27 @@ impl UCIOptionConfig {
                 max,
             }
         } else if option_type == "combo" {
-            let default = default.map(|s| s.to_string());
+            let default = default.map(|s| {
+                if s == "<empty>" {
+                    "".to_string()
+                } else {
+                    s.to_string()
+                }
+            });
+
             Self::Combo {
                 name,
                 default,
-                var: var.into_iter().map(|s| s.to_string()).collect(),
+                var: var
+                    .into_iter()
+                    .map(|s| {
+                        if s == "<empty>" {
+                            "".to_string()
+                        } else {
+                            s.to_string()
+                        }
+                    })
+                    .collect(),
             }
         } else if option_type == "button" {
             Self::Button { name }
@@ -83,6 +99,7 @@ impl UCIOptionConfig {
 }
 
 impl Display for UCIOptionConfig {
+    // FIXME: Gotta use <empty>s.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut formatter = SpaceSepFormatter::new(f);
 

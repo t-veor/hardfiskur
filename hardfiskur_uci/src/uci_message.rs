@@ -86,7 +86,7 @@ impl FromStr for UCIMessage {
     type Err = ParseUCIMessageError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match parsing::uci_message(s) {
+        match parsing::uci_message(s.trim()) {
             Ok((_remaining, message)) => Ok(message),
             Err(_) => Err(ParseUCIMessageError),
         }

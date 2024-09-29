@@ -7,7 +7,10 @@ use nom::{
 };
 use nom_permutation::permutation_opt;
 
-use super::utils::{token_i32, token_millis, token_tag, token_u32, token_u64, token_uci_move};
+use super::utils::{
+    token_i32, token_millis_ignore_negative, token_tag, token_u32, token_u64,
+    token_uci_move,
+};
 use crate::{UCIInfo, UCIInfoCurrLine, UCIInfoScore};
 
 fn info_score(input: &str) -> IResult<&str, UCIInfoScore> {
@@ -42,7 +45,7 @@ pub fn info_body(input: &str) -> IResult<&str, UCIInfo> {
     permutation_opt((
         preceded(token_tag("depth"), token_u32),
         preceded(token_tag("seldepth"), token_u32),
-        preceded(token_tag("time"), token_millis),
+        preceded(token_tag("time"), token_millis_ignore_negative),
         preceded(token_tag("nodes"), token_u64),
         preceded(token_tag("pv"), many0(token_uci_move)),
         preceded(token_tag("multipv"), token_u32),
@@ -80,7 +83,7 @@ pub fn info_body(input: &str) -> IResult<&str, UCIInfo> {
         )| UCIInfo {
             depth,
             sel_depth,
-            time,
+            time: time.flatten(),
             nodes,
             pv: pv.unwrap_or_default(),
             multi_pv,
