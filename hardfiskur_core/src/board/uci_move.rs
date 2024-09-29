@@ -5,7 +5,7 @@ use std::{
 
 use thiserror::Error;
 
-use super::{Piece, PieceType, Square};
+use super::{Move, Piece, PieceType, Square};
 
 /// Utility type representing a move as used in the Universal Chess Interface
 /// (UCI).
@@ -95,6 +95,16 @@ impl FromStr for UCIMove {
             to,
             promotion,
         })
+    }
+}
+
+impl From<Move> for UCIMove {
+    fn from(value: Move) -> Self {
+        Self {
+            from: value.from_square(),
+            to: value.to_square(),
+            promotion: value.promotion().map(|p| p.piece_type()),
+        }
     }
 }
 

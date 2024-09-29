@@ -1859,10 +1859,12 @@ name = "hardfiskur_uci"
 version = "0.1.0"
 dependencies = [
  "hardfiskur_core",
+ "hardfiskur_engine",
  "nom",
  "nom_permutation",
  "pretty_assertions",
  "thiserror",
+ "threadpool",
 ]
 
 [[package]]

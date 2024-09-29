@@ -82,6 +82,29 @@ pub enum UCIMessage {
     Option(UCIOptionConfig),
 }
 
+impl UCIMessage {
+    pub fn id_name(name: &str) -> Self {
+        Self::Id {
+            name: Some(name.to_string()),
+            author: None,
+        }
+    }
+
+    pub fn id_author(author: &str) -> Self {
+        Self::Id {
+            name: None,
+            author: Some(author.to_string()),
+        }
+    }
+
+    pub fn best_move(best_move: UCIMove) -> Self {
+        Self::BestMove {
+            best_move,
+            ponder: None,
+        }
+    }
+}
+
 impl FromStr for UCIMessage {
     type Err = ParseUCIMessageError;
 

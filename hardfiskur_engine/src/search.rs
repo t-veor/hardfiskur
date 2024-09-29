@@ -76,10 +76,10 @@ pub fn simple_search(board: &mut Board) -> Option<Move> {
 
     let (score, best_move) =
         simple_negamax_search(board, 4, 0, -Score::INF, Score::INF, &mut search_stats);
-    match board.to_move() {
-        Color::White => println!("{}", score),
-        Color::Black => println!("{}", -score),
-    }
-    println!("{search_stats:?}");
+    // match board.to_move() {
+    //     Color::White => println!("{}", score),
+    //     Color::Black => println!("{}", -score),
+    // }
+    // println!("{search_stats:?}");
     best_move
 }
