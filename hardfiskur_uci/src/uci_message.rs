@@ -107,7 +107,11 @@ impl Display for UCIMessage {
             UCIMessage::SetOption { name, value } => {
                 write!(f, "setoption name {name}")?;
                 if let Some(value) = value {
-                    write!(f, " value {value}")?;
+                    write!(
+                        f,
+                        " value {}",
+                        if value.is_empty() { "<empty>" } else { value }
+                    )?;
                 }
                 Ok(())
             }

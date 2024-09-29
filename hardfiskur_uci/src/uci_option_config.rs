@@ -126,10 +126,20 @@ impl Display for UCIOptionConfig {
             UCIOptionConfig::Combo { name, default, var } => {
                 formatter.push_pair("name", name)?;
                 formatter.push_str("type combo")?;
-                formatter.push_option("default", default.as_ref())?;
+
+                if let Some(default) = default {
+                    formatter.push_pair(
+                        "default",
+                        &if default.is_empty() {
+                            "<empty>"
+                        } else {
+                            default
+                        },
+                    )?;
+                }
 
                 for var in var {
-                    formatter.push_pair("var", var)?;
+                    formatter.push_pair("var", &if var.is_empty() { "<empty>" } else { var })?;
                 }
             }
 
@@ -141,7 +151,17 @@ impl Display for UCIOptionConfig {
             UCIOptionConfig::String { name, default } => {
                 formatter.push_pair("name", name)?;
                 formatter.push_str("type string")?;
-                formatter.push_option("default", default.as_ref())?;
+
+                if let Some(default) = default {
+                    formatter.push_pair(
+                        "default",
+                        &if default.is_empty() {
+                            "<empty>"
+                        } else {
+                            default
+                        },
+                    )?;
+                }
             }
         }
 
