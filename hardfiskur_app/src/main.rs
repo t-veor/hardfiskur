@@ -26,7 +26,7 @@ impl HardfiskurApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self {
             chess_ui: ChessBoard::new(Id::new("hardfiskur_ui_board")),
-            board: Board::starting_position(),
+            board: Board::try_parse_fen("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1").unwrap(),
 
             move_history: vec![],
             just_moved: false,

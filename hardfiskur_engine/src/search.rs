@@ -78,8 +78,8 @@ pub fn simple_negamax_search(
                     TranspositionFlag::Exact => {
                         return (score, entry.best_move);
                     }
-                    TranspositionFlag::Lowerbound => beta = beta.min(score),
-                    TranspositionFlag::Upperbound => alpha = alpha.max(score),
+                    TranspositionFlag::Upperbound => beta = beta.min(score),
+                    TranspositionFlag::Lowerbound => alpha = alpha.max(score),
                 }
 
                 // Caused a cutoff? Return immediately
@@ -138,14 +138,10 @@ pub fn simple_negamax_search(
         }
     }
 
-    ctx.tt.set(TranspositionEntry::new(
+    ctx.tt.set(
         ctx.board.zobrist_hash(),
-        tt_flag,
-        depth,
-        alpha,
-        best_move,
-        ply_from_root,
-    ));
+        TranspositionEntry::new(tt_flag, depth, alpha, best_move, ply_from_root),
+    );
 
     (alpha, best_move)
 }

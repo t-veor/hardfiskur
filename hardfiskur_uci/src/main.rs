@@ -7,8 +7,7 @@ use std::{
 
 use hardfiskur_core::board::{Board, Color};
 use hardfiskur_engine::{
-    search::iterative_deepening_search,
-    transposition_table::{self, TranspositionTable},
+    search::iterative_deepening_search, transposition_table::TranspositionTable,
 };
 use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
 use threadpool::ThreadPool;

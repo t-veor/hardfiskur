@@ -1,4 +1,4 @@
-use std::num::NonZeroU32;
+use std::{num::NonZeroU32, u32};
 
 use hardfiskur_core::board::{Move, ZobristHash};
 use zerocopy::{extend_vec_zeroed, FromZeroes};
@@ -14,7 +14,6 @@ pub enum TranspositionFlag {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TranspositionEntry {
-    pub key: ZobristHash,
     pub flag: TranspositionFlag,
     pub depth: u32,
     score: Score,
@@ -23,7 +22,6 @@ pub struct TranspositionEntry {
 
 impl TranspositionEntry {
     pub fn new(
-        key: ZobristHash,
         flag: TranspositionFlag,
         depth: u32,
         score: Score,
@@ -31,7 +29,6 @@ impl TranspositionEntry {
         ply_from_root: u32,
     ) -> Self {
         Self {
-            key,
             flag,
             depth,
             score: score.sub_plies_for_mate(ply_from_root),
@@ -95,9 +92,11 @@ impl TranspositionBucket {
     pub fn find(&self, key: ZobristHash) -> Option<&TranspositionEntryInternal> {
         let key = (key.0 >> 48) as u16;
         let mut found_entry = None;
+        let mut best_depth = 0;
 
         for entry in self.entries.iter() {
-            if entry.key == key {
+            if entry.key == key && entry.depth >= best_depth {
+                best_depth = entry.depth;
                 found_entry = Some(entry);
             }
         }
@@ -107,9 +106,11 @@ impl TranspositionBucket {
 
     pub fn store(&mut self, to_store: TranspositionEntryInternal) {
         let mut idx_lowest_depth = 0;
+        let mut lowest_depth = to_store.depth;
 
         for (i, entry) in self.entries.iter().enumerate() {
-            if entry.depth < to_store.depth {
+            if entry.depth < lowest_depth {
+                lowest_depth = entry.depth;
                 idx_lowest_depth = i;
             }
         }
@@ -129,13 +130,13 @@ impl TranspositionTable {
 
         const BYTES_PER_MB: usize = 1024 * 1024;
 
-        let entry_size = size_of::<TranspositionEntryInternal>();
+        let entry_size = size_of::<TranspositionBucket>();
         let max_entries = max_size_in_mb * BYTES_PER_MB / entry_size;
 
         let num_entries = 1 << (usize::BITS - max_entries.leading_zeros() - 1);
 
         debug_assert!(
-            size_of::<TranspositionEntryInternal>() * num_entries <= max_size_in_mb * BYTES_PER_MB
+            size_of::<TranspositionBucket>() * num_entries <= max_size_in_mb * BYTES_PER_MB
         );
 
         let mut entries = Vec::new();
@@ -157,7 +158,6 @@ impl TranspositionTable {
 
         bucket.find(key).and_then(|entry| {
             Some(TranspositionEntry {
-                key,
                 flag: entry.flag.try_into().ok()?,
                 depth: entry.depth,
                 score: entry.score,
@@ -166,12 +166,12 @@ impl TranspositionTable {
         })
     }
 
-    pub fn set(&mut self, entry: TranspositionEntry) {
-        let index = self.index(entry.key);
+    pub fn set(&mut self, key: ZobristHash, entry: TranspositionEntry) {
+        let index = self.index(key);
         let bucket = &mut self.buckets[index];
 
         bucket.store(TranspositionEntryInternal {
-            key: (entry.key.0 >> 48) as u16,
+            key: (key.0 >> 48) as u16,
             flag: entry.flag.into(),
             depth: entry.depth,
             score: entry.score,
