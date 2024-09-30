@@ -29,7 +29,10 @@ fn main() {
             UCIMessage::Quit => return,
 
             UCIMessage::UCI => {
-                println!("{}", UCIMessage::id_name("Harðfiskur"));
+                println!(
+                    "{}",
+                    UCIMessage::id_name(&format!("Harðfiskur (rev {})", env!("GIT_HASH_SHORT")))
+                );
                 println!("{}", UCIMessage::id_author("Tyler Zhang"));
                 println!("{}", UCIMessage::UCIOk);
             }
