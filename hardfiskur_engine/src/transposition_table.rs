@@ -176,4 +176,8 @@ impl TranspositionTable {
             best_move: entry.best_move.map(|m| m.get()),
         });
     }
+
+    pub fn clear(&mut self) {
+        self.buckets = vec![FromZeroes::new_zeroed(); self.hash_mask + 1];
+    }
 }

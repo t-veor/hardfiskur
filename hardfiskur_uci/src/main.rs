@@ -114,6 +114,7 @@ fn main() {
 
                 threadpool.execute(move || {
                     let mut transposition_table = transposition_table.lock().unwrap();
+                    transposition_table.clear();
                     if let (score, Some(m), stats) = iterative_deepening_search(
                         &mut board,
                         allocated_time,
