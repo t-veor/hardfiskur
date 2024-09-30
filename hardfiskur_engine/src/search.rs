@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use hardfiskur_core::{
     board::{Board, Color, Move},
     move_gen::{MoveGenFlags, MoveVec},
@@ -5,11 +7,25 @@ use hardfiskur_core::{
 
 use crate::{evaluation::evaluate, move_ordering::order_moves, score::Score};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SearchStats {
-    pub nodes_searched: u32,
-    pub quiescence_nodes: u32,
+    pub depth: u32,
+    pub search_started: Instant,
+    pub nodes_searched: u64,
+    pub quiescence_nodes: u64,
     pub beta_cutoffs: u32,
+}
+
+impl SearchStats {
+    pub fn new() -> Self {
+        Self {
+            depth: 0,
+            search_started: Instant::now(),
+            nodes_searched: 0,
+            quiescence_nodes: 0,
+            beta_cutoffs: 0,
+        }
+    }
 }
 
 pub fn simple_negamax_search(
@@ -118,15 +134,12 @@ pub fn quiescence_search(
     return alpha;
 }
 
-pub fn simple_search(board: &mut Board) -> (Score, Option<Move>) {
-    let mut search_stats = SearchStats::default();
+pub fn simple_search(board: &mut Board) -> (Score, Option<Move>, SearchStats) {
+    let mut search_stats = SearchStats::new();
+    search_stats.depth = 4;
 
     let (score, best_move) =
         simple_negamax_search(board, 4, 0, -Score::INF, Score::INF, &mut search_stats);
-    // match board.to_move() {
-    //     Color::White => println!("{}", score),
-    //     Color::Black => println!("{}", -score),
-    // }
-    // println!("{search_stats:?}");
-    (score, best_move)
+
+    (score, best_move, search_stats)
 }

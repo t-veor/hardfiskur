@@ -2,7 +2,7 @@ use std::{io::stdin, str::FromStr};
 
 use hardfiskur_core::board::Board;
 use hardfiskur_engine::search::simple_search;
-use hardfiskur_uci::{UCIMessage, UCIPosition, UCIPositionBase};
+use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase};
 use threadpool::ThreadPool;
 
 fn read_message() -> Option<UCIMessage> {
@@ -68,8 +68,18 @@ fn main() {
             } => {
                 let mut board = current_board.clone();
                 threadpool.execute(move || {
-                    if let (score, Some(m)) = simple_search(&mut board) {
-                        println!("{}", UCIMessage::info_score(score));
+                    if let (score, Some(m), stats) = simple_search(&mut board) {
+                        let elapsed = stats.search_started.elapsed();
+                        println!(
+                            "{}",
+                            UCIMessage::Info(UCIInfo {
+                                depth: Some(stats.depth),
+                                time: Some(elapsed),
+                                nodes: Some(stats.nodes_searched),
+                                score: Some(score.into()),
+                                ..Default::default()
+                            })
+                        );
                         println!("{}", UCIMessage::best_move(m.into()))
                     }
                 });
