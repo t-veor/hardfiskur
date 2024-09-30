@@ -13,6 +13,7 @@ pub struct SearchContext<'a> {
     pub board: &'a mut Board,
     pub allocated_time: Duration,
     pub stats: SearchStats,
+    pub time_up: bool,
 }
 
 impl<'a> SearchContext<'a> {
@@ -21,16 +22,22 @@ impl<'a> SearchContext<'a> {
             board,
             allocated_time,
             stats: SearchStats::new(),
+            time_up: false,
         }
     }
 
-    pub fn is_time_up(&self) -> bool {
-        // Avoid syscalls a little bit
-        if self.stats.nodes_searched % 2048 == 0 {
+    pub fn is_time_up(&mut self) -> bool {
+        if self.time_up {
+            return true;
+        }
+
+        // Avoid syscalls a bit
+        if self.stats.nodes_searched % 2048 != 0 {
             return false;
         }
 
-        self.stats.search_started.elapsed() >= self.allocated_time
+        self.time_up = self.stats.search_started.elapsed() >= self.allocated_time;
+        self.time_up
     }
 }
 
