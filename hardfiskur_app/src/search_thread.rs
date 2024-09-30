@@ -1,7 +1,10 @@
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::{
+    sync::mpsc::{self, Receiver, Sender},
+    time::Duration,
+};
 
-use hardfiskur_core::board::{Board, Move};
-use hardfiskur_engine::search::simple_search;
+use hardfiskur_core::board::{Board, Color, Move};
+use hardfiskur_engine::search::iterative_deepening_search;
 use threadpool::ThreadPool;
 
 pub struct SearchThread {
@@ -39,7 +42,19 @@ impl SearchThread {
         let search_gen = self.search_gen;
 
         self.thread_pool.execute(move || {
-            let (_score, search_result, _stats) = simple_search(&mut board);
+            let (score, search_result, stats) =
+                iterative_deepening_search(&mut board, Duration::from_millis(200));
+
+            let score = match board.to_move() {
+                Color::White => score,
+                Color::Black => -score,
+            };
+
+            println!(
+                "score {score} depth {} nodes {}",
+                stats.depth, stats.nodes_searched
+            );
+
             tx.send((search_result, search_gen)).unwrap();
             waker();
         });

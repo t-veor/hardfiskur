@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicBool;
+use std::time::Duration;
 
 use hardfiskur_core::{
     board::{Board, Color, Move},
@@ -11,21 +11,26 @@ use crate::{
 
 pub struct SearchContext<'a> {
     pub board: &'a mut Board,
+    pub allocated_time: Duration,
     pub stats: SearchStats,
-    pub stop_flag: AtomicBool,
 }
 
 impl<'a> SearchContext<'a> {
-    pub fn new(board: &'a mut Board, stop_flag: AtomicBool) -> Self {
+    pub fn new(board: &'a mut Board, allocated_time: Duration) -> Self {
         Self {
             board,
+            allocated_time,
             stats: SearchStats::new(),
-            stop_flag,
         }
     }
 
-    pub fn search_cancelled(&self) -> bool {
-        self.stop_flag.load(std::sync::atomic::Ordering::Relaxed)
+    pub fn is_time_up(&self) -> bool {
+        // Avoid syscalls a little bit
+        if self.stats.nodes_searched % 2048 == 0 {
+            return false;
+        }
+
+        self.stats.search_started.elapsed() >= self.allocated_time
     }
 }
 
@@ -69,6 +74,11 @@ pub fn simple_negamax_search(
         ctx.board.push_move_unchecked(m);
         let eval = -simple_negamax_search(ctx, depth - 1, ply_from_root + 1, -beta, -alpha).0;
         ctx.board.pop_move();
+
+        // Out of time, stop searching!
+        if depth > 1 && ctx.is_time_up() {
+            return (alpha, best_move);
+        }
 
         if eval > alpha {
             alpha = eval;
@@ -132,11 +142,29 @@ pub fn quiescence_search(
     return alpha;
 }
 
-pub fn simple_search(board: &mut Board) -> (Score, Option<Move>, SearchStats) {
-    let mut ctx = SearchContext::new(board, AtomicBool::new(false));
-    ctx.stats.depth = 4;
+pub fn iterative_deepening_search(
+    board: &mut Board,
+    allocated_time: Duration,
+) -> (Score, Option<Move>, SearchStats) {
+    let mut ctx = SearchContext::new(board, allocated_time);
 
-    let (score, best_move) = simple_negamax_search(&mut ctx, 4, 0, -Score::INF, Score::INF);
+    let mut best_score = Score(0);
+    let mut best_move = None;
+    for depth in 1.. {
+        let (score, m) = simple_negamax_search(&mut ctx, depth, 0, -Score::INF, Score::INF);
 
-    (score, best_move, ctx.stats)
+        // TODO: We don't have the transpo table up and running yet, so we don't
+        // know for sure if the first move examined here was the best move of
+        // the last iteration. As such we actually just can't accept it.
+        if ctx.is_time_up() {
+            break;
+        }
+
+        best_score = score;
+        best_move = best_move.or(m);
+
+        ctx.stats.depth = depth;
+    }
+
+    (best_score, best_move, ctx.stats)
 }

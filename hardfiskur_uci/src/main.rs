@@ -1,8 +1,8 @@
-use std::{io::stdin, str::FromStr};
+use std::{io::stdin, str::FromStr, time::Duration};
 
-use hardfiskur_core::board::Board;
-use hardfiskur_engine::search::simple_search;
-use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase};
+use hardfiskur_core::board::{Board, Color};
+use hardfiskur_engine::search::iterative_deepening_search;
+use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
 use threadpool::ThreadPool;
 
 fn read_message() -> Option<UCIMessage> {
@@ -10,6 +10,38 @@ fn read_message() -> Option<UCIMessage> {
     stdin().read_line(&mut s).ok()?;
 
     UCIMessage::from_str(&s).ok()
+}
+
+fn simple_time_allocation(to_move: Color, time_control: Option<&UCITimeControl>) -> Duration {
+    match time_control {
+        Some(UCITimeControl::MoveTime(duration)) => {
+            // Use move time minus 25ms
+            return duration.saturating_sub(Duration::from_millis(25));
+        }
+        Some(UCITimeControl::TimeLeft {
+            white_time,
+            black_time,
+            white_increment,
+            black_increment,
+            ..
+        }) => {
+            let (time_remaining, increment) = match to_move {
+                Color::White => (white_time, white_increment),
+                Color::Black => (black_time, black_increment),
+            };
+
+            if let Some(time_remaining) = time_remaining {
+                let increment = increment.unwrap_or(Duration::ZERO);
+
+                return *time_remaining / 20 + increment / 2;
+            }
+        }
+
+        _ => (),
+    }
+
+    // Default 2s
+    Duration::from_secs(2)
 }
 
 fn main() {
@@ -63,12 +95,16 @@ fn main() {
             }
 
             UCIMessage::Go {
-                time_control: _,
+                time_control,
                 search_control: _,
             } => {
                 let mut board = current_board.clone();
+                let allocated_time = simple_time_allocation(board.to_move(), time_control.as_ref());
+
                 threadpool.execute(move || {
-                    if let (score, Some(m), stats) = simple_search(&mut board) {
+                    if let (score, Some(m), stats) =
+                        iterative_deepening_search(&mut board, allocated_time)
+                    {
                         let elapsed = stats.search_started.elapsed();
                         println!(
                             "{}",
