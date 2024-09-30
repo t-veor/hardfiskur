@@ -5,11 +5,12 @@ use std::{
 };
 
 use rand::{RngCore, SeedableRng};
+use zerocopy::FromZeroes;
 
 use super::{Castling, Color, Piece, Square};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct ZobristHash(u64);
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default, FromZeroes)]
+pub struct ZobristHash(pub u64);
 
 impl ZobristHash {
     pub fn piece(piece: Piece, square: Square) -> Self {

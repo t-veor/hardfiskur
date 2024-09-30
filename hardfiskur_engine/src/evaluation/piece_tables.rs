@@ -2,7 +2,7 @@ use hardfiskur_core::board::{PieceType, Square};
 
 #[rustfmt::skip]
 mod tables {
-    pub const PAWN: [i64; 64] = [
+    pub const PAWN: [i32; 64] = [
            0,   0,   0,   0,   0,   0,   0,   0,
          500, 500, 500, 500, 500, 500, 500, 500,
          100, 100, 200, 300, 300, 200, 100, 100,
@@ -13,7 +13,7 @@ mod tables {
            0,   0,   0,   0,   0,   0,   0,   0,
     ];
 
-    pub const KNIGHT: [i64; 64] = [
+    pub const KNIGHT: [i32; 64] = [
         -500,-400,-300,-300,-300,-300,-400,-500,
         -400,-200,   0,   0,   0,   0,-200,-400,
         -300,   0, 100, 150, 150, 100,   0,-300,
@@ -24,7 +24,7 @@ mod tables {
         -500,-400,-300,-300,-300,-300,-400,-500,
     ];
 
-    pub const BISHOP: [i64; 64] = [
+    pub const BISHOP: [i32; 64] = [
         -200,-100,-100,-100,-100,-100,-100,-200,
         -100,   0,   0,   0,   0,   0,   0,-100,
         -100,   0,  50, 100, 100,  50,   0,-100,
@@ -35,7 +35,7 @@ mod tables {
         -200,-100,-100,-100,-100,-100,-100,-200,
     ];
 
-    pub const ROOK: [i64; 64] = [
+    pub const ROOK: [i32; 64] = [
            0,   0,   0,   0,   0,   0,   0,   0,
           50, 100, 100, 100, 100, 100, 100,  50,
          -50,   0,   0,   0,   0,   0,   0, -50,
@@ -46,7 +46,7 @@ mod tables {
            0,   0,   0,  50,  50,   0,   0,   0,
     ];
 
-    pub const QUEEN: [i64; 64] = [
+    pub const QUEEN: [i32; 64] = [
         -200,-100,-100, -50, -50,-100,-100,-200,
         -100,   0,   0,   0,   0,   0,   0,-100,
         -100,   0,  50,  50,  50,  50,   0,-100,
@@ -57,7 +57,7 @@ mod tables {
         -200,-100,-100, -50, -50,-100,-100,-200,
     ];
 
-    pub const KING_MIDDLE_GAME: [i64; 64] = [
+    pub const KING_MIDDLE_GAME: [i32; 64] = [
         -300,-400,-400,-500,-500,-400,-400,-300,
         -300,-400,-400,-500,-500,-400,-400,-300,
         -300,-400,-400,-500,-500,-400,-400,-300,
@@ -68,7 +68,7 @@ mod tables {
          200, 300, 100,   0,   0, 100, 300, 200,
     ];
 
-    pub const KING_END_GAME: [i64; 64] = [
+    pub const KING_END_GAME: [i32; 64] = [
         -500,-400,-300,-200,-200,-300,-400,-500,
         -300,-200,-100,   0,   0,-100,-200,-300,
         -300,-100, 200, 300, 300, 200,-100,-300,
@@ -80,7 +80,7 @@ mod tables {
     ];
 }
 
-pub const fn material_score(piece_type: PieceType) -> i64 {
+pub const fn material_score(piece_type: PieceType) -> i32 {
     match piece_type {
         PieceType::Pawn => 1000,
         PieceType::Knight => 3200,
@@ -91,9 +91,9 @@ pub const fn material_score(piece_type: PieceType) -> i64 {
     }
 }
 
-pub const FULL_ENDGAME_PHASE: i64 = 24;
+pub const FULL_ENDGAME_PHASE: i32 = 24;
 
-pub const fn phase_modifier(piece_type: PieceType) -> i64 {
+pub const fn phase_modifier(piece_type: PieceType) -> i32 {
     match piece_type {
         PieceType::Knight => 1,
         PieceType::Bishop => 1,
@@ -103,7 +103,7 @@ pub const fn phase_modifier(piece_type: PieceType) -> i64 {
     }
 }
 
-pub const fn piece_square_table(piece_type: PieceType, square: Square) -> (i64, i64) {
+pub const fn piece_square_table(piece_type: PieceType, square: Square) -> (i32, i32) {
     let square = square.flip();
 
     let table = match piece_type {

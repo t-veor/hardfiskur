@@ -1845,6 +1845,7 @@ dependencies = [
  "rand_chacha",
  "seq-macro",
  "thiserror",
+ "zerocopy",
 ]
 
 [[package]]
@@ -1852,6 +1853,7 @@ name = "hardfiskur_engine"
 version = "0.1.0"
 dependencies = [
  "hardfiskur_core",
+ "zerocopy",
 ]
 
 [[package]]

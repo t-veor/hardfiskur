@@ -105,6 +105,14 @@ impl Move {
         }
     }
 
+    pub const fn from_nonzero(value: NonZeroU32) -> Self {
+        Self(value)
+    }
+
+    pub const fn get(&self) -> NonZeroU32 {
+        self.0
+    }
+
     /// Returns the source square of the moved piece.
     pub const fn from_square(self) -> Square {
         Square::from_u8_unchecked((self.0.get() & 0x3F) as u8)

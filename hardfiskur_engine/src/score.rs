@@ -3,29 +3,31 @@ use std::{
     ops::{Add, AddAssign, Neg, Sub, SubAssign},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Score(pub i64);
+use zerocopy::FromZeroes;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, FromZeroes)]
+pub struct Score(pub i32);
 
 impl Score {
-    // This is not i64::MAX so that adding small numbers to it doesn't overflow.
-    pub const INF: Self = Self(999_999_999);
+    // This is not i32::MAX so that adding small numbers to it doesn't overflow.
+    pub const INF: Self = Self(1_000_000_000);
 
-    const MATE_SCORE: i64 = 20_000_000;
-    const MATE_THRESHOLD: i64 = 1_000_000;
+    const MATE_SCORE: i32 = 20_000_000;
+    const MATE_THRESHOLD: i32 = 1_000_000;
 
-    pub const fn get(self) -> i64 {
+    pub const fn get(self) -> i32 {
         self.0
     }
 
     pub const fn mate_in_plies(ply_from_root: u32) -> Self {
-        Self(Self::MATE_SCORE - ply_from_root as i64)
+        Self(Self::MATE_SCORE - ply_from_root as i32)
     }
 
     pub const fn is_mate(self) -> bool {
         self.0.abs() > Self::MATE_THRESHOLD
     }
 
-    pub const fn as_mate_in(self) -> Option<i64> {
+    pub const fn as_mate_in(self) -> Option<i32> {
         if self.0.abs() > Self::MATE_THRESHOLD {
             Some(self.0.signum() * (Self::MATE_SCORE - self.0.abs() + 1) / 2)
         } else {
@@ -33,11 +35,31 @@ impl Score {
         }
     }
 
-    pub const fn as_centipawns(self) -> Option<i64> {
+    pub const fn as_centipawns(self) -> Option<i32> {
         if self.0.abs() > Self::MATE_THRESHOLD {
             None
         } else {
             Some(self.0 / 10)
+        }
+    }
+
+    pub const fn sub_plies_for_mate(self, ply_from_root: u32) -> Self {
+        if self.0 > Self::MATE_THRESHOLD {
+            Self(self.0 + ply_from_root as i32)
+        } else if self.0 < Self::MATE_THRESHOLD {
+            Self(self.0 - ply_from_root as i32)
+        } else {
+            self
+        }
+    }
+
+    pub const fn add_plies_for_mate(self, ply_from_root: u32) -> Self {
+        if self.0 > Self::MATE_THRESHOLD {
+            Self(self.0 - ply_from_root as i32)
+        } else if self.0 < Self::MATE_THRESHOLD {
+            Self(self.0 + ply_from_root as i32)
+        } else {
+            self
         }
     }
 }
@@ -50,15 +72,15 @@ impl Add for Score {
     }
 }
 
-impl Add<i64> for Score {
+impl Add<i32> for Score {
     type Output = Self;
 
-    fn add(self, rhs: i64) -> Self::Output {
+    fn add(self, rhs: i32) -> Self::Output {
         Self(self.0 + rhs)
     }
 }
 
-impl Add<Score> for i64 {
+impl Add<Score> for i32 {
     type Output = Score;
 
     fn add(self, rhs: Score) -> Self::Output {
@@ -72,8 +94,8 @@ impl AddAssign for Score {
     }
 }
 
-impl AddAssign<i64> for Score {
-    fn add_assign(&mut self, rhs: i64) {
+impl AddAssign<i32> for Score {
+    fn add_assign(&mut self, rhs: i32) {
         *self = *self + rhs
     }
 }
@@ -94,10 +116,10 @@ impl Sub for Score {
     }
 }
 
-impl Sub<i64> for Score {
+impl Sub<i32> for Score {
     type Output = Self;
 
-    fn sub(self, rhs: i64) -> Self::Output {
+    fn sub(self, rhs: i32) -> Self::Output {
         Self(self.0 - rhs)
     }
 }
@@ -108,8 +130,8 @@ impl SubAssign for Score {
     }
 }
 
-impl SubAssign<i64> for Score {
-    fn sub_assign(&mut self, rhs: i64) {
+impl SubAssign<i32> for Score {
+    fn sub_assign(&mut self, rhs: i32) {
         *self = *self - rhs
     }
 }
