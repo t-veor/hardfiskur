@@ -134,24 +134,19 @@ pub fn simple_negamax_search(
             if alpha >= beta {
                 tt_flag = TranspositionFlag::Lowerbound;
                 ctx.stats.beta_cutoffs += 1;
-                break;
+
+                ctx.tt.set(
+                    ctx.board.zobrist_hash(),
+                    TranspositionEntry::new(tt_flag, depth, beta, best_move, ply_from_root),
+                );
+                return (beta, best_move);
             }
         }
     }
 
     ctx.tt.set(
         ctx.board.zobrist_hash(),
-        TranspositionEntry::new(
-            tt_flag,
-            depth,
-            if tt_flag == TranspositionFlag::Lowerbound {
-                beta
-            } else {
-                alpha
-            },
-            best_move,
-            ply_from_root,
-        ),
+        TranspositionEntry::new(tt_flag, depth, alpha, best_move, ply_from_root),
     );
 
     (alpha, best_move)
