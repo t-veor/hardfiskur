@@ -1,7 +1,15 @@
-use std::{io::stdin, str::FromStr, time::Duration};
+use std::{
+    io::stdin,
+    str::FromStr,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use hardfiskur_core::board::{Board, Color};
-use hardfiskur_engine::search::iterative_deepening_search;
+use hardfiskur_engine::{
+    search::iterative_deepening_search,
+    transposition_table::{self, TranspositionTable},
+};
 use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
 use threadpool::ThreadPool;
 
@@ -47,6 +55,8 @@ fn simple_time_allocation(to_move: Color, time_control: Option<&UCITimeControl>)
 fn main() {
     let mut current_board = Board::starting_position();
     let threadpool = ThreadPool::new(1);
+
+    let transposition_table = Arc::new(Mutex::new(TranspositionTable::new(64)));
 
     'main_loop: loop {
         let command = match read_message() {
@@ -101,10 +111,15 @@ fn main() {
                 let mut board = current_board.clone();
                 let allocated_time = simple_time_allocation(board.to_move(), time_control.as_ref());
 
+                let transposition_table = transposition_table.clone();
+
                 threadpool.execute(move || {
-                    if let (score, Some(m), stats) =
-                        iterative_deepening_search(&mut board, allocated_time)
-                    {
+                    let mut transposition_table = transposition_table.lock().unwrap();
+                    if let (score, Some(m), stats) = iterative_deepening_search(
+                        &mut board,
+                        allocated_time,
+                        &mut transposition_table,
+                    ) {
                         let elapsed = stats.search_started.elapsed();
                         println!(
                             "{}",

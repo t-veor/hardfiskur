@@ -1,4 +1,4 @@
-use std::{mem, num::NonZeroU32};
+use std::num::NonZeroU32;
 
 use hardfiskur_core::board::{Move, ZobristHash};
 use zerocopy::{extend_vec_zeroed, FromZeroes};
@@ -17,7 +17,7 @@ pub struct TranspositionEntry {
     pub key: ZobristHash,
     pub flag: TranspositionFlag,
     pub depth: u32,
-    pub score: Score,
+    score: Score,
     pub best_move: Option<Move>,
 }
 
@@ -39,31 +39,8 @@ impl TranspositionEntry {
         }
     }
 
-    pub fn get_score(
-        &self,
-        depth: u32,
-        ply_from_root: u32,
-        alpha: Score,
-        beta: Score,
-    ) -> Option<(Score, Move)> {
-        let score = self.score.add_plies_for_mate(ply_from_root);
-        let best_move = self.best_move?;
-
-        if self.depth >= depth {
-            match self.flag {
-                TranspositionFlag::Exact => return Some((score, best_move)),
-                TranspositionFlag::Lowerbound => {
-                    if score <= alpha {
-                        return Some((alpha, best_move));
-                    }
-                }
-                TranspositionFlag::Upperbound => {
-                    return Some((beta, best_move));
-                }
-            }
-        }
-
-        None
+    pub fn get_score(&self, ply_from_root: u32) -> Score {
+        self.score.add_plies_for_mate(ply_from_root)
     }
 }
 
@@ -174,7 +151,7 @@ impl TranspositionTable {
         key.0 as usize & self.hash_mask
     }
 
-    pub fn get_entry(&self, key: ZobristHash, ply_from_root: u32) -> Option<TranspositionEntry> {
+    pub fn get_entry(&self, key: ZobristHash) -> Option<TranspositionEntry> {
         let index = self.index(key);
         let bucket = &self.buckets[index];
 
@@ -183,13 +160,13 @@ impl TranspositionTable {
                 key,
                 flag: entry.flag.try_into().ok()?,
                 depth: entry.depth,
-                score: entry.score.add_plies_for_mate(ply_from_root),
+                score: entry.score,
                 best_move: entry.best_move.map(|m| Move::from_nonzero(m)),
             })
         })
     }
 
-    pub fn set(&mut self, entry: TranspositionEntry, ply_from_root: u32) {
+    pub fn set(&mut self, entry: TranspositionEntry) {
         let index = self.index(entry.key);
         let bucket = &mut self.buckets[index];
 
@@ -197,7 +174,7 @@ impl TranspositionTable {
             key: (entry.key.0 >> 48) as u16,
             flag: entry.flag.into(),
             depth: entry.depth,
-            score: entry.score.sub_plies_for_mate(ply_from_root),
+            score: entry.score,
             best_move: entry.best_move.map(|m| m.get()),
         });
     }

@@ -6,7 +6,11 @@ use hardfiskur_core::{
 };
 
 use crate::{
-    evaluation::evaluate, move_ordering::order_moves, score::Score, search_stats::SearchStats,
+    evaluation::evaluate,
+    move_ordering::order_moves,
+    score::Score,
+    search_stats::SearchStats,
+    transposition_table::{TranspositionEntry, TranspositionFlag, TranspositionTable},
 };
 
 pub struct SearchContext<'a> {
@@ -14,15 +18,22 @@ pub struct SearchContext<'a> {
     pub allocated_time: Duration,
     pub stats: SearchStats,
     pub time_up: bool,
+
+    pub tt: &'a mut TranspositionTable,
 }
 
 impl<'a> SearchContext<'a> {
-    pub fn new(board: &'a mut Board, allocated_time: Duration) -> Self {
+    pub fn new(
+        board: &'a mut Board,
+        allocated_time: Duration,
+        tt: &'a mut TranspositionTable,
+    ) -> Self {
         Self {
             board,
             allocated_time,
             stats: SearchStats::new(),
             time_up: false,
+            tt,
         }
     }
 
@@ -46,9 +57,40 @@ pub fn simple_negamax_search(
     depth: u32,
     ply_from_root: u32,
     mut alpha: Score,
-    beta: Score,
+    mut beta: Score,
 ) -> (Score, Option<Move>) {
     ctx.stats.nodes_searched += 1;
+
+    if depth == 0 {
+        return (quiescence_search(ctx, ply_from_root, alpha, beta), None);
+    }
+
+    let mut tt_move = None;
+    match ctx.tt.get_entry(ctx.board.zobrist_hash()) {
+        Some(entry) => {
+            tt_move = entry.best_move;
+
+            if entry.depth >= depth {
+                ctx.stats.tt_hits += 1;
+
+                let score = entry.get_score(ply_from_root);
+                match entry.flag {
+                    TranspositionFlag::Exact => {
+                        return (score, entry.best_move);
+                    }
+                    TranspositionFlag::Lowerbound => beta = beta.min(score),
+                    TranspositionFlag::Upperbound => alpha = alpha.max(score),
+                }
+
+                // Caused a cutoff? Return immediately
+                if alpha >= beta {
+                    return (score, entry.best_move);
+                }
+            }
+        }
+        None => (),
+    }
+    let mut tt_flag = TranspositionFlag::Upperbound;
 
     let (mut legal_moves, move_gen_result) = ctx.board.legal_moves_and_meta();
 
@@ -70,11 +112,7 @@ pub fn simple_negamax_search(
         return (Score(0), None);
     }
 
-    if depth == 0 {
-        return (quiescence_search(ctx, ply_from_root, alpha, beta), None);
-    }
-
-    order_moves(ctx.board, &mut legal_moves);
+    order_moves(ctx, tt_move, &mut legal_moves);
 
     let mut best_move = None;
     for m in legal_moves {
@@ -90,13 +128,24 @@ pub fn simple_negamax_search(
         if eval > alpha {
             alpha = eval;
             best_move = Some(m);
+            tt_flag = TranspositionFlag::Exact;
 
             if alpha >= beta {
+                tt_flag = TranspositionFlag::Lowerbound;
                 ctx.stats.beta_cutoffs += 1;
                 break;
             }
         }
     }
+
+    ctx.tt.set(TranspositionEntry::new(
+        ctx.board.zobrist_hash(),
+        tt_flag,
+        depth,
+        alpha,
+        best_move,
+        ply_from_root,
+    ));
 
     (alpha, best_move)
 }
@@ -132,7 +181,7 @@ pub fn quiescence_search(
 
     alpha = alpha.max(stand_pat_score);
 
-    order_moves(ctx.board, &mut capturing_moves);
+    order_moves(ctx, None, &mut capturing_moves);
 
     for m in capturing_moves {
         ctx.board.push_move_unchecked(m);
@@ -152,25 +201,25 @@ pub fn quiescence_search(
 pub fn iterative_deepening_search(
     board: &mut Board,
     allocated_time: Duration,
+    transposition_table: &mut TranspositionTable,
 ) -> (Score, Option<Move>, SearchStats) {
-    let mut ctx = SearchContext::new(board, allocated_time);
+    let mut ctx = SearchContext::new(board, allocated_time, transposition_table);
 
     let mut best_score = Score(0);
     let mut best_move = None;
     for depth in 1.. {
         let (score, m) = simple_negamax_search(&mut ctx, depth, 0, -Score::INF, Score::INF);
 
-        // TODO: We don't have the transpo table up and running yet, so we don't
-        // know for sure if the first move examined here was the best move of
-        // the last iteration. As such we actually just can't accept it.
+        if let Some(m) = m {
+            best_score = score;
+            best_move = Some(m);
+
+            ctx.stats.depth = depth;
+        }
+
         if ctx.is_time_up() {
             break;
         }
-
-        best_score = score;
-        best_move = m.or(best_move);
-
-        ctx.stats.depth = depth;
     }
 
     (best_score, best_move, ctx.stats)
