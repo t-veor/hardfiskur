@@ -1,7 +1,7 @@
 use std::{num::NonZeroU32, u32};
 
 use hardfiskur_core::board::{Move, ZobristHash};
-use zerocopy::{extend_vec_zeroed, FromZeroes};
+use zerocopy::FromZeroes;
 
 use crate::score::Score;
 
@@ -82,6 +82,12 @@ struct TranspositionEntryInternal {
     best_move: Option<NonZeroU32>,
 }
 
+impl TranspositionEntryInternal {
+    fn key(hash: ZobristHash) -> u16 {
+        (hash.0 >> 48) as u16
+    }
+}
+
 #[derive(Debug, Clone, Default, FromZeroes)]
 #[repr(align(64))]
 struct TranspositionBucket {
@@ -90,27 +96,22 @@ struct TranspositionBucket {
 
 impl TranspositionBucket {
     pub fn find(&self, key: ZobristHash) -> Option<&TranspositionEntryInternal> {
-        let key = (key.0 >> 48) as u16;
-        let mut found_entry = None;
-        let mut best_depth = 0;
+        let key = TranspositionEntryInternal::key(key);
 
         for entry in self.entries.iter() {
-            if entry.key == key && entry.depth >= best_depth {
-                best_depth = entry.depth;
-                found_entry = Some(entry);
+            if entry.key == key {
+                return Some(entry);
             }
         }
 
-        found_entry
+        None
     }
 
     pub fn store(&mut self, to_store: TranspositionEntryInternal) {
         let mut idx_lowest_depth = 0;
-        let mut lowest_depth = to_store.depth;
 
         for (i, entry) in self.entries.iter().enumerate() {
-            if entry.depth < lowest_depth {
-                lowest_depth = entry.depth;
+            if entry.depth < to_store.depth {
                 idx_lowest_depth = i;
             }
         }
@@ -139,12 +140,9 @@ impl TranspositionTable {
             size_of::<TranspositionBucket>() * num_entries <= max_size_in_mb * BYTES_PER_MB
         );
 
-        let mut entries = Vec::new();
-        extend_vec_zeroed(&mut entries, num_entries);
-
         Self {
             hash_mask: num_entries - 1,
-            buckets: entries,
+            buckets: vec![FromZeroes::new_zeroed(); num_entries],
         }
     }
 
@@ -171,7 +169,7 @@ impl TranspositionTable {
         let bucket = &mut self.buckets[index];
 
         bucket.store(TranspositionEntryInternal {
-            key: (key.0 >> 48) as u16,
+            key: TranspositionEntryInternal::key(key),
             flag: entry.flag.into(),
             depth: entry.depth,
             score: entry.score,

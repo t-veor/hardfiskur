@@ -58,7 +58,7 @@ impl SearchThread {
             let mut transposition_table = transposition_table.lock();
             let (score, search_result, stats) = iterative_deepening_search(
                 &mut board,
-                Duration::from_millis(200),
+                Duration::from_millis(1000),
                 &mut transposition_table,
             );
 
