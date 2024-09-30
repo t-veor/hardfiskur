@@ -217,6 +217,11 @@ pub fn iterative_deepening_search(
             best_move = Some(m);
 
             ctx.stats.depth = depth;
+
+            // Already found a mate, don't need to look any further
+            if best_score.is_mate() {
+                break;
+            }
         }
 
         if ctx.is_time_up() {
