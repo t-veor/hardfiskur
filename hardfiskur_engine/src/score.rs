@@ -27,7 +27,7 @@ impl Score {
 
     pub const fn as_mate_in(self) -> Option<i64> {
         if self.0.abs() > Self::MATE_THRESHOLD {
-            Some(self.0.signum() * (Self::MATE_SCORE - self.0.abs()) / 2)
+            Some(self.0.signum() * (Self::MATE_SCORE - self.0.abs() + 1) / 2)
         } else {
             None
         }

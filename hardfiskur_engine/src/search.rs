@@ -168,7 +168,7 @@ pub fn iterative_deepening_search(
         }
 
         best_score = score;
-        best_move = best_move.or(m);
+        best_move = m.or(best_move);
 
         ctx.stats.depth = depth;
     }
