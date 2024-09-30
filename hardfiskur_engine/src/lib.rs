@@ -2,6 +2,7 @@ pub mod evaluation;
 pub mod move_ordering;
 pub mod score;
 pub mod search;
+pub mod search_stats;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
