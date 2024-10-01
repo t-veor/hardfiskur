@@ -1,6 +1,6 @@
 use std::{num::NonZeroU32, u32};
 
-use hardfiskur_core::board::{Move, ZobristHash};
+use hardfiskur_core::board::{Board, Move, ZobristHash};
 use zerocopy::FromZeroes;
 
 use crate::score::Score;
@@ -75,7 +75,7 @@ impl TryFrom<TranspositionFlagInternal> for TranspositionFlag {
 
 #[derive(Debug, Clone, Copy, Default, FromZeroes)]
 struct TranspositionEntryInternal {
-    key: u16,
+    key: u64,
     flag: TranspositionFlagInternal,
     depth: u32,
     score: Score,
@@ -83,8 +83,8 @@ struct TranspositionEntryInternal {
 }
 
 impl TranspositionEntryInternal {
-    fn key(hash: ZobristHash) -> u16 {
-        (hash.0 >> 48) as u16
+    fn key(hash: ZobristHash) -> u64 {
+        hash.0
     }
 }
 
@@ -121,6 +121,7 @@ impl TranspositionBucket {
 }
 
 pub struct TranspositionTable {
+    num_entries: usize,
     hash_mask: usize,
     buckets: Vec<TranspositionBucket>,
 }
@@ -141,6 +142,7 @@ impl TranspositionTable {
         );
 
         Self {
+            num_entries,
             hash_mask: num_entries - 1,
             buckets: vec![FromZeroes::new_zeroed(); num_entries],
         }
@@ -178,6 +180,34 @@ impl TranspositionTable {
     }
 
     pub fn clear(&mut self) {
-        self.buckets = vec![FromZeroes::new_zeroed(); self.hash_mask + 1];
+        self.buckets = vec![FromZeroes::new_zeroed(); self.num_entries];
+    }
+
+    pub fn extract_pv(&self, board: &mut Board) -> Vec<Move> {
+        let mut moves = Vec::new();
+
+        let mut limit = 50;
+
+        while let Some(entry) = self.get_entry(board.zobrist_hash()) {
+            if let Some(m) = entry.best_move {
+                board.push_move_unchecked(m);
+                moves.push(m)
+            } else {
+                break;
+            }
+
+            limit -= 1;
+            if limit <= 0 {
+                eprintln!("Reached PV limit, detected loop!");
+                break;
+            }
+        }
+
+        // Unwind the moves
+        for _ in 0..moves.len() {
+            board.pop_move();
+        }
+
+        moves
     }
 }

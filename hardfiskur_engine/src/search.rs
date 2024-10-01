@@ -4,7 +4,7 @@ use std::{
 };
 
 use hardfiskur_core::{
-    board::{Board, Color, Move},
+    board::{Board, Color, Move, UCIMove},
     move_gen::{MoveGenFlags, MoveVec},
 };
 
@@ -238,6 +238,19 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
                 break;
             }
         }
+
+        let pv = ctx.tt.extract_pv(ctx.board);
+        print!("info depth {depth} nodes {} ", ctx.stats.nodes_searched);
+        if let Some(mate) = score.as_mate_in() {
+            print!("score mate {mate} ");
+        } else if let Some(cp) = score.as_centipawns() {
+            print!("score cp {cp} ")
+        }
+        print!("pv ",);
+        for m in pv {
+            print!("{} ", UCIMove::from(m));
+        }
+        println!();
 
         if ctx.should_exit_search() || depth >= ctx.search_limits.depth {
             break;
