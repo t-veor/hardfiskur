@@ -4,11 +4,12 @@ use std::{
 };
 
 use hardfiskur_core::{
-    board::{Board, Color, Move},
+    board::{Board, Color, Move, UCIMove},
     move_gen::{MoveGenFlags, MoveVec},
 };
 
 use crate::{
+    diag,
     evaluation::evaluate,
     move_ordering::order_moves,
     score::Score,
@@ -81,10 +82,17 @@ pub fn simple_negamax_search(
 ) -> (Score, Option<Move>) {
     ctx.stats.nodes_searched += 1;
 
+    diag!(
+        ctx.board,
+        "Searching ply_from_root={ply_from_root} depth={depth} alpha={alpha} beta={beta}"
+    );
+
     let mut tt_move = None;
     match ctx.tt.get_entry(ctx.board.zobrist_hash()) {
         Some(entry) => {
             tt_move = entry.best_move;
+
+            diag!(ctx.board, "Got a TT hit for this position ({:?})", entry);
 
             if entry.depth >= depth {
                 ctx.stats.tt_hits += 1;
@@ -92,15 +100,32 @@ pub fn simple_negamax_search(
                 let score = entry.get_score(ply_from_root);
                 match entry.flag {
                     TranspositionFlag::Exact => {
+                        diag!(ctx.board, "Exact entry, returning stored score {score}");
                         return (score, entry.best_move);
                     }
-                    TranspositionFlag::Upperbound => beta = beta.min(score),
-                    TranspositionFlag::Lowerbound => alpha = alpha.max(score),
+                    TranspositionFlag::Upperbound => {
+                        diag!(ctx.board, "Upperbound, lowering beta to {score}");
+                        beta = beta.min(score)
+                    }
+                    TranspositionFlag::Lowerbound => {
+                        diag!(ctx.board, "Lowerbound, raising alpha to {score}");
+                        alpha = alpha.max(score);
+                    }
                 }
 
                 // Caused a cutoff? Return immediately
                 if alpha >= beta {
                     ctx.stats.beta_cutoffs += 1;
+                    diag!(
+                        ctx.board,
+                        "TT entry caused a beta cutoff, returning {score} and best_move={}",
+                        if let Some(m) = entry.best_move {
+                            format!("{}", UCIMove::from(m))
+                        } else {
+                            "none".to_string()
+                        }
+                    );
+
                     return (score, entry.best_move);
                 }
             }
@@ -114,8 +139,10 @@ pub fn simple_negamax_search(
     // Handle checkmate/stalemate
     if legal_moves.is_empty() {
         return if move_gen_result.checker_count > 0 {
+            diag!(ctx.board, "Found a checkmate");
             (-Score::mate_in_plies(ply_from_root), None)
         } else {
+            diag!(ctx.board, "Found a stalemate");
             (Score(0), None)
         };
     }
@@ -126,11 +153,14 @@ pub fn simple_negamax_search(
         .current_position_repeated_at_least(if ply_from_root > 2 { 1 } else { 2 })
         || ctx.board.halfmove_clock() >= 100
     {
+        diag!(ctx.board, "Found threefold rep or 50-move draw");
         return (Score(0), None);
     }
 
     if depth == 0 {
-        return (quiescence_search(ctx, ply_from_root, alpha, beta), None);
+        let score = quiescence_search(ctx, ply_from_root, alpha, beta);
+        diag!(ctx.board, "Quiescence search returned {score}");
+        return (score, None);
     }
 
     order_moves(ctx, tt_move, &mut legal_moves);
@@ -141,12 +171,26 @@ pub fn simple_negamax_search(
         let eval = -simple_negamax_search(ctx, depth - 1, ply_from_root + 1, -beta, -alpha).0;
         ctx.board.pop_move();
 
+        diag!(
+            ctx.board,
+            "Move {}: {eval} (ply_from_root={ply_from_root})",
+            UCIMove::from(m)
+        );
+
         // Out of time, stop searching!
         if depth > 1 && ctx.should_exit_search() {
+            diag!(ctx.board, "Out of time, returning {alpha}");
+
             return (alpha, best_move);
         }
 
         if eval > alpha {
+            diag!(
+                ctx.board,
+                "Move {} raised alpha (prev_alpha={alpha}, score={eval}, beta={beta})",
+                UCIMove::from(m)
+            );
+
             alpha = eval;
             best_move = Some(m);
             tt_flag = TranspositionFlag::Exact;
@@ -155,6 +199,12 @@ pub fn simple_negamax_search(
                 tt_flag = TranspositionFlag::Lowerbound;
                 ctx.stats.beta_cutoffs += 1;
 
+                diag!(
+                    ctx.board,
+                    "Fail-high: move {} caused a beta cutoff! Returning {beta} (depth={depth})",
+                    UCIMove::from(m)
+                );
+
                 ctx.tt.set(
                     ctx.board.zobrist_hash(),
                     TranspositionEntry::new(tt_flag, depth, beta, best_move, ply_from_root),
@@ -162,6 +212,28 @@ pub fn simple_negamax_search(
                 return (beta, best_move);
             }
         }
+    }
+
+    if tt_flag == TranspositionFlag::Lowerbound {
+        diag!(
+            ctx.board,
+            "Fail-low: None of the moves were better than alpha={alpha}, returning alpha (depth={depth}, best_move={})",
+            if let Some(m) = best_move {
+                format!("{}", UCIMove::from(m))
+            } else {
+                "none".to_string()
+            }
+        );
+    } else {
+        diag!(
+            ctx.board,
+            "Exact: Returning score={alpha} (depth={depth}, best_move={})",
+            if let Some(m) = best_move {
+                format!("{}", UCIMove::from(m))
+            } else {
+                "none".to_string()
+            }
+        )
     }
 
     ctx.tt.set(
@@ -241,19 +313,19 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
 
         // TODO: Do this properly, e.g. by providing a listener to feed this
         // information to
-        // let pv = ctx.tt.extract_pv(ctx.board);
-        // print!("info depth {depth} nodes {} ", ctx.stats.nodes_searched);
-        // if let Some(mate) = score.as_mate_in() {
-        //     print!("score mate {mate} ");
-        // } else if let Some(cp) = score.as_centipawns() {
-        //     print!("score cp {cp} ")
-        // }
-        // print!("hashfull {} ", ctx.tt.occupancy());
-        // print!("pv ",);
-        // for m in pv {
-        //     print!("{} ", UCIMove::from(m));
-        // }
-        // println!();
+        let pv = ctx.tt.extract_pv(ctx.board);
+        print!("info depth {depth} nodes {} ", ctx.stats.nodes_searched);
+        if let Some(mate) = score.as_mate_in() {
+            print!("score mate {mate} ");
+        } else if let Some(cp) = score.as_centipawns() {
+            print!("score cp {cp} ")
+        }
+        print!("hashfull {} ", ctx.tt.occupancy());
+        print!("pv ",);
+        for m in pv {
+            print!("{} ", UCIMove::from(m));
+        }
+        println!();
 
         if ctx.should_exit_search() || depth >= ctx.search_limits.depth {
             break;

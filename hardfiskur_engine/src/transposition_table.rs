@@ -118,6 +118,10 @@ impl TranspositionBucket {
         for (i, entry) in self.entries.iter().enumerate() {
             if entry.depth < to_store.depth {
                 idx_lowest_depth = i;
+                // Stop on the earliest index that this entry can be written
+                // into, so that later lookups find this before other
+                // lower-depth entries.
+                break;
             }
         }
 
