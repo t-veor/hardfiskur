@@ -76,12 +76,7 @@ impl Drop for Engine {
 
 macro_rules! diag {
     ($board:expr,$($t:tt)*) => {
-        // {
-        //     use hardfiskur_core::board::ZobristHash;
-        //     if $board.zobrist_hash() == ZobristHash(0xA38D6957924E21F6) {
-        //         eprintln!($($t)*)
-        //     }
-        // }
+        // eprintln!($($t)*)
         ()
     };
 }

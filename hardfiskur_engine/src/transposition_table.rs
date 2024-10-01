@@ -113,7 +113,7 @@ impl TranspositionBucket {
         overwrite_count: &mut u64,
         occupied_count: &mut u64,
     ) {
-        let mut idx_lowest_depth = 0;
+        let idx_lowest_depth = 0;
 
         // for (i, entry) in self.entries.iter().enumerate() {
         //     if entry.depth < to_store.depth {
@@ -214,14 +214,21 @@ impl TranspositionTable {
 
     pub fn extract_pv(&self, board: &mut Board) -> Vec<Move> {
         let mut moves = Vec::new();
+        let mut seen_hashes = Vec::new();
 
         let mut limit = 50;
 
         while let Some(entry) = self.get_entry(board.zobrist_hash()) {
+            seen_hashes.push(board.zobrist_hash());
+
             if let Some(m) = entry.best_move {
                 board.push_move_unchecked(m);
                 moves.push(m)
             } else {
+                break;
+            }
+
+            if seen_hashes.contains(&board.zobrist_hash()) {
                 break;
             }
 

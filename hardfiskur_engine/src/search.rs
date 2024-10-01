@@ -87,6 +87,18 @@ pub fn simple_negamax_search(
         "Searching ply_from_root={ply_from_root} depth={depth} alpha={alpha} beta={beta}"
     );
 
+    // Handle repetitions & fifty-move rule
+    // This needs to go before the TT lookup, as otherwise entries in the table
+    // may confuse it into thinking a repetition has a non-drawn score.
+    if ctx
+        .board
+        .current_position_repeated_at_least(if ply_from_root >= 2 { 1 } else { 2 })
+        || ctx.board.halfmove_clock() >= 100
+    {
+        diag!(ctx.board, "Found threefold rep or 50-move draw");
+        return (Score(0), None);
+    }
+
     let mut tt_move = None;
     match ctx.tt.get_entry(ctx.board.zobrist_hash()) {
         Some(entry) => {
@@ -145,16 +157,6 @@ pub fn simple_negamax_search(
             diag!(ctx.board, "Found a stalemate");
             (Score(0), None)
         };
-    }
-
-    // Handle repetitions & fifty-move rule
-    if ctx
-        .board
-        .current_position_repeated_at_least(if ply_from_root > 2 { 1 } else { 2 })
-        || ctx.board.halfmove_clock() >= 100
-    {
-        diag!(ctx.board, "Found threefold rep or 50-move draw");
-        return (Score(0), None);
     }
 
     if depth == 0 {
@@ -296,7 +298,7 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
     let mut best_score = Score(0);
     let mut best_move = None;
 
-    for depth in 1.. {
+    for depth in 1..=(ctx.search_limits.depth.min(999)) {
         let (score, m) = simple_negamax_search(&mut ctx, depth, 0, -Score::INF, Score::INF);
 
         if let Some(m) = m {
@@ -327,7 +329,7 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
         }
         println!();
 
-        if ctx.should_exit_search() || depth >= ctx.search_limits.depth {
+        if ctx.should_exit_search() {
             break;
         }
     }
