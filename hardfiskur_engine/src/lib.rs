@@ -1,13 +1,11 @@
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering as AtomicOrdering},
-        Arc, Mutex,
-    },
-    time::Duration,
+use std::sync::{
+    atomic::{AtomicBool, Ordering as AtomicOrdering},
+    Arc, Mutex,
 };
 
 use hardfiskur_core::board::Board;
 use search::{iterative_deepening_search, SearchContext};
+use search_limits::SearchLimits;
 use search_result::SearchResult;
 use transposition_table::TranspositionTable;
 
@@ -15,6 +13,7 @@ pub mod evaluation;
 pub mod move_ordering;
 pub mod score;
 pub mod search;
+pub mod search_limits;
 pub mod search_result;
 pub mod search_stats;
 pub mod transposition_table;
@@ -35,7 +34,7 @@ impl Engine {
     pub fn start_search(
         &mut self,
         board: &Board,
-        allocated_time: Duration,
+        search_limits: SearchLimits,
         callback: impl FnOnce(SearchResult) + Send + 'static,
     ) {
         let mut board = board.clone();
@@ -47,7 +46,7 @@ impl Engine {
 
         std::thread::spawn(move || {
             let mut tt = transposition_table.lock().unwrap();
-            let ctx = SearchContext::new(&mut board, allocated_time, &mut tt, &abort_flag);
+            let ctx = SearchContext::new(&mut board, search_limits, &mut tt, &abort_flag);
 
             callback(iterative_deepening_search(ctx));
         });

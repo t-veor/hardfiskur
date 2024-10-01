@@ -1,7 +1,7 @@
-use std::{io::stdin, str::FromStr, time::Duration};
+use std::{io::stdin, str::FromStr, time::Duration, u64};
 
 use hardfiskur_core::board::{Board, Color};
-use hardfiskur_engine::{search_result::SearchResult, Engine};
+use hardfiskur_engine::{search_limits::SearchLimits, search_result::SearchResult, Engine};
 use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
 
 fn read_message() -> Option<UCIMessage> {
@@ -97,12 +97,24 @@ fn main() {
 
             UCIMessage::Go {
                 time_control,
-                search_control: _,
+                search_control,
             } => {
                 let allocated_time =
                     simple_time_allocation(current_board.to_move(), time_control.as_ref());
 
-                engine.start_search(&current_board, allocated_time, |result| {
+                let search_limits = SearchLimits {
+                    allocated_time,
+                    node_budget: search_control
+                        .as_ref()
+                        .and_then(|s| s.nodes)
+                        .unwrap_or(u64::MAX),
+                    depth: search_control
+                        .as_ref()
+                        .and_then(|s| s.depth)
+                        .unwrap_or(u32::MAX),
+                };
+
+                engine.start_search(&current_board, search_limits, |result| {
                     let SearchResult {
                         score,
                         best_move,

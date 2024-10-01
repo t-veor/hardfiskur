@@ -1,6 +1,6 @@
 use std::{
     sync::atomic::{AtomicBool, Ordering as AtomicOrdering},
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use hardfiskur_core::{
@@ -12,6 +12,7 @@ use crate::{
     evaluation::evaluate,
     move_ordering::order_moves,
     score::Score,
+    search_limits::SearchLimits,
     search_result::SearchResult,
     search_stats::SearchStats,
     transposition_table::{TranspositionEntry, TranspositionFlag, TranspositionTable},
@@ -19,7 +20,7 @@ use crate::{
 
 pub struct SearchContext<'a> {
     pub board: &'a mut Board,
-    pub allocated_time: Duration,
+    pub search_limits: SearchLimits,
     pub start_time: Instant,
     pub stats: SearchStats,
     pub time_up: bool,
@@ -31,19 +32,23 @@ pub struct SearchContext<'a> {
 impl<'a> SearchContext<'a> {
     pub fn new(
         board: &'a mut Board,
-        allocated_time: Duration,
+        search_limits: SearchLimits,
         tt: &'a mut TranspositionTable,
         abort_flag: &'a AtomicBool,
     ) -> Self {
         Self {
             board,
-            allocated_time,
+            search_limits,
             start_time: Instant::now(),
             stats: SearchStats::default(),
             time_up: false,
             tt,
             abort_flag,
         }
+    }
+
+    pub fn should_exit_search(&mut self) -> bool {
+        self.is_time_up() || self.over_node_budget()
     }
 
     pub fn is_time_up(&mut self) -> bool {
@@ -56,10 +61,14 @@ impl<'a> SearchContext<'a> {
             return false;
         }
 
-        self.time_up = self.start_time.elapsed() >= self.allocated_time
+        self.time_up = self.start_time.elapsed() >= self.search_limits.allocated_time
             || self.abort_flag.load(AtomicOrdering::Relaxed);
 
         self.time_up
+    }
+
+    pub fn over_node_budget(&self) -> bool {
+        self.stats.nodes_searched >= self.search_limits.node_budget
     }
 }
 
@@ -133,7 +142,7 @@ pub fn simple_negamax_search(
         ctx.board.pop_move();
 
         // Out of time, stop searching!
-        if depth > 1 && ctx.is_time_up() {
+        if depth > 1 && ctx.should_exit_search() {
             return (alpha, best_move);
         }
 
@@ -230,7 +239,7 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
             }
         }
 
-        if ctx.is_time_up() {
+        if ctx.should_exit_search() || depth >= ctx.search_limits.depth {
             break;
         }
     }

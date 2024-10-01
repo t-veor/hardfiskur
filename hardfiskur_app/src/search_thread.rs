@@ -1,7 +1,4 @@
-use std::{
-    sync::mpsc::{self, Receiver, Sender},
-    time::Duration,
-};
+use std::sync::mpsc::{self, Receiver, Sender};
 
 use hardfiskur_core::board::{Board, Color, Move};
 use hardfiskur_engine::Engine;
@@ -42,7 +39,7 @@ impl SearchThread {
         let to_move = board.to_move();
 
         self.engine
-            .start_search(board, Duration::from_millis(1000), move |result| {
+            .start_search(board, Default::default(), move |result| {
                 let score = match to_move {
                     Color::White => result.score,
                     Color::Black => -result.score,
