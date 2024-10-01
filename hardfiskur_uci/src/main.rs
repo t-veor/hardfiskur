@@ -36,6 +36,8 @@ fn simple_time_allocation(to_move: Color, time_control: Option<&UCITimeControl>)
             }
         }
 
+        Some(UCITimeControl::Infinite) | Some(UCITimeControl::Ponder) => return Duration::MAX,
+
         _ => (),
     }
 

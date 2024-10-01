@@ -1,4 +1,7 @@
-use std::{fmt::Debug, num::NonZeroU32};
+use std::{
+    fmt::{Debug, Display},
+    num::NonZeroU32,
+};
 
 use bitflags::bitflags;
 
@@ -251,6 +254,20 @@ impl Debug for Move {
             .field("promotion", &self.promotion())
             .field("flags", &self.flags())
             .finish()
+    }
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Just write it as if it were a UCIMove
+        write!(f, "{}", self.from_square())?;
+        write!(f, "{}", self.to_square())?;
+
+        if let Some(promo) = self.promotion() {
+            write!(f, "{}", promo.piece_type().as_lowercase_char())?;
+        }
+
+        Ok(())
     }
 }
 

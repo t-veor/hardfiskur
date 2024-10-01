@@ -9,6 +9,7 @@ use hardfiskur_core::{
 };
 
 use crate::{
+    diag,
     evaluation::evaluate,
     move_ordering::order_moves,
     score::Score,
@@ -81,13 +82,27 @@ pub fn simple_negamax_search(
 ) -> (Score, Option<Move>) {
     ctx.stats.nodes_searched += 1;
 
+    diag!("info string Searching ply_from_root={ply_from_root} depth={depth} alpha={alpha} beta={beta}");
+
     if depth == 0 {
-        return (quiescence_search(ctx, ply_from_root, alpha, beta), None);
+        let score = quiescence_search(ctx, ply_from_root, alpha, beta);
+        diag!("info string Quiescence search returned {score}");
+        return (score, None);
     }
 
     let mut tt_move = None;
     match ctx.tt.get_entry(ctx.board.zobrist_hash()) {
         Some(entry) => {
+            diag!(
+                "info string Got a TT hit for this position (prev_depth={}, best_move={})",
+                entry.depth,
+                if let Some(m) = entry.best_move {
+                    format!("{m}")
+                } else {
+                    "none".to_string()
+                }
+            );
+
             tt_move = entry.best_move;
 
             if entry.depth >= depth {
@@ -96,15 +111,30 @@ pub fn simple_negamax_search(
                 let score = entry.get_score(ply_from_root);
                 match entry.flag {
                     TranspositionFlag::Exact => {
+                        diag!("info string Exact entry, returning stored score {score}");
                         return (score, entry.best_move);
                     }
-                    TranspositionFlag::Upperbound => beta = beta.min(score),
-                    TranspositionFlag::Lowerbound => alpha = alpha.max(score),
+                    TranspositionFlag::Upperbound => {
+                        diag!("info string Upperbound, lowering beta to {score}");
+                        beta = beta.min(score)
+                    }
+                    TranspositionFlag::Lowerbound => {
+                        diag!("info string Lowerbound, raising alpha to {score}");
+                        alpha = alpha.max(score)
+                    }
                 }
 
                 // Caused a cutoff? Return immediately
                 if alpha >= beta {
                     ctx.stats.beta_cutoffs += 1;
+                    diag!(
+                        "info TT entry caused a beta cutoff, returning {score} and best_move={}",
+                        if let Some(m) = entry.best_move {
+                            format!("{m}")
+                        } else {
+                            "none".to_string()
+                        }
+                    );
                     return (score, entry.best_move);
                 }
             }
@@ -118,8 +148,10 @@ pub fn simple_negamax_search(
     // Handle checkmate/stalemate
     if legal_moves.is_empty() {
         return if move_gen_result.checker_count > 0 {
+            diag!("info string Found a checkmate");
             (-Score::mate_in_plies(ply_from_root), None)
         } else {
+            diag!("info string Found a stalemate");
             (Score(0), None)
         };
     }
@@ -130,6 +162,7 @@ pub fn simple_negamax_search(
         .current_position_repeated_at_least(if ply_from_root > 2 { 1 } else { 2 })
         || ctx.board.halfmove_clock() >= 100
     {
+        diag!("info string Found a threefold repetition or 50-move draw");
         return (Score(0), None);
     }
 
@@ -137,16 +170,25 @@ pub fn simple_negamax_search(
 
     let mut best_move = None;
     for m in legal_moves {
+        diag!("info string Considering move {m}...");
+
         ctx.board.push_move_unchecked(m);
         let eval = -simple_negamax_search(ctx, depth - 1, ply_from_root + 1, -beta, -alpha).0;
         ctx.board.pop_move();
 
         // Out of time, stop searching!
         if depth > 1 && ctx.should_exit_search() {
+            diag!("info string Out of time, returning {alpha}");
             return (alpha, best_move);
         }
 
+        diag!("info string Received {eval} (ply_from_root={ply_from_root}");
+
         if eval > alpha {
+            diag!(
+                "info string Move {m} raised alpha (prev_alpha={alpha}, score={eval} beta={beta})"
+            );
+
             alpha = eval;
             best_move = Some(m);
             tt_flag = TranspositionFlag::Exact;
@@ -155,6 +197,8 @@ pub fn simple_negamax_search(
                 tt_flag = TranspositionFlag::Lowerbound;
                 ctx.stats.beta_cutoffs += 1;
 
+                diag!("info string Fail-high: move {m} caused a beta cutoff! Returning {beta}");
+
                 ctx.tt.set(
                     ctx.board.zobrist_hash(),
                     TranspositionEntry::new(tt_flag, depth, beta, best_move, ply_from_root),
@@ -162,6 +206,27 @@ pub fn simple_negamax_search(
                 return (beta, best_move);
             }
         }
+    }
+
+    #[cfg(feature = "hardfiskur_emit_diagnostics")]
+    if tt_flag == TranspositionFlag::Lowerbound {
+        diag!(
+            "info string Fail-low: None of the moves were better than alpha={alpha}, returning alpha (best_move={})",
+            if let Some(m) = best_move {
+                format!("{m}")
+            } else {
+                "none".to_string()
+            }
+        );
+    } else {
+        diag!(
+            "info string Exact: Returning score={alpha} (best_move={})",
+            if let Some(m) = best_move {
+                format!("{m}")
+            } else {
+                "none".to_string()
+            }
+        )
     }
 
     ctx.tt.set(
@@ -225,7 +290,20 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
     let mut best_move = None;
 
     for depth in 1.. {
+        diag!("info string ================================================================================");
+        diag!("info string Beginning new search iteration with depth {depth}");
+        diag!("info string ================================================================================");
+
         let (score, m) = simple_negamax_search(&mut ctx, depth, 0, -Score::INF, Score::INF);
+
+        diag!(
+            "info string Received score={score}, move={} from depth={depth} search",
+            if let Some(m) = m {
+                format!("{m}")
+            } else {
+                "none".to_string()
+            }
+        );
 
         if let Some(m) = m {
             best_score = score;

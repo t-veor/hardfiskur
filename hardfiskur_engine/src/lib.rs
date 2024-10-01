@@ -68,3 +68,11 @@ impl Drop for Engine {
         self.curr_abort_flag.store(true, AtomicOrdering::Relaxed);
     }
 }
+
+macro_rules! diag {
+    ($($t:tt)*) => {
+        #[cfg(feature = "hardfiskur_emit_diagnostics")]
+        eprintln!($($t)*)
+    };
+}
+pub(crate) use diag;

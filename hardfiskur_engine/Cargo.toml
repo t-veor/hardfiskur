@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 hardfiskur_core = { path = "../hardfiskur_core" }
 zerocopy = "0.7"
+
+[features]
+hardfiskur_emit_diagnostics = []
