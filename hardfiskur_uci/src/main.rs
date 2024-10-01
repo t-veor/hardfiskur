@@ -1,16 +1,8 @@
-use std::{
-    io::stdin,
-    str::FromStr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{io::stdin, str::FromStr, time::Duration};
 
 use hardfiskur_core::board::{Board, Color};
-use hardfiskur_engine::{
-    search::iterative_deepening_search, transposition_table::TranspositionTable,
-};
+use hardfiskur_engine::{search_result::SearchResult, Engine};
 use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
-use threadpool::ThreadPool;
 
 fn read_message() -> Option<UCIMessage> {
     let mut s = String::new();
@@ -53,9 +45,7 @@ fn simple_time_allocation(to_move: Color, time_control: Option<&UCITimeControl>)
 
 fn main() {
     let mut current_board = Board::starting_position();
-    let threadpool = ThreadPool::new(1);
-
-    let transposition_table = Arc::new(Mutex::new(TranspositionTable::new(64)));
+    let mut engine = Engine::new();
 
     'main_loop: loop {
         let command = match read_message() {
@@ -77,6 +67,8 @@ fn main() {
                 println!("{}", UCIMessage::id_author("Tyler Zhang"));
                 println!("{}", UCIMessage::UCIOk);
             }
+
+            UCIMessage::UCINewGame => engine.new_game(),
 
             UCIMessage::IsReady => {
                 println!("{}", UCIMessage::ReadyOk);
@@ -107,37 +99,45 @@ fn main() {
                 time_control,
                 search_control: _,
             } => {
-                let mut board = current_board.clone();
-                let allocated_time = simple_time_allocation(board.to_move(), time_control.as_ref());
+                let allocated_time =
+                    simple_time_allocation(current_board.to_move(), time_control.as_ref());
 
-                let transposition_table = transposition_table.clone();
+                engine.start_search(&current_board, allocated_time, |result| {
+                    let SearchResult {
+                        score,
+                        best_move,
+                        stats,
+                        elapsed,
+                        ..
+                    } = result;
 
-                threadpool.execute(move || {
-                    let mut transposition_table = transposition_table.lock().unwrap();
-                    transposition_table.clear();
-                    if let (score, Some(m), stats) = iterative_deepening_search(
-                        &mut board,
-                        allocated_time,
-                        &mut transposition_table,
-                    ) {
-                        let elapsed = stats.search_started.elapsed();
-                        println!(
-                            "{}",
-                            UCIMessage::Info(UCIInfo {
-                                depth: Some(stats.depth),
-                                time: Some(elapsed),
-                                nodes: Some(stats.nodes_searched),
-                                score: Some(score.into()),
-                                ..Default::default()
-                            })
-                        );
-                        println!("{}", UCIMessage::best_move(m.into()))
-                    }
+                    let best_move = match best_move {
+                        Some(m) => m,
+                        None => {
+                            eprintln!("Search did not return a move!");
+                            return;
+                        }
+                    };
+
+                    let nps = 1000 * stats.nodes_searched / (elapsed.as_millis() as u64).max(1);
+
+                    println!(
+                        "{}",
+                        UCIMessage::Info(UCIInfo {
+                            depth: Some(stats.depth),
+                            time: Some(elapsed),
+                            nodes: Some(stats.nodes_searched),
+                            score: Some(score.into()),
+                            tb_hits: Some(stats.tt_hits),
+                            nps: Some(nps),
+                            ..Default::default()
+                        })
+                    );
+                    println!("{}", UCIMessage::best_move(best_move.into()))
                 });
             }
 
-            // TODO
-            UCIMessage::Stop => (),
+            UCIMessage::Stop => engine.abort_search(),
 
             // ignore all other messages
             _ => (),

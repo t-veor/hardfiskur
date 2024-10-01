@@ -1,4 +1,7 @@
-use std::time::Duration;
+use std::{
+    sync::atomic::{AtomicBool, Ordering as AtomicOrdering},
+    time::{Duration, Instant},
+};
 
 use hardfiskur_core::{
     board::{Board, Color, Move},
@@ -9,6 +12,7 @@ use crate::{
     evaluation::evaluate,
     move_ordering::order_moves,
     score::Score,
+    search_result::SearchResult,
     search_stats::SearchStats,
     transposition_table::{TranspositionEntry, TranspositionFlag, TranspositionTable},
 };
@@ -16,10 +20,12 @@ use crate::{
 pub struct SearchContext<'a> {
     pub board: &'a mut Board,
     pub allocated_time: Duration,
+    pub start_time: Instant,
     pub stats: SearchStats,
     pub time_up: bool,
 
     pub tt: &'a mut TranspositionTable,
+    pub abort_flag: &'a AtomicBool,
 }
 
 impl<'a> SearchContext<'a> {
@@ -27,13 +33,16 @@ impl<'a> SearchContext<'a> {
         board: &'a mut Board,
         allocated_time: Duration,
         tt: &'a mut TranspositionTable,
+        abort_flag: &'a AtomicBool,
     ) -> Self {
         Self {
             board,
             allocated_time,
-            stats: SearchStats::new(),
+            start_time: Instant::now(),
+            stats: SearchStats::default(),
             time_up: false,
             tt,
+            abort_flag,
         }
     }
 
@@ -47,7 +56,9 @@ impl<'a> SearchContext<'a> {
             return false;
         }
 
-        self.time_up = self.stats.search_started.elapsed() >= self.allocated_time;
+        self.time_up = self.start_time.elapsed() >= self.allocated_time
+            || self.abort_flag.load(AtomicOrdering::Relaxed);
+
         self.time_up
     }
 }
@@ -200,15 +211,10 @@ pub fn quiescence_search(
     return alpha;
 }
 
-pub fn iterative_deepening_search(
-    board: &mut Board,
-    allocated_time: Duration,
-    transposition_table: &mut TranspositionTable,
-) -> (Score, Option<Move>, SearchStats) {
-    let mut ctx = SearchContext::new(board, allocated_time, transposition_table);
-
+pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
     let mut best_score = Score(0);
     let mut best_move = None;
+
     for depth in 1.. {
         let (score, m) = simple_negamax_search(&mut ctx, depth, 0, -Score::INF, Score::INF);
 
@@ -229,5 +235,11 @@ pub fn iterative_deepening_search(
         }
     }
 
-    (best_score, best_move, ctx.stats)
+    SearchResult {
+        score: best_score,
+        best_move,
+        stats: ctx.stats,
+        elapsed: ctx.start_time.elapsed(),
+        aborted: ctx.abort_flag.load(AtomicOrdering::Relaxed),
+    }
 }

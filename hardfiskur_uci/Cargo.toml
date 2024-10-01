@@ -9,7 +9,6 @@ edition = "2021"
 nom = "7.1"
 nom_permutation = "0.1"
 thiserror = "1.0"
-threadpool = "1.8"
 hardfiskur_core = { path = "../hardfiskur_core" }
 hardfiskur_engine = { path = "../hardfiskur_engine" }
 
