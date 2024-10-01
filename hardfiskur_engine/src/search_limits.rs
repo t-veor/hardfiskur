@@ -10,7 +10,7 @@ pub struct SearchLimits {
 impl Default for SearchLimits {
     fn default() -> Self {
         Self {
-            allocated_time: Duration::from_millis(500),
+            allocated_time: Duration::from_millis(1000),
             node_budget: u64::MAX,
             depth: u32::MAX,
         }

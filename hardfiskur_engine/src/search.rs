@@ -308,6 +308,9 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
             ctx.stats.depth = depth;
 
             // Already found a mate, don't need to look any further
+            // TODO: It seems like there may be a bug with immediately quitting
+            // here as the mating move may be a lookup from the transposition
+            // table, which is unaware that it's repeated?
             if best_score.is_mate() {
                 break;
             }
@@ -315,19 +318,21 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
 
         // TODO: Do this properly, e.g. by providing a listener to feed this
         // information to
-        let pv = ctx.tt.extract_pv(ctx.board);
-        print!("info depth {depth} nodes {} ", ctx.stats.nodes_searched);
-        if let Some(mate) = score.as_mate_in() {
-            print!("score mate {mate} ");
-        } else if let Some(cp) = score.as_centipawns() {
-            print!("score cp {cp} ")
+        if ctx.stats.nodes_searched > 4096 {
+            let pv = ctx.tt.extract_pv(ctx.board);
+            print!("info depth {depth} nodes {} ", ctx.stats.nodes_searched);
+            if let Some(mate) = score.as_mate_in() {
+                print!("score mate {mate} ");
+            } else if let Some(cp) = score.as_centipawns() {
+                print!("score cp {cp} ")
+            }
+            print!("hashfull {} ", ctx.tt.occupancy());
+            print!("pv ",);
+            for m in pv {
+                print!("{} ", UCIMove::from(m));
+            }
+            println!();
         }
-        print!("hashfull {} ", ctx.tt.occupancy());
-        print!("pv ",);
-        for m in pv {
-            print!("{} ", UCIMove::from(m));
-        }
-        println!();
 
         if ctx.should_exit_search() {
             break;
