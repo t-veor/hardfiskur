@@ -89,9 +89,9 @@ impl TranspositionEntryInternal {
 }
 
 #[derive(Debug, Clone, Default, FromZeroes)]
-#[repr(align(64))]
+// #[repr(align(64))]
 struct TranspositionBucket {
-    entries: [TranspositionEntryInternal; 4],
+    entries: [TranspositionEntryInternal; 1],
 }
 
 impl TranspositionBucket {
@@ -115,15 +115,11 @@ impl TranspositionBucket {
     ) {
         let mut idx_lowest_depth = 0;
 
-        for (i, entry) in self.entries.iter().enumerate() {
-            if entry.depth < to_store.depth {
-                idx_lowest_depth = i;
-                // Stop on the earliest index that this entry can be written
-                // into, so that later lookups find this before other
-                // lower-depth entries.
-                break;
-            }
-        }
+        // for (i, entry) in self.entries.iter().enumerate() {
+        //     if entry.depth < to_store.depth {
+        //         idx_lowest_depth = i;
+        //     }
+        // }
 
         if self.entries[idx_lowest_depth].key != 0 {
             *overwrite_count += 1
