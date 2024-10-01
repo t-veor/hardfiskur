@@ -107,13 +107,24 @@ impl TranspositionBucket {
         None
     }
 
-    pub fn store(&mut self, to_store: TranspositionEntryInternal) {
+    pub fn store(
+        &mut self,
+        to_store: TranspositionEntryInternal,
+        overwrite_count: &mut u64,
+        occupied_count: &mut u64,
+    ) {
         let mut idx_lowest_depth = 0;
 
         for (i, entry) in self.entries.iter().enumerate() {
             if entry.depth < to_store.depth {
                 idx_lowest_depth = i;
             }
+        }
+
+        if self.entries[idx_lowest_depth].key != 0 {
+            *overwrite_count += 1
+        } else {
+            *occupied_count += 1;
         }
 
         self.entries[idx_lowest_depth] = to_store;
@@ -124,6 +135,9 @@ pub struct TranspositionTable {
     num_entries: usize,
     hash_mask: usize,
     buckets: Vec<TranspositionBucket>,
+
+    overwrites: u64,
+    occupied: u64,
 }
 
 impl TranspositionTable {
@@ -145,6 +159,9 @@ impl TranspositionTable {
             num_entries,
             hash_mask: num_entries - 1,
             buckets: vec![FromZeroes::new_zeroed(); num_entries],
+
+            overwrites: 0,
+            occupied: 0,
         }
     }
 
@@ -156,31 +173,43 @@ impl TranspositionTable {
         let index = self.index(key);
         let bucket = &self.buckets[index];
 
-        bucket.find(key).and_then(|entry| {
+        let entry = bucket.find(key).and_then(|entry| {
             Some(TranspositionEntry {
                 flag: entry.flag.try_into().ok()?,
                 depth: entry.depth,
                 score: entry.score,
                 best_move: entry.best_move.map(|m| Move::from_nonzero(m)),
             })
-        })
+        });
+
+        entry
     }
 
     pub fn set(&mut self, key: ZobristHash, entry: TranspositionEntry) {
         let index = self.index(key);
         let bucket = &mut self.buckets[index];
 
-        bucket.store(TranspositionEntryInternal {
-            key: TranspositionEntryInternal::key(key),
-            flag: entry.flag.into(),
-            depth: entry.depth,
-            score: entry.score,
-            best_move: entry.best_move.map(|m| m.get()),
-        });
+        bucket.store(
+            TranspositionEntryInternal {
+                key: TranspositionEntryInternal::key(key),
+                flag: entry.flag.into(),
+                depth: entry.depth,
+                score: entry.score,
+                best_move: entry.best_move.map(|m| m.get()),
+            },
+            &mut self.overwrites,
+            &mut self.occupied,
+        );
     }
 
     pub fn clear(&mut self) {
         self.buckets = vec![FromZeroes::new_zeroed(); self.num_entries];
+        self.overwrites = 0;
+        self.occupied = 0;
+    }
+
+    pub fn occupancy(&self) -> u64 {
+        self.occupied * 1000 / 4 / self.buckets.len() as u64
     }
 
     pub fn extract_pv(&self, board: &mut Board) -> Vec<Move> {

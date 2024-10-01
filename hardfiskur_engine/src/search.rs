@@ -4,7 +4,7 @@ use std::{
 };
 
 use hardfiskur_core::{
-    board::{Board, Color, Move, UCIMove},
+    board::{Board, Color, Move},
     move_gen::{MoveGenFlags, MoveVec},
 };
 
@@ -81,10 +81,6 @@ pub fn simple_negamax_search(
 ) -> (Score, Option<Move>) {
     ctx.stats.nodes_searched += 1;
 
-    if depth == 0 {
-        return (quiescence_search(ctx, ply_from_root, alpha, beta), None);
-    }
-
     let mut tt_move = None;
     match ctx.tt.get_entry(ctx.board.zobrist_hash()) {
         Some(entry) => {
@@ -131,6 +127,10 @@ pub fn simple_negamax_search(
         || ctx.board.halfmove_clock() >= 100
     {
         return (Score(0), None);
+    }
+
+    if depth == 0 {
+        return (quiescence_search(ctx, ply_from_root, alpha, beta), None);
     }
 
     order_moves(ctx, tt_move, &mut legal_moves);
@@ -239,18 +239,21 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
             }
         }
 
-        let pv = ctx.tt.extract_pv(ctx.board);
-        print!("info depth {depth} nodes {} ", ctx.stats.nodes_searched);
-        if let Some(mate) = score.as_mate_in() {
-            print!("score mate {mate} ");
-        } else if let Some(cp) = score.as_centipawns() {
-            print!("score cp {cp} ")
-        }
-        print!("pv ",);
-        for m in pv {
-            print!("{} ", UCIMove::from(m));
-        }
-        println!();
+        // TODO: Do this properly, e.g. by providing a listener to feed this
+        // information to
+        // let pv = ctx.tt.extract_pv(ctx.board);
+        // print!("info depth {depth} nodes {} ", ctx.stats.nodes_searched);
+        // if let Some(mate) = score.as_mate_in() {
+        //     print!("score mate {mate} ");
+        // } else if let Some(cp) = score.as_centipawns() {
+        //     print!("score cp {cp} ")
+        // }
+        // print!("hashfull {} ", ctx.tt.occupancy());
+        // print!("pv ",);
+        // for m in pv {
+        //     print!("{} ", UCIMove::from(m));
+        // }
+        // println!();
 
         if ctx.should_exit_search() || depth >= ctx.search_limits.depth {
             break;
@@ -263,5 +266,6 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
         stats: ctx.stats,
         elapsed: ctx.start_time.elapsed(),
         aborted: ctx.abort_flag.load(AtomicOrdering::Relaxed),
+        hash_full: ctx.tt.occupancy(),
     }
 }

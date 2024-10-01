@@ -80,6 +80,19 @@ pub enum UCIMessage {
 
     /// `option ...`
     Option(UCIOptionConfig),
+
+    /// Custom commands for debugging
+    /// `d` (display current position)
+    D,
+
+    /// `ttentry` (debug transposition table entry)
+    TTEntry,
+
+    /// `makemove <move>`
+    MakeMove(UCIMove),
+
+    /// `undomove`
+    UndoMove,
 }
 
 impl UCIMessage {
@@ -212,6 +225,11 @@ impl Display for UCIMessage {
             UCIMessage::Info(info) => write!(f, "info {info}"),
 
             UCIMessage::Option(option_config) => write!(f, "option {option_config}"),
+
+            UCIMessage::D => write!(f, "d"),
+            UCIMessage::TTEntry => write!(f, "ttentry"),
+            UCIMessage::MakeMove(ucimove) => write!(f, "makemove {ucimove}"),
+            UCIMessage::UndoMove => write!(f, "undomove"),
         }
     }
 }

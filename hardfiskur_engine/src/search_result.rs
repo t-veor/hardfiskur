@@ -11,4 +11,5 @@ pub struct SearchResult {
     pub stats: SearchStats,
     pub elapsed: Duration,
     pub aborted: bool,
+    pub hash_full: u64,
 }

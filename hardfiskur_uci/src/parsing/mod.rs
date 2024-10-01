@@ -152,8 +152,7 @@ fn protection_state(input: &str) -> IResult<&str, ProtectionState> {
 }
 
 pub fn uci_message(input: &str) -> IResult<&str, UCIMessage> {
-    let command_parser = alt((
-        // gui -> engine commands
+    let gui_to_engine_commands = alt((
         preceded(token_tag("uci"), success(UCIMessage::UCI)),
         preceded(token_tag("debug"), debug_body),
         preceded(token_tag("isready"), success(UCIMessage::IsReady)),
@@ -168,7 +167,9 @@ pub fn uci_message(input: &str) -> IResult<&str, UCIMessage> {
         preceded(token_tag("stop"), success(UCIMessage::Stop)),
         preceded(token_tag("ponderhit"), success(UCIMessage::PonderHit)),
         preceded(token_tag("quit"), success(UCIMessage::Quit)),
-        // engine -> gui commands
+    ));
+
+    let engine_to_gui_commands = alt((
         preceded(token_tag("id"), id_body),
         preceded(token_tag("uciok"), success(UCIMessage::UCIOk)),
         preceded(token_tag("readyok"), success(UCIMessage::ReadyOk)),
@@ -183,6 +184,22 @@ pub fn uci_message(input: &str) -> IResult<&str, UCIMessage> {
         ),
         preceded(token_tag("info"), info_body.map(UCIMessage::Info)),
         preceded(token_tag("option"), option_body.map(UCIMessage::Option)),
+    ));
+
+    let custom_commands = alt((
+        preceded(token_tag("d"), success(UCIMessage::D)),
+        preceded(token_tag("ttentry"), success(UCIMessage::TTEntry)),
+        preceded(
+            token_tag("makemove"),
+            token_uci_move.map(UCIMessage::MakeMove),
+        ),
+        preceded(token_tag("undomove"), success(UCIMessage::UndoMove)),
+    ));
+
+    let command_parser = alt((
+        gui_to_engine_commands,
+        custom_commands,
+        engine_to_gui_commands,
     ));
 
     // many_till(token, ...) skips any initial tokens it couldn't parse.

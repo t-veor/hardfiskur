@@ -61,6 +61,11 @@ impl Engine {
         let mut tt = self.transposition_table.lock().unwrap();
         tt.clear();
     }
+
+    pub fn debug_tt_entry(&self, current_board: &Board) {
+        let tt = self.transposition_table.lock().unwrap();
+        println!("{:#?}", tt.get_entry(current_board.zobrist_hash()));
+    }
 }
 
 impl Drop for Engine {

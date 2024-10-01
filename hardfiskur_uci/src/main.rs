@@ -120,6 +120,7 @@ fn main() {
                         best_move,
                         stats,
                         elapsed,
+                        hash_full,
                         ..
                     } = result;
 
@@ -142,6 +143,7 @@ fn main() {
                             score: Some(score.into()),
                             tb_hits: Some(stats.tt_hits),
                             nps: Some(nps),
+                            hash_full: Some(hash_full as u32),
                             ..Default::default()
                         })
                     );
@@ -150,6 +152,22 @@ fn main() {
             }
 
             UCIMessage::Stop => engine.abort_search(),
+
+            UCIMessage::D => {
+                println!("{current_board}");
+                println!("FEN: {}", current_board.fen());
+                println!("{:?}", current_board.zobrist_hash());
+            }
+
+            UCIMessage::TTEntry => engine.debug_tt_entry(&current_board),
+
+            UCIMessage::MakeMove(m) => {
+                current_board.push_move(m.from, m.to, m.promotion);
+            }
+
+            UCIMessage::UndoMove => {
+                current_board.pop_move();
+            }
 
             // ignore all other messages
             _ => (),
