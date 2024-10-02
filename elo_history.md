@@ -35,3 +35,29 @@ Games: 1000, Wins: 744, Losses: 90, Draws: 166, Points: 827.0 (82.70 %)
 Ptnml(0-2): [1, 12, 95, 116, 276]
 --------------------------------------------------
 ```
+
+# cf308e5 (Transposition Table)
+
+This one was awful because I kept running into bugs in the transposition table
+implementation finding bugs elsewhere in the search code. It now seems to be
+playing much better than main now, so I think I've got most of them.
+
+-   Added transposition table
+-   Fixed a repetition draw evaluation bug and the search not being properly
+    fail-hard
+-   Added some debug options onto the engine (`d`, `ttentry`, `makemove`,
+    `undomove`)
+
+The TT implementation is very rough and I still need to fix the bucketing
+implementation, and this time unit test it so I don't waste as much time trying
+to figure out what's wrong.
+
+```
+--------------------------------------------------
+Results of HF-new-cf308e5 vs HF-old-a968384 (10+0.1, 1t, MB, opening_book.epd):
+Elo: 222.41 +/- 21.33, nElo: 291.80 +/- 21.53
+LOS: 100.00 %, DrawRatio: 19.20 %, PairsRatio: 11.62
+Games: 1000, Wins: 671, Losses: 106, Draws: 223, Points: 782.5 (78.25 %)
+Ptnml(0-2): [2, 30, 96, 145, 227]
+--------------------------------------------------
+```
