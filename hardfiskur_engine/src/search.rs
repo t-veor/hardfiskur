@@ -19,6 +19,11 @@ use crate::{
     transposition_table::{TranspositionEntry, TranspositionFlag, TranspositionTable},
 };
 
+// In practice, we should never get to this search depth; however it avoids
+// pathlogical behavior if the search function has a bug that immediately
+// returns, for example.
+const MAX_SEARCH_DEPTH: u32 = 256;
+
 pub struct SearchContext<'a> {
     pub board: &'a mut Board,
     pub search_limits: SearchLimits,
@@ -298,7 +303,7 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
     let mut best_score = Score(0);
     let mut best_move = None;
 
-    for depth in 1..=(ctx.search_limits.depth.min(999)) {
+    for depth in 1..=(ctx.search_limits.depth.min(MAX_SEARCH_DEPTH)) {
         let (score, m) = simple_negamax_search(&mut ctx, depth, 0, -Score::INF, Score::INF);
 
         if let Some(m) = m {
@@ -322,7 +327,7 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
 
         // TODO: Do this properly, e.g. by providing a listener to feed this
         // information to
-        if ctx.stats.nodes_searched > 4096 {
+        if depth > 1 && ctx.stats.nodes_searched > 4096 {
             let pv = ctx.tt.extract_pv(ctx.board);
             print!("info depth {depth} nodes {} ", ctx.stats.nodes_searched);
             if let Some(mate) = score.as_mate_in() {

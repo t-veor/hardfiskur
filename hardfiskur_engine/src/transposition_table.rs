@@ -1,6 +1,6 @@
-use std::{num::NonZeroU32, u32};
+use std::{fmt::Display, num::NonZeroU32, u32};
 
-use hardfiskur_core::board::{Board, Move, ZobristHash};
+use hardfiskur_core::board::{Board, Move, UCIMove, ZobristHash};
 use zerocopy::FromZeroes;
 
 use crate::score::Score;
@@ -38,6 +38,18 @@ impl TranspositionEntry {
 
     pub fn get_score(&self, ply_from_root: u32) -> Score {
         self.score.add_plies_for_mate(ply_from_root)
+    }
+}
+
+impl Display for TranspositionEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "depth={}", self.depth)?;
+        writeln!(f, "score={} {:?}", self.score, self.flag)?;
+
+        match self.best_move {
+            Some(m) => write!(f, "best_move={}", UCIMove::from(m)),
+            None => write!(f, "best_move=<none>"),
+        }
     }
 }
 

@@ -7,6 +7,16 @@ pub struct SearchLimits {
     pub depth: u32,
 }
 
+impl SearchLimits {
+    pub fn infinite() -> Self {
+        Self {
+            allocated_time: Duration::MAX,
+            node_budget: u64::MAX,
+            depth: u32::MAX,
+        }
+    }
+}
+
 impl Default for SearchLimits {
     fn default() -> Self {
         Self {

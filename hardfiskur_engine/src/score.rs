@@ -143,7 +143,9 @@ impl Display for Score {
 
         f.write_char(if sign >= 0 { '+' } else { '-' })?;
 
-        if let Some(mate_score) = self.as_mate_in() {
+        if val >= Self::INF.0 {
+            write!(f, "inf")
+        } else if let Some(mate_score) = self.as_mate_in() {
             write!(f, "M{}", mate_score.abs())
         } else {
             let pawn_advantage = val as f64 / 1000.0;

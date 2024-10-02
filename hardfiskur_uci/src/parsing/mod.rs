@@ -190,10 +190,15 @@ pub fn uci_message(input: &str) -> IResult<&str, UCIMessage> {
         preceded(token_tag("d"), success(UCIMessage::D)),
         preceded(token_tag("ttentry"), success(UCIMessage::TTEntry)),
         preceded(
-            token_tag("makemove"),
-            token_uci_move.map(UCIMessage::MakeMove),
+            token_tag("makemove").or(token_tag("m")),
+            opt(token_uci_move).map(UCIMessage::MakeMove),
         ),
-        preceded(token_tag("undomove"), success(UCIMessage::UndoMove)),
+        preceded(
+            token_tag("undomove").or(token_tag("u")),
+            success(UCIMessage::UndoMove),
+        ),
+        preceded(token_tag("getpv"), success(UCIMessage::GetPV)),
+        preceded(token_tag("eval"), success(UCIMessage::Eval)),
     ));
 
     let command_parser = alt((

@@ -3,11 +3,13 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use hardfiskur_core::board::Board;
+use evaluation::evaluate;
+use hardfiskur_core::board::{Board, Move};
+use score::Score;
 use search::{iterative_deepening_search, SearchContext};
 use search_limits::SearchLimits;
 use search_result::SearchResult;
-use transposition_table::TranspositionTable;
+use transposition_table::{TranspositionEntry, TranspositionTable};
 
 pub mod evaluation;
 pub mod move_ordering;
@@ -62,9 +64,18 @@ impl Engine {
         tt.clear();
     }
 
-    pub fn debug_tt_entry(&self, current_board: &Board) {
+    pub fn get_tt_entry(&self, current_board: &Board) -> Option<TranspositionEntry> {
         let tt = self.transposition_table.lock().unwrap();
-        println!("{:#?}", tt.get_entry(current_board.zobrist_hash()));
+        tt.get_entry(current_board.zobrist_hash())
+    }
+
+    pub fn get_pv(&self, current_board: &Board) -> Vec<Move> {
+        let tt = self.transposition_table.lock().unwrap();
+        tt.extract_pv(&mut current_board.clone())
+    }
+
+    pub fn debug_eval(&self, current_board: &Board) -> Score {
+        evaluate(&current_board)
     }
 }
 

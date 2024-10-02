@@ -1,6 +1,6 @@
 use std::{io::stdin, str::FromStr, time::Duration, u64};
 
-use hardfiskur_core::board::{Board, Color};
+use hardfiskur_core::board::{Board, Color, UCIMove};
 use hardfiskur_engine::{search_limits::SearchLimits, search_result::SearchResult, Engine};
 use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
 
@@ -68,7 +68,10 @@ fn main() {
                 println!("{}", UCIMessage::UCIOk);
             }
 
-            UCIMessage::UCINewGame => engine.new_game(),
+            UCIMessage::UCINewGame => {
+                current_board = Board::starting_position();
+                engine.new_game();
+            }
 
             UCIMessage::IsReady => {
                 println!("{}", UCIMessage::ReadyOk);
@@ -159,15 +162,50 @@ fn main() {
                 println!("{:?}", current_board.zobrist_hash());
             }
 
-            UCIMessage::TTEntry => engine.debug_tt_entry(&current_board),
+            UCIMessage::TTEntry => {
+                println!("TT entry for {:?}:", current_board.zobrist_hash());
+                match engine.get_tt_entry(&current_board) {
+                    Some(entry) => println!("{entry}"),
+                    None => println!("<none>"),
+                }
+            }
 
             UCIMessage::MakeMove(m) => {
-                current_board.push_move(m.from, m.to, m.promotion);
+                let m = m.or_else(|| {
+                    let entry = engine.get_tt_entry(&current_board);
+                    entry.and_then(|m| m.best_move).map(|m| {
+                        let m = m.into();
+                        println!("Using best move from TT: {m}");
+                        m
+                    })
+                });
+
+                if let Some(m) = m {
+                    let pushed_move = current_board.push_move(m.from, m.to, m.promotion);
+                    if pushed_move.is_none() {
+                        println!("Move {m} was invalid");
+                    }
+                } else {
+                    println!("No best move found in TT");
+                }
             }
 
             UCIMessage::UndoMove => {
-                current_board.pop_move();
+                if let Some(m) = current_board.pop_move() {
+                    println!("Undid move {}", UCIMove::from(m));
+                }
             }
+
+            UCIMessage::GetPV => {
+                let pv = engine.get_pv(&current_board);
+                print!("PV:");
+                for m in pv {
+                    print!(" {}", UCIMove::from(m));
+                }
+                println!();
+            }
+
+            UCIMessage::Eval => println!("{}", engine.debug_eval(&current_board)),
 
             // ignore all other messages
             _ => (),

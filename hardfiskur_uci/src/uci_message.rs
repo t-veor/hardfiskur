@@ -81,18 +81,32 @@ pub enum UCIMessage {
     /// `option ...`
     Option(UCIOptionConfig),
 
-    /// Custom commands for debugging
-    /// `d` (display current position)
+    // Custom commands for debugging
+    /// `d`
+    /// Print an ASCII representation of the current position, FEN string, and Zobrist hash.
     D,
 
-    /// `ttentry` (debug transposition table entry)
+    /// `ttentry`
+    /// Print the transposition table entry for this position, if any.
     TTEntry,
 
-    /// `makemove <move>`
-    MakeMove(UCIMove),
+    /// `[makemove | m] [move]`
+    /// Makes the move provided on the current position.
+    /// If move is not provided, makes the best move according to the transposition table if found.
+    MakeMove(Option<UCIMove>),
 
-    /// `undomove`
+    /// `[undomove | u]`
+    /// Undo the last move on the current position.
     UndoMove,
+
+    /// `pv`
+    /// Get the principal variation from the transposition table.
+    GetPV,
+
+    /// `eval`
+    /// Runs the evaluation function on this position and returns the result.
+    /// Does not take into account quiescence, checkmates, draws etc.
+    Eval,
 }
 
 impl UCIMessage {
@@ -228,8 +242,13 @@ impl Display for UCIMessage {
 
             UCIMessage::D => write!(f, "d"),
             UCIMessage::TTEntry => write!(f, "ttentry"),
-            UCIMessage::MakeMove(ucimove) => write!(f, "makemove {ucimove}"),
+            UCIMessage::MakeMove(m) => match m {
+                Some(m) => write!(f, "makemove {m}"),
+                None => write!(f, "makemove"),
+            },
             UCIMessage::UndoMove => write!(f, "undomove"),
+            UCIMessage::GetPV => write!(f, "getpv"),
+            UCIMessage::Eval => write!(f, "eval"),
         }
     }
 }
