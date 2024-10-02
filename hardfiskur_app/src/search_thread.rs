@@ -75,6 +75,10 @@ impl SearchThread {
         self.engine.abort_search();
     }
 
+    pub fn reset(&self) {
+        self.engine.new_game();
+    }
+
     pub fn try_receive_move(&mut self) -> Option<Move> {
         if let Ok((m, search_gen)) = self.rx.try_recv() {
             if search_gen == self.search_gen {

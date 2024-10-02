@@ -34,6 +34,7 @@ pub struct SpriteState {
 
     animation_value: f32,
     animation_id: Id,
+    just_started_anim: bool,
 }
 
 impl SpriteState {
@@ -43,6 +44,7 @@ impl SpriteState {
             being_captured_pieces: Vec::new(),
             animation_value: 1.0,
             animation_id: id.with("hardfiskur__base_board_animations"),
+            just_started_anim: false,
         }
     }
 
@@ -133,10 +135,15 @@ impl SpriteState {
         // Reset animation
         self.animation_id = self.animation_id.with("next");
         self.animation_value = ui.ctx().animate_bool(self.animation_id, false);
+        self.just_started_anim = true;
     }
 
     pub fn update(&mut self, ui: &mut Ui) {
-        self.animation_value = ui.ctx().animate_bool(self.animation_id, true);
+        if self.just_started_anim {
+            self.just_started_anim = false;
+        } else {
+            self.animation_value = ui.ctx().animate_bool(self.animation_id, true);
+        }
     }
 
     fn clear_current_animation(&mut self) {

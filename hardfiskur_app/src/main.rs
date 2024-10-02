@@ -103,6 +103,7 @@ impl eframe::App for HardfiskurApp {
 
                 if ui.button("Reset").clicked() {
                     self.game_manager.reset();
+                    self.search_thread.reset();
                 }
 
                 if ui.button("Undo move").clicked() {
