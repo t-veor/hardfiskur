@@ -109,6 +109,8 @@ impl eframe::App for HardfiskurApp {
                     self.game_manager.pop_move();
                 }
 
+                ui.separator();
+
                 if let Some(scroll_request) = self.game_manager.ui_move_history(ui) {
                     self.game_manager.scroll_to(scroll_request);
                 }

@@ -1,5 +1,5 @@
-use eframe::egui::{self, Id, Layout, Ui, Vec2};
-use egui_extras::{Size, Strip, StripBuilder};
+use eframe::egui::{self, Align, Id, Layout, Sense, Ui};
+use egui_extras::{Column, TableBuilder, TableRow};
 use hardfiskur_core::board::{Board, Color, Move};
 use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
 
@@ -125,6 +125,10 @@ impl GameManagerState {
 
         rows
     }
+
+    fn is_last_move(&self, idx: usize) -> bool {
+        idx + 1 == self.move_history_position
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -172,15 +176,7 @@ impl GameManager {
     }
 
     pub fn ui_move_history(&mut self, ui: &mut Ui) -> Option<usize> {
-        let mut scroll_request = None;
-
-        egui::ScrollArea::vertical()
-            .stick_to_bottom(true)
-            .show(ui, |ui| {
-                scroll_request = self.emit_move_history_rows(ui);
-            });
-
-        scroll_request
+        self.emit_move_history_rows(ui)
     }
 
     pub fn scroll_forwards(&mut self) {
@@ -215,33 +211,59 @@ impl GameManager {
         let rows = self.state.rows();
         let mut scroll_request = None;
 
-        egui::Grid::new("move_history_grid")
+        let text_height = egui::TextStyle::Body
+            .resolve(ui.style())
+            .size
+            .max(ui.spacing().interact_size.y);
+
+        ui.style_mut().interaction.selectable_labels = false;
+
+        TableBuilder::new(ui)
+            .column(Column::auto().at_least(24.0))
+            .column(Column::remainder())
+            .column(Column::remainder())
+            .cell_layout(Layout::left_to_right(Align::Center))
+            .sense(Sense::click())
+            .stick_to_bottom(true)
             .striped(true)
-            .show(ui, |ui| {
-                for row in rows {
-                    ui.label(format!("{}.", row.fullmoves));
-                    match row.white_move {
-                        Some((i, san)) => {
-                            if ui.label(san).clicked() {
-                                scroll_request = Some(i + 1);
-                            };
+            .body(|body| {
+                body.rows(text_height, rows.len(), |mut r| {
+                    let row = &rows[r.index()];
+
+                    let mut selectable_cell = |r: &mut TableRow, (i, san): (usize, &str)| {
+                        r.set_selected(self.state.is_last_move(i));
+                        let response = r
+                            .col(|ui| {
+                                ui.label(san);
+                            })
+                            .1;
+
+                        if response.clicked() {
+                            scroll_request = Some(i + 1);
                         }
+                    };
+
+                    r.set_selected(false);
+
+                    r.col(|ui| {
+                        ui.label(format!("{}.", row.fullmoves));
+                    });
+
+                    match row.white_move {
+                        Some(m) => selectable_cell(&mut r, m),
                         None => {
-                            ui.label("...");
+                            r.col(|ui| {
+                                ui.label("...");
+                            });
                         }
                     }
                     match row.black_move {
-                        Some((i, san)) => {
-                            if ui.label(san).clicked() {
-                                scroll_request = Some(i + 1);
-                            };
-                        }
+                        Some(m) => selectable_cell(&mut r, m),
                         None => (),
-                    };
-                    ui.end_row();
-                }
+                    }
+                });
             });
 
-        None
+        scroll_request
     }
 }

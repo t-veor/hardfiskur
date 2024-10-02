@@ -63,7 +63,7 @@ impl<'a> SearchContext<'a> {
         }
 
         // Avoid syscalls a bit
-        if self.stats.nodes_searched % 64 != 0 {
+        if self.stats.nodes_searched % 2048 != 0 {
             return false;
         }
 
