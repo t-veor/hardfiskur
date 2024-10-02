@@ -172,8 +172,10 @@ pub fn simple_negamax_search(
 
     order_moves(ctx, tt_move, &mut legal_moves);
 
+    let mut best_move_idx = None;
     let mut best_move = None;
-    for m in legal_moves {
+
+    for (move_idx, m) in legal_moves.into_iter().enumerate() {
         ctx.board.push_move_unchecked(m);
         let eval = -simple_negamax_search(ctx, depth - 1, ply_from_root + 1, -beta, -alpha).0;
         ctx.board.pop_move();
@@ -200,11 +202,13 @@ pub fn simple_negamax_search(
 
             alpha = eval;
             best_move = Some(m);
+            best_move_idx = Some(move_idx);
             tt_flag = TranspositionFlag::Exact;
 
             if alpha >= beta {
                 tt_flag = TranspositionFlag::Lowerbound;
                 ctx.stats.beta_cutoffs += 1;
+                ctx.stats.move_ordering.record_beta_cutoff(move_idx);
 
                 diag!(
                     ctx.board,
@@ -248,6 +252,10 @@ pub fn simple_negamax_search(
         TranspositionEntry::new(tt_flag, depth, alpha, best_move, ply_from_root),
     );
 
+    if let Some(i) = best_move_idx {
+        ctx.stats.move_ordering.record_best_move(i);
+    }
+
     (alpha, best_move)
 }
 
@@ -284,16 +292,28 @@ pub fn quiescence_search(
 
     order_moves(ctx, None, &mut capturing_moves);
 
-    for m in capturing_moves {
+    let mut best_move_idx = None;
+
+    for (move_idx, m) in capturing_moves.into_iter().enumerate() {
         ctx.board.push_move_unchecked(m);
         let score = -quiescence_search(ctx, ply_from_root + 1, -beta, -alpha);
         ctx.board.pop_move();
 
         if score >= beta {
             ctx.stats.beta_cutoffs += 1;
+            ctx.stats.move_ordering.record_beta_cutoff(move_idx);
+
             return beta;
         }
-        alpha = alpha.max(score);
+
+        if score > alpha {
+            alpha = score;
+            best_move_idx = Some(move_idx);
+        }
+    }
+
+    if let Some(i) = best_move_idx {
+        ctx.stats.move_ordering.record_best_move(i);
     }
 
     return alpha;
@@ -341,6 +361,8 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
                 print!("{} ", UCIMove::from(m));
             }
             println!();
+
+            println!("info string {:?}", ctx.stats.move_ordering);
         }
 
         if ctx.should_exit_search() {
