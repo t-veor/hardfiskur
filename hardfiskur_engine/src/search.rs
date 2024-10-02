@@ -311,6 +311,10 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
             // TODO: It seems like there may be a bug with immediately quitting
             // here as the mating move may be a lookup from the transposition
             // table, which is unaware that it's repeated?
+            // TOOD: Also, when search extensions are implemented, then a mate
+            // score found here may be "outside" the actual depth due to
+            // extensions, which means that we can't trust it as there may be a
+            // faster mate available.
             if best_score.is_mate() {
                 break;
             }
