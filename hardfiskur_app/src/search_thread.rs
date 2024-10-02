@@ -1,7 +1,10 @@
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::{
+    sync::mpsc::{self, Receiver, Sender},
+    time::Duration,
+};
 
 use hardfiskur_core::board::{Board, Color, Move};
-use hardfiskur_engine::Engine;
+use hardfiskur_engine::{search_limits::SearchLimits, Engine};
 
 pub struct SearchThread {
     tx: Sender<(Option<Move>, u64)>,
@@ -38,21 +41,30 @@ impl SearchThread {
 
         let to_move = board.to_move();
 
-        self.engine
-            .start_search(board, Default::default(), move |result| {
+        self.engine.start_search(
+            board,
+            SearchLimits {
+                allocated_time: Duration::from_millis(500),
+                ..Default::default()
+            },
+            move |result| {
                 let score = match to_move {
                     Color::White => result.score,
                     Color::Black => -result.score,
                 };
 
                 println!(
-                    "score {score} depth {} nodes {} tt_hits {}",
-                    result.stats.depth, result.stats.nodes_searched, result.stats.tt_hits
+                    "score {score} depth {} nodes {} time {:?} tt_hits {}",
+                    result.stats.depth,
+                    result.stats.nodes_searched,
+                    result.elapsed,
+                    result.stats.tt_hits
                 );
 
                 tx.send((result.best_move, search_gen)).unwrap();
                 waker();
-            });
+            },
+        );
 
         self.outstanding_request = true;
     }
