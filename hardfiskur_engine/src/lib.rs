@@ -29,7 +29,9 @@ impl Engine {
     pub fn new() -> Self {
         Self {
             curr_abort_flag: Arc::new(AtomicBool::new(false)),
-            transposition_table: Arc::new(Mutex::new(TranspositionTable::new(64))),
+            transposition_table: Arc::new(Mutex::new(TranspositionTable::new(
+                64.try_into().unwrap(),
+            ))),
         }
     }
 
@@ -66,7 +68,7 @@ impl Engine {
 
     pub fn get_tt_entry(&self, current_board: &Board) -> Option<TranspositionEntry> {
         let tt = self.transposition_table.lock().unwrap();
-        tt.get_entry(current_board.zobrist_hash())
+        tt.get(current_board.zobrist_hash())
     }
 
     pub fn get_pv(&self, current_board: &Board) -> Vec<Move> {

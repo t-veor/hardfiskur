@@ -105,7 +105,7 @@ pub fn simple_negamax_search(
     }
 
     let mut tt_move = None;
-    match ctx.tt.get_entry(ctx.board.zobrist_hash()) {
+    match ctx.tt.get(ctx.board.zobrist_hash()) {
         Some(entry) => {
             tt_move = entry.best_move;
 
