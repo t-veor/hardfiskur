@@ -3,7 +3,7 @@ mod search_thread;
 mod sfx_stream;
 
 use eframe::egui::{self, Key, Layout, Vec2};
-use game_manager::{GameManager, GameManagerData};
+use game_manager::GameManager;
 use hardfiskur_core::board::{BoardState, Color, DrawReason, Move};
 
 use search_thread::SearchThread;
@@ -133,7 +133,7 @@ impl eframe::App for HardfiskurApp {
             ui.with_layout(
                 Layout::centered_and_justified(egui::Direction::LeftToRight),
                 |ui| {
-                    let input_move = self.game_manager.ui_board(ui, GameManagerData {});
+                    let input_move = self.game_manager.ui_board(ui);
 
                     self.user_just_moved = false;
 

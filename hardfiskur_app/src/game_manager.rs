@@ -2,8 +2,8 @@ use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Align, Id, Layout, Sense, Ui};
 use egui_extras::{Column, TableBuilder, TableRow};
-use hardfiskur_core::board::{Board, Color, Move};
-use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
+use hardfiskur_core::board::{Board, Move};
+use hardfiskur_ui::chess_board::ChessBoardUI;
 
 const SOFT_SCROLL_DELAY: Duration = Duration::from_millis(300);
 const SCROLL_OVERRIDE_MAGNITUDE: f32 = 3.5;
@@ -153,38 +153,31 @@ struct MoveHistoryRow<'a> {
 
 pub struct GameManager {
     state: GameManagerState,
-    chess_ui: ChessBoard,
+    chess_ui: ChessBoardUI,
 
     last_scroll_event: Instant,
 }
-
-#[derive(Debug, Clone)]
-pub struct GameManagerData {}
 
 impl GameManager {
     pub fn new() -> Self {
         Self {
             state: GameManagerState::new(Board::starting_position()),
-            chess_ui: ChessBoard::new(Id::new("hardfiskur_ui_board")),
+            chess_ui: ChessBoardUI::new(Id::new("hardfiskur_ui_board")),
 
             last_scroll_event: Instant::now(),
         }
     }
 
-    pub fn ui_board(&mut self, ui: &mut Ui, data: GameManagerData) -> Option<Move> {
-        let response = self.chess_ui.ui(
-            ui,
-            ChessBoardData {
-                board: &self.state.display_board,
-                can_move: self.state.is_displaying_latest_move(),
-                fade_out_board: !self.state.is_displaying_latest_move(),
-                last_move: self
-                    .state
-                    .current_display_move()
-                    .map(|item| (item.move_repr.from_square(), item.move_repr.to_square())),
-                perspective: Color::White,
-            },
-        );
+    pub fn ui_board(&mut self, ui: &mut Ui) -> Option<Move> {
+        let mut props = ChessBoardUI::props(&self.state.display_board)
+            .can_move(self.state.is_displaying_latest_move())
+            .fade_out_board(!self.state.is_displaying_latest_move());
+
+        if let Some(item) = self.state.current_display_move() {
+            props = props.show_last_move(item.move_repr.from_square(), item.move_repr.to_square());
+        }
+
+        let response = self.chess_ui.ui(ui, props);
 
         if response.egui_response.hovered() {
             ui.input(|state| {

@@ -4,12 +4,44 @@ use hardfiskur_core::board::{Bitboard, Board, Color, Move, Piece, Square};
 use crate::base_board::{BaseBoardUI, BaseBoardUIProps, BaseBoardUIResponse, PromotionResult};
 
 #[derive(Debug)]
-pub struct ChessBoardData<'a> {
-    pub board: &'a Board,
-    pub can_move: bool,
-    pub perspective: Color,
-    pub fade_out_board: bool,
-    pub last_move: Option<(Square, Square)>,
+pub struct ChessBoardUIProps<'a> {
+    board: &'a Board,
+    can_move: bool,
+    perspective: Color,
+    fade_out_board: bool,
+    show_last_move: Option<(Square, Square)>,
+}
+
+impl<'a> ChessBoardUIProps<'a> {
+    pub fn new(board: &'a Board) -> Self {
+        Self {
+            board,
+            can_move: false,
+            perspective: Color::White,
+            fade_out_board: false,
+            show_last_move: None,
+        }
+    }
+
+    pub fn can_move(mut self, can_move: bool) -> Self {
+        self.can_move = can_move;
+        self
+    }
+
+    pub fn perspective(mut self, perspective: Color) -> Self {
+        self.perspective = perspective;
+        self
+    }
+
+    pub fn fade_out_board(mut self, fade_out_board: bool) -> Self {
+        self.fade_out_board = fade_out_board;
+        self
+    }
+
+    pub fn show_last_move(mut self, from: Square, to: Square) -> Self {
+        self.show_last_move = Some((from, to));
+        self
+    }
 }
 
 #[derive(Debug)]
@@ -18,7 +50,7 @@ pub struct ChessBoardResponse {
     pub input_move: Option<Move>,
 }
 
-pub struct ChessBoard {
+pub struct ChessBoardUI {
     base_board: BaseBoardUI,
 
     holding: Option<Square>,
@@ -26,7 +58,7 @@ pub struct ChessBoard {
     promotion_progress: Option<((Square, Square), Color)>,
 }
 
-impl ChessBoard {
+impl ChessBoardUI {
     pub fn new(id: Id) -> Self {
         Self {
             base_board: BaseBoardUI::new(id),
@@ -35,9 +67,13 @@ impl ChessBoard {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, data: ChessBoardData<'_>) -> ChessBoardResponse {
-        let pieces = self.get_pieces(data.board);
-        let (moves, move_gen_res) = data.board.legal_moves_and_meta();
+    pub fn props(board: &Board) -> ChessBoardUIProps {
+        ChessBoardUIProps::new(board)
+    }
+
+    pub fn ui(&mut self, ui: &mut Ui, props: ChessBoardUIProps<'_>) -> ChessBoardResponse {
+        let pieces = self.get_pieces(props.board);
+        let (moves, move_gen_res) = props.board.legal_moves_and_meta();
         let in_check = move_gen_res.checker_count > 0;
 
         let mut possible_moves = Vec::new();
@@ -56,7 +92,8 @@ impl ChessBoard {
             }
         }
 
-        let base_board_data = self.gather_baseboard_props(data, &pieces, &possible_moves, in_check);
+        let base_board_data =
+            self.gather_baseboard_props(props, &pieces, &possible_moves, in_check);
 
         let base_board_response = self.base_board.ui(ui, base_board_data);
 
@@ -75,17 +112,17 @@ impl ChessBoard {
 
     fn gather_baseboard_props<'a>(
         &mut self,
-        data: ChessBoardData<'_>,
+        data: ChessBoardUIProps<'_>,
         pieces: &'a [Option<Piece>],
         possible_moves: &'a [(Square, Square)],
         in_check: bool,
     ) -> BaseBoardUIProps<'a> {
-        let ChessBoardData {
+        let ChessBoardUIProps {
             board,
             can_move,
             perspective,
             fade_out_board,
-            last_move,
+            show_last_move: last_move,
         } = data;
 
         let mut base_props = BaseBoardUI::props()
