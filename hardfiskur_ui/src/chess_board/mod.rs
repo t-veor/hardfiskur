@@ -9,6 +9,8 @@ pub struct ChessBoardData<'a> {
     pub skip_animation: bool,
     pub can_move: bool,
     pub perspective: Color,
+    pub fade_out_board: bool,
+    pub last_move: Option<(Square, Square)>,
 }
 
 #[derive(Debug)]
@@ -78,6 +80,8 @@ impl ChessBoard {
             skip_animation,
             can_move,
             perspective,
+            fade_out_board,
+            last_move,
         } = data;
 
         let drag_mask = if can_move {
@@ -107,6 +111,9 @@ impl ChessBoard {
                 .map(|((_start, end), color)| (end, color)),
 
             checked_king_position,
+
+            fade_out_board,
+            last_move,
 
             ..Default::default()
         }

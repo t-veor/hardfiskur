@@ -1,7 +1,12 @@
+use std::time::{Duration, Instant};
+
 use eframe::egui::{self, Align, Id, Layout, Sense, Ui};
 use egui_extras::{Column, TableBuilder, TableRow};
 use hardfiskur_core::board::{Board, Color, Move};
 use hardfiskur_ui::chess_board::{ChessBoard, ChessBoardData};
+
+const SOFT_SCROLL_DELAY: Duration = Duration::from_millis(300);
+const SCROLL_OVERRIDE_MAGNITUDE: f32 = 3.5;
 
 #[derive(Debug, Clone)]
 struct MoveHistoryItem {
@@ -36,7 +41,7 @@ impl GameManagerState {
         }
     }
 
-    fn displaying_current_move(&self) -> bool {
+    fn is_displaying_latest_move(&self) -> bool {
         self.move_history_position >= self.move_history.len()
     }
 
@@ -68,7 +73,7 @@ impl GameManagerState {
         if self.current_board.push_move_repr(m) {
             // Sticky behavior -- if we're currently displaying the latest move,
             // advance it along with the current board.
-            if self.displaying_current_move() {
+            if self.is_displaying_latest_move() {
                 self.move_history_position += 1;
                 assert!(self.display_board.push_move_repr(m));
             }
@@ -129,6 +134,14 @@ impl GameManagerState {
     fn is_last_move(&self, idx: usize) -> bool {
         idx + 1 == self.move_history_position
     }
+
+    fn current_display_move(&self) -> Option<&MoveHistoryItem> {
+        if self.move_history_position == 0 {
+            None
+        } else {
+            self.move_history.get(self.move_history_position - 1)
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -141,6 +154,13 @@ struct MoveHistoryRow<'a> {
 pub struct GameManager {
     state: GameManagerState,
     chess_ui: ChessBoard,
+
+    last_scroll_event: Instant,
+}
+
+#[derive(Debug, Clone)]
+pub struct GameManagerData {
+    pub last_move_was_user_move: bool,
 }
 
 impl GameManager {
@@ -148,26 +168,50 @@ impl GameManager {
         Self {
             state: GameManagerState::new(Board::starting_position()),
             chess_ui: ChessBoard::new(Id::new("hardfiskur_ui_board")),
+
+            last_scroll_event: Instant::now(),
         }
     }
 
-    pub fn ui_board(&mut self, ui: &mut Ui) -> Option<Move> {
+    pub fn ui_board(&mut self, ui: &mut Ui, data: GameManagerData) -> Option<Move> {
         let response = self.chess_ui.ui(
             ui,
             ChessBoardData {
                 board: &self.state.display_board,
-                skip_animation: false,
-                can_move: self.state.displaying_current_move(),
+                skip_animation: data.last_move_was_user_move,
+                can_move: self.state.is_displaying_latest_move(),
+                fade_out_board: !self.state.is_displaying_latest_move(),
+                last_move: self
+                    .state
+                    .current_display_move()
+                    .map(|item| (item.move_repr.from_square(), item.move_repr.to_square())),
                 perspective: Color::White,
             },
         );
 
         if response.egui_response.hovered() {
             ui.input(|state| {
-                if state.raw_scroll_delta.y > 0.0 {
-                    self.scroll_forwards();
-                } else if state.raw_scroll_delta.y < 0.0 {
-                    self.scroll_backwards();
+                // This seems to be a good compromise for scrolling on both
+                // notched scroll wheels and touchscreens.
+                // Normally, notched scroll wheels will produce a scroll
+                // magnitude greater than SCROLL_OVERRIDE_MAGNITUDE on a single
+                // frame, so we immediately scroll when this happens.
+                // Touchscreens provide a smaller continuous scroll delta so if
+                // the user is scrolling slowly, then a scroll will be triggered
+                // only with a interval of SOFT_SCROLL_DELAY, allowing fine
+                // control. However, if they scroll with a quick motion then
+                // this will trigger a a fast scroll to the beginning/end of the
+                // move list.
+                let scroll_magnitude = state.raw_scroll_delta.y.abs();
+                if scroll_magnitude >= SCROLL_OVERRIDE_MAGNITUDE
+                    || self.last_scroll_event.elapsed() >= SOFT_SCROLL_DELAY
+                {
+                    if state.raw_scroll_delta.y > 0.0 {
+                        self.scroll_forwards();
+                    } else if state.raw_scroll_delta.y < 0.0 {
+                        self.scroll_backwards();
+                    }
+                    self.last_scroll_event = Instant::now();
                 }
             });
         }

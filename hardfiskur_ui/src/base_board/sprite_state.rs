@@ -1,6 +1,6 @@
 use std::iter::repeat;
 
-use egui::{Id, Ui};
+use egui::{emath::ease_in_ease_out, Id, Ui};
 use hardfiskur_core::board::{Piece, Square};
 
 #[derive(Debug, Clone, Copy)]
@@ -134,15 +134,24 @@ impl SpriteState {
 
         // Reset animation
         self.animation_id = self.animation_id.with("next");
-        self.animation_value = ui.ctx().animate_bool(self.animation_id, false);
+        self.animate(false, ui);
         self.just_started_anim = true;
+    }
+
+    fn animate(&mut self, value: bool, ui: &mut Ui) {
+        self.animation_value = ui.ctx().animate_bool_with_time_and_easing(
+            self.animation_id,
+            value,
+            0.125,
+            ease_in_ease_out,
+        );
     }
 
     pub fn update(&mut self, ui: &mut Ui) {
         if self.just_started_anim {
             self.just_started_anim = false;
         } else {
-            self.animation_value = ui.ctx().animate_bool(self.animation_id, true);
+            self.animate(true, ui);
         }
     }
 

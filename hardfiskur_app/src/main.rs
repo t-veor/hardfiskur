@@ -3,7 +3,7 @@ mod search_thread;
 mod sfx_stream;
 
 use eframe::egui::{self, Key, Layout, Vec2};
-use game_manager::GameManager;
+use game_manager::{GameManager, GameManagerData};
 use hardfiskur_core::board::{BoardState, Color, DrawReason, Move};
 
 use search_thread::SearchThread;
@@ -17,6 +17,8 @@ struct HardfiskurApp {
 
     search_thread: SearchThread,
     sfx_stream: SFXStream,
+
+    user_just_moved: bool,
 }
 
 impl HardfiskurApp {
@@ -29,6 +31,8 @@ impl HardfiskurApp {
 
             search_thread: SearchThread::new(),
             sfx_stream: SFXStream::new(),
+
+            user_just_moved: false,
         }
     }
 
@@ -129,10 +133,18 @@ impl eframe::App for HardfiskurApp {
             ui.with_layout(
                 Layout::centered_and_justified(egui::Direction::LeftToRight),
                 |ui| {
-                    let input_move = self.game_manager.ui_board(ui);
+                    let input_move = self.game_manager.ui_board(
+                        ui,
+                        GameManagerData {
+                            last_move_was_user_move: self.user_just_moved,
+                        },
+                    );
+
+                    self.user_just_moved = false;
 
                     if let Some(m) = input_move {
                         self.make_move(m);
+                        self.user_just_moved = true;
                     }
                 },
             );

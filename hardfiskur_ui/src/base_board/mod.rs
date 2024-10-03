@@ -7,7 +7,8 @@ use hardfiskur_core::board::{Bitboard, Color, Move, Piece, PieceType, Square};
 use sprite_state::{AnimatedPieceState, SpriteState};
 
 use crate::constants::{
-    BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_WHITE, CHESS_PIECES_SPRITE, MOVE_COLOR, SCALE,
+    BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_BLACK_FADED, BOARD_LAST_MOVE, BOARD_WHITE,
+    BOARD_WHITE_FADED, CHESS_PIECES_SPRITE, MOVE_COLOR, SCALE,
 };
 
 use self::{arrow::Arrow, promo_ui::PromotionUi};
@@ -28,6 +29,8 @@ pub struct BaseBoardData<'a> {
     pub allow_arrows: bool,
     pub promotion: Option<(Square, Color)>,
     pub checked_king_position: Option<Square>,
+    pub fade_out_board: bool,
+    pub last_move: Option<(Square, Square)>,
 }
 
 impl<'a> BaseBoardData<'a> {
@@ -48,6 +51,8 @@ impl<'a> Default for BaseBoardData<'a> {
             allow_arrows: true,
             promotion: None,
             checked_king_position: None,
+            fade_out_board: false,
+            last_move: None,
         }
     }
 }
@@ -314,8 +319,25 @@ impl BaseBoard {
         }
     }
 
+    fn board_colors(&self, data: &BaseBoardData<'_>) -> (Color32, Color32) {
+        if data.fade_out_board {
+            (BOARD_WHITE_FADED, BOARD_BLACK_FADED)
+        } else {
+            (BOARD_WHITE, BOARD_BLACK)
+        }
+    }
+
+    fn square_is_last_move(&self, square: Square, data: &BaseBoardData<'_>) -> bool {
+        match data.last_move {
+            Some((from, to)) => from == square || to == square,
+            None => false,
+        }
+    }
+
     fn paint_board(&mut self, painter: &Painter, data: &BaseBoardData<'_>) {
-        painter.rect_filled(self.board_rect, 0.0, BOARD_WHITE);
+        let (white_color, black_color) = self.board_colors(data);
+
+        painter.rect_filled(self.board_rect, 0.0, white_color);
 
         for square in Square::all() {
             let (rank, file) = (square.rank(), square.file());
@@ -323,14 +345,14 @@ impl BaseBoard {
 
             let square_is_black = (rank + file) % 2 == 0;
             if square_is_black {
-                painter.rect_filled(rect, 0.0, BOARD_BLACK);
+                painter.rect_filled(rect, 0.0, black_color);
             }
 
             // Draw coordinate indicators
             let text_color = if square_is_black {
-                BOARD_WHITE
+                white_color
             } else {
-                BOARD_BLACK
+                black_color
             };
 
             let (is_visually_last_row, is_visually_last_column) = match data.perspective {
@@ -356,6 +378,10 @@ impl BaseBoard {
                     Default::default(),
                     text_color,
                 );
+            }
+
+            if self.square_is_last_move(square, data) {
+                painter.rect_filled(rect, 0.0, BOARD_LAST_MOVE);
             }
         }
     }
