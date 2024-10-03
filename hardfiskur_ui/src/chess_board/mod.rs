@@ -1,4 +1,4 @@
-use egui::{Id, Ui};
+use egui::{Id, Ui, Vec2};
 use hardfiskur_core::board::{Bitboard, Board, Color, Move, Piece, Square};
 
 use crate::base_board::{BaseBoardUI, BaseBoardUIProps, BaseBoardUIResponse, PromotionResult};
@@ -69,6 +69,10 @@ impl ChessBoardUI {
 
     pub fn props(board: &Board) -> ChessBoardUIProps {
         ChessBoardUIProps::new(board)
+    }
+
+    pub fn board_size() -> Vec2 {
+        BaseBoardUI::board_size()
     }
 
     pub fn ui(&mut self, ui: &mut Ui, props: ChessBoardUIProps<'_>) -> ChessBoardResponse {

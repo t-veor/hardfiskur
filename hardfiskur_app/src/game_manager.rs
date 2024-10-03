@@ -1,8 +1,9 @@
+use core::f32;
 use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Align, Id, Layout, Sense, Ui};
 use egui_extras::{Column, TableBuilder, TableRow};
-use hardfiskur_core::board::{Board, Move};
+use hardfiskur_core::board::{Board, BoardState, Color, DrawReason, Move};
 use hardfiskur_ui::chess_board::ChessBoardUI;
 
 const SOFT_SCROLL_DELAY: Duration = Duration::from_millis(300);
@@ -168,45 +169,75 @@ impl GameManager {
         }
     }
 
+    pub fn playing(&self) -> bool {
+        matches!(self.state.current_board.state(), BoardState::InPlay { .. })
+    }
+
     pub fn ui_board(&mut self, ui: &mut Ui) -> Option<Move> {
-        let mut props = ChessBoardUI::props(&self.state.display_board)
-            .can_move(self.state.is_displaying_latest_move())
-            .fade_out_board(!self.state.is_displaying_latest_move());
+        let game_state = self.state.current_board.state();
+        let playing = matches!(game_state, BoardState::InPlay { .. });
+        let game_state_text = match game_state {
+            BoardState::InPlay { .. } => "",
+            BoardState::Draw(DrawReason::FiftyMoveRule) => "Draw by fifty-move rule",
+            BoardState::Draw(DrawReason::InsufficientMaterial) => "Draw by insufficient material",
+            BoardState::Draw(DrawReason::Stalemate) => "Draw by stalemate",
+            BoardState::Draw(DrawReason::ThreeFoldRepetition) => "Draw by threefold repetition",
+            BoardState::Win(color) => match color {
+                Color::White => "White wins by checkmate",
+                Color::Black => "Black wins by checkmate",
+            },
+        };
 
-        if let Some(item) = self.state.current_display_move() {
-            props = props.show_last_move(item.move_repr.from_square(), item.move_repr.to_square());
-        }
+        let mut input_move = None;
 
-        let response = self.chess_ui.ui(ui, props);
+        ui.vertical_centered(|ui| {
+            ui.heading(if playing { "" } else { "Game Over" });
+            ui.label(game_state_text);
 
-        if response.egui_response.hovered() {
-            ui.input(|state| {
-                // This seems to be a good compromise for scrolling on both
-                // notched scroll wheels and touchscreens.
-                // Normally, notched scroll wheels will produce a scroll
-                // magnitude greater than SCROLL_OVERRIDE_MAGNITUDE on a single
-                // frame, so we immediately scroll when this happens.
-                // Touchscreens provide a smaller continuous scroll delta so if
-                // the user is scrolling slowly, then a scroll will be triggered
-                // only with a interval of SOFT_SCROLL_DELAY, allowing fine
-                // control. However, if they scroll with a quick motion then
-                // this will trigger a a fast scroll to the beginning/end of the
-                // move list.
-                let scroll_magnitude = state.raw_scroll_delta.y.abs();
-                if scroll_magnitude >= SCROLL_OVERRIDE_MAGNITUDE
-                    || self.last_scroll_event.elapsed() >= SOFT_SCROLL_DELAY
-                {
-                    if state.raw_scroll_delta.y > 0.0 {
-                        self.scroll_forwards();
-                    } else if state.raw_scroll_delta.y < 0.0 {
-                        self.scroll_backwards();
-                    }
-                    self.last_scroll_event = Instant::now();
+            ui.centered_and_justified(|ui| {
+                let mut props = ChessBoardUI::props(&self.state.display_board)
+                    .can_move(playing && self.state.is_displaying_latest_move())
+                    .fade_out_board(!self.state.is_displaying_latest_move());
+
+                if let Some(item) = self.state.current_display_move() {
+                    props = props
+                        .show_last_move(item.move_repr.from_square(), item.move_repr.to_square());
                 }
-            });
-        }
 
-        response.input_move
+                let response = self.chess_ui.ui(ui, props);
+
+                if response.egui_response.hovered() {
+                    ui.input(|state| {
+                        // This seems to be a good compromise for scrolling on both
+                        // notched scroll wheels and touchscreens.
+                        // Normally, notched scroll wheels will produce a scroll
+                        // magnitude greater than SCROLL_OVERRIDE_MAGNITUDE on a single
+                        // frame, so we immediately scroll when this happens.
+                        // Touchscreens provide a smaller continuous scroll delta so if
+                        // the user is scrolling slowly, then a scroll will be triggered
+                        // only with a interval of SOFT_SCROLL_DELAY, allowing fine
+                        // control. However, if they scroll with a quick motion then
+                        // this will trigger a a fast scroll to the beginning/end of the
+                        // move list.
+                        let scroll_magnitude = state.raw_scroll_delta.y.abs();
+                        if scroll_magnitude >= SCROLL_OVERRIDE_MAGNITUDE
+                            || self.last_scroll_event.elapsed() >= SOFT_SCROLL_DELAY
+                        {
+                            if state.raw_scroll_delta.y > 0.0 {
+                                self.scroll_forwards();
+                            } else if state.raw_scroll_delta.y < 0.0 {
+                                self.scroll_backwards();
+                            }
+                            self.last_scroll_event = Instant::now();
+                        }
+                    });
+                }
+
+                input_move = response.input_move;
+            })
+        });
+
+        input_move
     }
 
     pub fn ui_move_history(&mut self, ui: &mut Ui) -> Option<usize> {
@@ -234,7 +265,11 @@ impl GameManager {
     }
 
     pub fn reset(&mut self) {
-        self.state = GameManagerState::new(Board::starting_position());
+        self.reset_to(Board::starting_position());
+    }
+
+    pub fn reset_to(&mut self, board: Board) {
+        self.state = GameManagerState::new(board);
     }
 
     pub fn current_board(&self) -> &Board {

@@ -161,6 +161,10 @@ impl BaseBoardUI {
         BaseBoardUIProps::new()
     }
 
+    pub fn board_size() -> Vec2 {
+        Vec2::splat(SCALE * 8.0)
+    }
+
     pub fn ui(&mut self, ui: &mut Ui, props: BaseBoardUIProps<'_>) -> BaseBoardUIResponse {
         let board_size = Vec2::splat(SCALE * 8.0);
         let (egui_response, painter) = ui.allocate_painter(board_size, Sense::click_and_drag());

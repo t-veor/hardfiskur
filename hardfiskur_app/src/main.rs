@@ -1,10 +1,12 @@
+mod fen_input;
 mod game_manager;
 mod search_thread;
 mod sfx_stream;
 
-use eframe::egui::{self, Key, Layout, Vec2};
+use eframe::egui::{self, Layout, Vec2};
+use fen_input::FenInput;
 use game_manager::GameManager;
-use hardfiskur_core::board::{BoardState, Color, DrawReason, Move};
+use hardfiskur_core::board::{Board, Move};
 
 use search_thread::SearchThread;
 use sfx_stream::SFXStream;
@@ -12,8 +14,7 @@ use sfx_stream::SFXStream;
 struct HardfiskurApp {
     game_manager: GameManager,
 
-    playing: bool,
-    state_text: String,
+    fen_input: FenInput,
 
     search_thread: SearchThread,
     sfx_stream: SFXStream,
@@ -26,8 +27,7 @@ impl HardfiskurApp {
         Self {
             game_manager: GameManager::new(),
 
-            playing: true,
-            state_text: "".to_string(),
+            fen_input: FenInput::new(),
 
             search_thread: SearchThread::new(),
             sfx_stream: SFXStream::new(),
@@ -47,10 +47,6 @@ impl HardfiskurApp {
     }
 
     fn make_move(&mut self, the_move: Move) {
-        if !self.playing {
-            return;
-        }
-
         if self.game_manager.push_move(the_move) {
             if the_move.is_capture() {
                 self.sfx_stream.play_capture();
@@ -61,26 +57,6 @@ impl HardfiskurApp {
 
         self.search_thread.cancel_search();
     }
-
-    fn update_playing(&mut self) {
-        let state = self.game_manager.current_board().state();
-        self.playing = matches!(state, BoardState::InPlay { .. });
-        self.state_text = match state {
-            BoardState::InPlay { .. } => "".to_string(),
-            BoardState::Draw(DrawReason::FiftyMoveRule) => "Draw by fifty-move rule".to_string(),
-            BoardState::Draw(DrawReason::InsufficientMaterial) => {
-                "Draw by insufficient material".to_string()
-            }
-            BoardState::Draw(DrawReason::Stalemate) => "Draw by stalemate".to_string(),
-            BoardState::Draw(DrawReason::ThreeFoldRepetition) => {
-                "Draw by threefold repetition".to_string()
-            }
-            BoardState::Win(color) => match color {
-                Color::White => "Win by white".to_string(),
-                Color::Black => "Win by black".to_string(),
-            },
-        };
-    }
 }
 
 impl eframe::App for HardfiskurApp {
@@ -89,18 +65,12 @@ impl eframe::App for HardfiskurApp {
             self.make_move(m);
         }
 
-        self.update_playing();
-
         egui::SidePanel::right("right_panel")
             .resizable(false)
             .min_width(200.0)
             .show(ctx, |ui| {
-                ui.label(&format!("State: {}", self.state_text));
-
-                if ui.button("Make move").clicked()
-                    || ctx.input(|input| input.key_pressed(Key::Space))
-                {
-                    if self.playing {
+                if ui.button("Make move").clicked() {
+                    if self.game_manager.playing() {
                         self.start_search(ctx);
                     }
                 }
@@ -122,7 +92,15 @@ impl eframe::App for HardfiskurApp {
             });
 
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
-            ui.label(self.game_manager.current_board().fen());
+            if let Some(new_fen) = self
+                .fen_input
+                .show(ui, &self.game_manager.current_board().fen())
+            {
+                if let Ok(board) = Board::try_parse_fen(&new_fen) {
+                    self.game_manager.reset_to(board);
+                }
+            }
+
             ui.label(&format!(
                 "{:?}",
                 self.game_manager.current_board().zobrist_hash()
