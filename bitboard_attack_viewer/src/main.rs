@@ -3,10 +3,10 @@ use hardfiskur_core::{
     board::{Bitboard, Piece, PieceType, Square},
     move_gen::{lookups::Lookups, magic::MagicTableEntry},
 };
-use hardfiskur_ui::base_board::{BaseBoard, BaseBoardData};
+use hardfiskur_ui::base_board::BaseBoardUI;
 
 struct MagicBitboardViewerUI {
-    chess_ui: BaseBoard,
+    chess_ui: BaseBoardUI,
     piece: PieceType,
     square: Square,
     blockers: Bitboard,
@@ -16,7 +16,7 @@ struct MagicBitboardViewerUI {
 impl MagicBitboardViewerUI {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self {
-            chess_ui: BaseBoard::new(Id::new("bitboard_attack_viewer_board")),
+            chess_ui: BaseBoardUI::new(Id::new("bitboard_attack_viewer_board")),
             piece: PieceType::Knight,
             square: Square::new(0, 0).unwrap(),
             blockers: Bitboard::EMPTY,
@@ -226,14 +226,13 @@ impl eframe::App for MagicBitboardViewerUI {
                         }
                     }
 
-                    let data = BaseBoardData {
-                        pieces: &board[..],
-                        display_bitboard: attack_pattern,
-                        drag_mask: Bitboard::from_square(self.square),
-                        ..Default::default()
-                    };
-
-                    let response = self.chess_ui.ui(ui, data);
+                    let response = self.chess_ui.ui(
+                        ui,
+                        BaseBoardUI::props()
+                            .pieces(&board[..])
+                            .display_bitboard(attack_pattern)
+                            .drag_mask(Bitboard::from_square(self.square)),
+                    );
 
                     if let Some((start, end)) = response.dropped {
                         if start == self.square {

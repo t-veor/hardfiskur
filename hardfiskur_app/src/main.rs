@@ -133,12 +133,7 @@ impl eframe::App for HardfiskurApp {
             ui.with_layout(
                 Layout::centered_and_justified(egui::Direction::LeftToRight),
                 |ui| {
-                    let input_move = self.game_manager.ui_board(
-                        ui,
-                        GameManagerData {
-                            last_move_was_user_move: self.user_just_moved,
-                        },
-                    );
+                    let input_move = self.game_manager.ui_board(ui, GameManagerData {});
 
                     self.user_just_moved = false;
 

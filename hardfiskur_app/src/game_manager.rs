@@ -159,9 +159,7 @@ pub struct GameManager {
 }
 
 #[derive(Debug, Clone)]
-pub struct GameManagerData {
-    pub last_move_was_user_move: bool,
-}
+pub struct GameManagerData {}
 
 impl GameManager {
     pub fn new() -> Self {
@@ -178,7 +176,6 @@ impl GameManager {
             ui,
             ChessBoardData {
                 board: &self.state.display_board,
-                skip_animation: data.last_move_was_user_move,
                 can_move: self.state.is_displaying_latest_move(),
                 fade_out_board: !self.state.is_displaying_latest_move(),
                 last_move: self

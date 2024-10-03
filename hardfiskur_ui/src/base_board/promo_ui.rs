@@ -3,7 +3,7 @@ use hardfiskur_core::board::{Color, PieceType, Square};
 
 use crate::constants::SCALE;
 
-use super::BaseBoard;
+use super::BaseBoardUI;
 
 #[derive(Debug)]
 pub struct PromotionUi {
@@ -41,7 +41,7 @@ impl PromotionUi {
         board_rect: Rect,
         perspective: Color,
     ) -> Self {
-        let anchor = BaseBoard::square_center(promotion_square, board_rect, perspective);
+        let anchor = BaseBoardUI::square_center(promotion_square, board_rect, perspective);
         let direction = if anchor.y - board_rect.left_top().y < SCALE * 4.5 {
             SCALE
         } else {
@@ -99,7 +99,7 @@ impl PromotionUi {
         .into_iter()
         .enumerate()
         {
-            let src_rect = BaseBoard::get_piece_uv(piece_type.with_color(self.for_player));
+            let src_rect = BaseBoardUI::get_piece_uv(piece_type.with_color(self.for_player));
             let dst_rect_center = self.anchor + Vec2::new(0.0, i as f32 * self.direction);
             let dst_rect = Rect::from_center_size(dst_rect_center, Vec2::splat(SCALE));
 

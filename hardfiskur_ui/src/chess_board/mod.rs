@@ -1,12 +1,11 @@
 use egui::{Id, Ui};
-use hardfiskur_core::board::{Bitboard, Board, Color, Move, Piece, PieceType, Square};
+use hardfiskur_core::board::{Bitboard, Board, Color, Move, Piece, Square};
 
-use crate::base_board::{BaseBoard, BaseBoardData, BaseBoardResponse, PromotionResult};
+use crate::base_board::{BaseBoardUI, BaseBoardUIProps, BaseBoardUIResponse, PromotionResult};
 
 #[derive(Debug)]
 pub struct ChessBoardData<'a> {
     pub board: &'a Board,
-    pub skip_animation: bool,
     pub can_move: bool,
     pub perspective: Color,
     pub fade_out_board: bool,
@@ -20,7 +19,7 @@ pub struct ChessBoardResponse {
 }
 
 pub struct ChessBoard {
-    base_board: BaseBoard,
+    base_board: BaseBoardUI,
 
     holding: Option<Square>,
 
@@ -30,7 +29,7 @@ pub struct ChessBoard {
 impl ChessBoard {
     pub fn new(id: Id) -> Self {
         Self {
-            base_board: BaseBoard::new(id),
+            base_board: BaseBoardUI::new(id),
             holding: None,
             promotion_progress: None,
         }
@@ -41,17 +40,23 @@ impl ChessBoard {
         let (moves, move_gen_res) = data.board.legal_moves_and_meta();
         let in_check = move_gen_res.checker_count > 0;
 
-        let possible_moves = if let Some(holding) = self.holding {
-            moves
-                .iter()
-                .filter(|m| m.from_square() == holding)
-                .copied()
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let mut possible_moves = Vec::new();
 
-        let base_board_data = self.gather_baseboard_data(data, &pieces, &possible_moves, in_check);
+        if let Some(holding) = self.holding {
+            for m in moves.iter() {
+                if m.from_square() == holding {
+                    possible_moves.push((m.from_square(), m.to_square()));
+
+                    // Also display that the king can "capture" the rook for a
+                    // castling move.
+                    if m.is_castle() {
+                        possible_moves.push((m.from_square(), m.castling_rook_squares().0));
+                    }
+                }
+            }
+        }
+
+        let base_board_data = self.gather_baseboard_props(data, &pieces, &possible_moves, in_check);
 
         let base_board_response = self.base_board.ui(ui, base_board_data);
 
@@ -68,60 +73,50 @@ impl ChessBoard {
         pieces
     }
 
-    fn gather_baseboard_data<'a>(
+    fn gather_baseboard_props<'a>(
         &mut self,
         data: ChessBoardData<'_>,
         pieces: &'a [Option<Piece>],
-        possible_moves: &'a [Move],
+        possible_moves: &'a [(Square, Square)],
         in_check: bool,
-    ) -> BaseBoardData<'a> {
+    ) -> BaseBoardUIProps<'a> {
         let ChessBoardData {
             board,
-            skip_animation,
             can_move,
             perspective,
             fade_out_board,
             last_move,
         } = data;
 
-        let drag_mask = if can_move {
-            board.get_bitboard_for_color(board.to_move())
-        } else {
-            Bitboard::EMPTY
-        };
+        let mut base_props = BaseBoardUI::props()
+            .pieces(pieces)
+            .possible_moves(&possible_moves)
+            .perspective(perspective)
+            .drag_mask(if can_move {
+                board.get_bitboard_for_color(board.to_move())
+            } else {
+                Bitboard::EMPTY
+            })
+            .fade_out_board(fade_out_board);
 
-        let checked_king_position = if in_check {
-            pieces
-                .iter()
-                .position(|p| *p == Some(Piece::new(board.to_move(), PieceType::King)))
-                .and_then(Square::from_index)
-        } else {
-            None
-        };
-
-        BaseBoardData {
-            pieces,
-            skip_piece_animation: skip_animation,
-            possible_moves,
-            perspective,
-            drag_mask,
-
-            promotion: self
-                .promotion_progress
-                .map(|((_start, end), color)| (end, color)),
-
-            checked_king_position,
-
-            fade_out_board,
-            last_move,
-
-            ..Default::default()
+        if let Some(((_start, end), color)) = self.promotion_progress {
+            base_props = base_props.handle_promo_on(end, color);
         }
+
+        if in_check {
+            base_props = base_props.checked_king_position(Some(board.get_king(board.to_move())));
+        }
+
+        if let Some((from, to)) = last_move {
+            base_props = base_props.show_last_move(from, to);
+        }
+
+        base_props
     }
 
     fn handle_baseboard_response(
         &mut self,
-        response: BaseBoardResponse,
+        response: BaseBoardUIResponse,
         moves: &[Move],
     ) -> ChessBoardResponse {
         self.holding = response.holding;
@@ -141,9 +136,12 @@ impl ChessBoard {
         moves: &[Move],
     ) -> Option<Move> {
         let (start, end) = dropped?;
-        let found_move = *moves
-            .iter()
-            .find(|m| m.from_square() == start && m.to_square() == end)?;
+        let found_move = *moves.iter().find(|m| {
+            m.from_square() == start
+                && (m.to_square() == end
+                    // Allow "capturing" the rook for a castling move.
+                    || m.is_castle() && m.castling_rook_squares().0 == end)
+        })?;
 
         // Check if the move is a promotion. If it is, buffer the promotion and
         // don't finish until the user is finished with selecting the promotion

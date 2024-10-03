@@ -6,7 +6,7 @@ use egui::{
 use hardfiskur_core::board::{Color, Square};
 
 use crate::{
-    base_board::BaseBoard,
+    base_board::BaseBoardUI,
     constants::{
         ARROW_COLOR, ARROW_HEAD_SIZE, ARROW_SELECTED_HEAD_SIZE, ARROW_SELECTED_WIDTH, ARROW_WIDTH,
         HIGHLIGHTED_CIRCLE_SELECTED_WIDTH, HIGHLIGHTED_CIRCLE_WIDTH, SCALE,
@@ -21,12 +21,12 @@ pub struct Arrow {
 
 impl Arrow {
     pub fn draw(&self, painter: &Painter, board_rect: Rect, perspective: Color, is_selected: bool) {
-        let origin = BaseBoard::square_center(self.start, board_rect, perspective);
+        let origin = BaseBoardUI::square_center(self.start, board_rect, perspective);
 
         if self.start == self.end {
             self.draw_circle(painter, origin, is_selected);
         } else {
-            let end = BaseBoard::square_center(self.end, board_rect, perspective);
+            let end = BaseBoardUI::square_center(self.end, board_rect, perspective);
             self.draw_arrow(painter, origin, end, is_selected);
         }
     }

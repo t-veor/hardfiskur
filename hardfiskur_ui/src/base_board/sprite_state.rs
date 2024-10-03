@@ -142,7 +142,7 @@ impl SpriteState {
         self.animation_value = ui.ctx().animate_bool_with_time_and_easing(
             self.animation_id,
             value,
-            0.125,
+            0.250,
             ease_in_ease_out,
         );
     }
