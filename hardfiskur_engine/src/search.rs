@@ -11,7 +11,7 @@ use hardfiskur_core::{
 use crate::{
     diag,
     evaluation::evaluate,
-    move_ordering::order_moves,
+    move_ordering::MoveOrderer,
     score::Score,
     search_limits::SearchLimits,
     search_result::SearchResult,
@@ -32,6 +32,8 @@ pub struct SearchContext<'a> {
     pub time_up: bool,
 
     pub tt: &'a mut TranspositionTable,
+    pub move_orderer: MoveOrderer,
+
     pub abort_flag: &'a AtomicBool,
 }
 
@@ -49,6 +51,7 @@ impl<'a> SearchContext<'a> {
             stats: SearchStats::default(),
             time_up: false,
             tt,
+            move_orderer: MoveOrderer::new(),
             abort_flag,
         }
     }
@@ -170,7 +173,8 @@ pub fn simple_negamax_search(
         return (score, None);
     }
 
-    order_moves(ctx, tt_move, &mut legal_moves);
+    ctx.move_orderer
+        .order_moves(ply_from_root, tt_move, &mut legal_moves);
 
     let mut best_move_idx = None;
     let mut best_move = None;
@@ -215,6 +219,9 @@ pub fn simple_negamax_search(
                     "Fail-high: move {} caused a beta cutoff! Returning {beta} (depth={depth})",
                     UCIMove::from(m)
                 );
+
+                // Update killer moves
+                ctx.move_orderer.store_killer(ply_from_root, m);
 
                 ctx.tt.set(
                     ctx.board.zobrist_hash(),
@@ -290,7 +297,8 @@ pub fn quiescence_search(
 
     alpha = alpha.max(stand_pat_score);
 
-    order_moves(ctx, None, &mut capturing_moves);
+    ctx.move_orderer
+        .order_moves(ply_from_root, None, &mut capturing_moves);
 
     let mut best_move_idx = None;
 

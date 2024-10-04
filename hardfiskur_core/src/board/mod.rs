@@ -17,7 +17,7 @@ pub use bitboard::Bitboard;
 pub use board_repr::BoardRepr;
 pub use castling::Castling;
 pub use fen::FenParseError;
-pub use move_repr::{Move, MoveBuilder, MoveFlags};
+pub use move_repr::{Move, MoveBuilder, MoveFlags, OptionalMove};
 pub use piece::{Color, Piece, PieceType};
 pub use san::SAN;
 pub use square::{ParseSquareError, Square};

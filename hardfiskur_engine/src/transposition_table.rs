@@ -1,10 +1,6 @@
-use std::{
-    fmt::Display,
-    num::{NonZeroU32, NonZeroUsize},
-    u32,
-};
+use std::{fmt::Display, num::NonZeroUsize, u32};
 
-use hardfiskur_core::board::{Board, Move, UCIMove, ZobristHash};
+use hardfiskur_core::board::{Board, Move, OptionalMove, UCIMove, ZobristHash};
 use zerocopy::FromZeroes;
 
 use crate::score::Score;
@@ -95,7 +91,7 @@ struct TranspositionEntryInternal {
     flag: TranspositionFlagInternal,
     depth: u32,
     score: Score,
-    best_move: Option<NonZeroU32>,
+    best_move: OptionalMove,
 }
 
 pub struct TranspositionTable {
@@ -150,7 +146,7 @@ impl TranspositionTable {
             flag: entry.flag.try_into().ok()?,
             depth: entry.depth,
             score: entry.score,
-            best_move: entry.best_move.map(|m| Move::from_nonzero(m)),
+            best_move: entry.best_move.as_option_move(),
         })
     }
 
@@ -162,7 +158,7 @@ impl TranspositionTable {
             flag: entry.flag.into(),
             depth: entry.depth,
             score: entry.score,
-            best_move: entry.best_move.map(|m| m.get()),
+            best_move: entry.best_move.into(),
         };
 
         // Always-replace
