@@ -179,26 +179,9 @@ impl BaseBoardUI {
 
         self.board_rect = Rect::from_center_size(egui_response.rect.center(), board_size);
         if let Some(mouse_pos) = egui_response.interact_pointer_pos() {
-            // dbg!(mouse_pos);
             self.rel_mouse_pos = (mouse_pos - self.board_rect.left_top()).to_pos2();
-            // dbg!(self.rel_mouse_pos);
+            self.mouse_square = self.get_mouse_square(&props, mouse_pos);
         }
-        self.mouse_square = {
-            let Pos2 { x, y } = Self::render_to_board_coords(
-                &props.board_style,
-                props.perspective,
-                self.rel_mouse_pos,
-            );
-            if (0.0..8.0).contains(&x) && (0.0..8.0).contains(&y) {
-                Some(Square::new_unchecked(
-                    y.clamp(0.0, 7.0) as _,
-                    x.clamp(0.0, 7.0) as _,
-                ))
-            } else {
-                None
-            }
-        };
-        // dbg!(self.mouse_square);
 
         let promotion_ui = props.handle_promo_on.map(|(promotion_square, for_player)| {
             PromotionUi::new(
@@ -232,9 +215,23 @@ impl BaseBoardUI {
         let mut response = BaseBoardUIResponse::new(egui_response);
         response.holding = self.holding;
 
-        self.handle_input(&props, &mut response, promotion_ui.as_ref());
+        self.handle_input(&props, ui, &mut response, promotion_ui.as_ref());
 
         response
+    }
+
+    fn get_mouse_square(&self, props: &BaseBoardUIProps<'_>, mouse_pos: Pos2) -> Option<Square> {
+        let rel_mouse_pos = (mouse_pos - self.board_rect.left_top()).to_pos2();
+        let Pos2 { x, y } =
+            Self::render_to_board_coords(&props.board_style, props.perspective, rel_mouse_pos);
+        if (0.0..8.0).contains(&x) && (0.0..8.0).contains(&y) {
+            Some(Square::new_unchecked(
+                y.clamp(0.0, 7.0) as _,
+                x.clamp(0.0, 7.0) as _,
+            ))
+        } else {
+            None
+        }
     }
 
     fn get_piece_sprite(&mut self, ctx: &egui::Context) -> TextureHandle {
@@ -280,13 +277,14 @@ impl BaseBoardUI {
     fn handle_input(
         &mut self,
         props: &BaseBoardUIProps<'_>,
+        ui: &Ui,
         response: &mut BaseBoardUIResponse,
         promotion_ui: Option<&PromotionUi<'_>>,
     ) {
         if let Some(promotion_ui) = promotion_ui {
             response.promotion_result = promotion_ui.handle_input(&response.egui_response);
         } else {
-            self.handle_drag_piece(props, response);
+            self.handle_drag_piece(ui, props, response);
             self.handle_draw_arrows(props, response);
             self.handle_clicks(response);
         }
@@ -294,6 +292,7 @@ impl BaseBoardUI {
 
     fn handle_drag_piece(
         &mut self,
+        ui: &Ui,
         props: &BaseBoardUIProps<'_>,
         response: &mut BaseBoardUIResponse,
     ) {
@@ -301,9 +300,11 @@ impl BaseBoardUI {
             .egui_response
             .drag_started_by(PointerButton::Primary)
         {
-            if let Some(start) = self.mouse_square {
-                if props.drag_mask.get(start) && props.piece_at(start).is_some() {
-                    self.holding = self.mouse_square;
+            let drag_start = ui.input(|i| i.pointer.press_origin());
+            let start_square = drag_start.and_then(|start| self.get_mouse_square(props, start));
+            if let Some(start_square) = start_square {
+                if props.drag_mask.get(start_square) && props.piece_at(start_square).is_some() {
+                    self.holding = Some(start_square);
                 }
             }
         }
