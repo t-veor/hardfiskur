@@ -1,30 +1,43 @@
-use egui::{vec2, Pos2, Rect, Vec2};
+use egui::{vec2, Color32, Pos2, Rect, Vec2};
 use hardfiskur_core::board::{Color, Square};
 
-use crate::constants::DEFAULT_BOARD_SIZE;
+use crate::constants::{
+    BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_BLACK_FADED, BOARD_LAST_MOVE, BOARD_WHITE,
+    BOARD_WHITE_FADED, DEFAULT_BOARD_SIZE,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoardStyle {
     pub square_size: f32,
-    pub arrow_width: f32,
-    pub arrow_selected_width: f32,
-    pub arrow_head_size: f32,
-    pub arrow_selected_head_size: f32,
-    pub highlighted_circle_width: f32,
-    pub highlighted_circle_selected_width: f32,
 }
 
 impl BoardStyle {
     pub fn new(square_size: f32) -> Self {
-        Self {
-            square_size,
-            arrow_width: 12.0 / 80.0 * square_size,
-            arrow_selected_width: 10.0 / 80.0 * square_size,
-            arrow_head_size: 37.5 / 80.0 * square_size,
-            arrow_selected_head_size: 32.0 / 80.0 * square_size,
-            highlighted_circle_width: 6.0 / 80.0 * square_size,
-            highlighted_circle_selected_width: 4.0 / 80.0 * square_size,
-        }
+        Self { square_size }
+    }
+
+    pub fn arrow_width(&self) -> f32 {
+        12.0 / 80.0 * self.square_size
+    }
+
+    pub fn arrow_selected_width(&self) -> f32 {
+        10.0 / 80.0 * self.square_size
+    }
+
+    pub fn arrow_head_size(&self) -> f32 {
+        37.5 / 80.0 * self.square_size
+    }
+
+    pub fn arrow_selected_head_size(&self) -> f32 {
+        32.0 / 80.0 * self.square_size
+    }
+
+    pub fn highlighted_circle_width(&self) -> f32 {
+        6.0 / 80.0 * self.square_size
+    }
+
+    pub fn highlighted_circle_selected_width(&self) -> f32 {
+        4.0 / 80.0 * self.square_size
     }
 
     pub fn from_board_size(board_size: f32) -> Self {
@@ -99,6 +112,22 @@ impl BoardStyle {
                 dst_rect.right_bottom() + vec2(1.0, -self.square_size * 0.25),
             ],
         ]
+    }
+
+    pub fn board_colors(&self, faded: bool) -> (Color32, Color32) {
+        if faded {
+            (BOARD_WHITE_FADED, BOARD_BLACK_FADED)
+        } else {
+            (BOARD_WHITE, BOARD_BLACK)
+        }
+    }
+
+    pub fn last_move_color(&self) -> Color32 {
+        BOARD_LAST_MOVE
+    }
+
+    pub fn bitboard_highlight_color(&self) -> Color32 {
+        BOARD_BITBOARD_HIGHLIGHT
     }
 }
 

@@ -34,14 +34,14 @@ impl Arrow {
 
     fn draw_circle(&self, painter: &Painter, style: &BoardStyle, origin: Pos2, is_selected: bool) {
         let stroke_width = if is_selected {
-            style.highlighted_circle_selected_width
+            style.highlighted_circle_selected_width()
         } else {
-            style.highlighted_circle_width
+            style.highlighted_circle_width()
         };
 
         painter.circle_stroke(
             origin,
-            style.square_size / 2.0 - style.highlighted_circle_selected_width,
+            style.square_size / 2.0 - style.highlighted_circle_selected_width(),
             Stroke {
                 width: stroke_width,
                 color: ARROW_COLOR,
@@ -61,9 +61,12 @@ impl Arrow {
         const SEMICIRCLE_POINTS: usize = 8;
 
         let (width, head_size) = if is_selected {
-            (style.arrow_selected_width, style.arrow_selected_head_size)
+            (
+                style.arrow_selected_width(),
+                style.arrow_selected_head_size(),
+            )
         } else {
-            (style.arrow_width, style.arrow_head_size)
+            (style.arrow_width(), style.arrow_head_size())
         };
 
         let vector = end - origin;

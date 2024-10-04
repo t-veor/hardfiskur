@@ -4,6 +4,7 @@ use egui::{
     Ui, Vec2,
 };
 use hardfiskur_core::board::{Bitboard, Color, Piece, PieceType, Square};
+use render::BoardRenderContext;
 use sprite_state::{AnimatedPieceState, SpriteState};
 
 use crate::{
@@ -19,6 +20,7 @@ pub use promo_ui::PromotionResult;
 
 mod arrow;
 mod promo_ui;
+mod render;
 mod sprite_state;
 
 #[derive(Debug)]
@@ -198,11 +200,18 @@ impl BaseBoardUI {
         self.sprite_state.update(ui);
         self.dropped_last_frame = false;
 
-        self.paint_board(&painter, &props);
+        let render_context = BoardRenderContext {
+            painter: &painter,
+            style: &props.board_style,
+            board_rect: self.board_rect,
+            sprite_state: &self.sprite_state,
+            perspective: props.perspective,
+            last_move: props.show_last_move,
+        };
 
-        self.paint_bitboard(&painter, &props);
-
-        self.paint_in_check(&painter, &props);
+        render_context.paint_board(props.fade_out_board);
+        render_context.paint_bitboard(props.display_bitboard);
+        render_context.paint_check_indicator(props.checked_king_position);
 
         self.paint_moves(&painter, &props);
 
@@ -380,75 +389,6 @@ impl BaseBoardUI {
         }
     }
 
-    fn board_colors(&self, props: &BaseBoardUIProps<'_>) -> (Color32, Color32) {
-        if props.fade_out_board {
-            (BOARD_WHITE_FADED, BOARD_BLACK_FADED)
-        } else {
-            (BOARD_WHITE, BOARD_BLACK)
-        }
-    }
-
-    fn square_is_last_move(&self, square: Square, props: &BaseBoardUIProps<'_>) -> bool {
-        match props.show_last_move {
-            Some((from, to)) => from == square || to == square,
-            None => false,
-        }
-    }
-
-    fn paint_board(&mut self, painter: &Painter, props: &BaseBoardUIProps<'_>) {
-        let (white_color, black_color) = self.board_colors(props);
-
-        painter.rect_filled(self.board_rect, 0.0, white_color);
-
-        for square in Square::all() {
-            let (rank, file) = (square.rank(), square.file());
-            let rect = props
-                .board_style
-                .board_square(square, self.board_rect, props.perspective);
-
-            let square_is_black = (rank + file) % 2 == 0;
-            if square_is_black {
-                painter.rect_filled(rect, 0.0, black_color);
-            }
-
-            // Draw coordinate indicators
-            let text_color = if square_is_black {
-                white_color
-            } else {
-                black_color
-            };
-
-            let (is_visually_last_row, is_visually_last_column) = match props.perspective {
-                Color::White => (rank == 0, file == 7),
-                Color::Black => (rank == 7, file == 0),
-            };
-
-            if is_visually_last_row {
-                painter.text(
-                    rect.left_bottom() + Vec2::new(2.0, -2.0),
-                    Align2::LEFT_BOTTOM,
-                    (b'a' + file) as char,
-                    Default::default(),
-                    text_color,
-                );
-            }
-
-            if is_visually_last_column {
-                painter.text(
-                    rect.right_top() + Vec2::new(-2.0, 2.0),
-                    Align2::RIGHT_TOP,
-                    (b'1' + rank) as char,
-                    Default::default(),
-                    text_color,
-                );
-            }
-
-            if self.square_is_last_move(square, props) {
-                painter.rect_filled(rect, 0.0, BOARD_LAST_MOVE);
-            }
-        }
-    }
-
     fn paint_pieces(&mut self, ui: &mut Ui, props: &BaseBoardUIProps<'_>) {
         let sprite_handle = self.get_piece_sprite(ui.ctx());
 
@@ -560,39 +500,6 @@ impl BaseBoardUI {
                     props.board_style.square_size * 0.125,
                     MOVE_COLOR,
                 );
-            }
-        }
-    }
-
-    fn paint_in_check(&mut self, painter: &Painter, props: &BaseBoardUIProps<'_>) {
-        if let Some(square) = props.checked_king_position {
-            let square_size = props.board_style.square_size;
-
-            painter.add(
-                Shadow {
-                    blur: square_size * 0.25,
-                    spread: -square_size * 0.125,
-                    color: Color32::RED,
-                    ..Default::default()
-                }
-                .as_shape(
-                    props
-                        .board_style
-                        .board_square(square, self.board_rect, props.perspective),
-                    square_size * 0.5,
-                ),
-            );
-        }
-    }
-
-    fn paint_bitboard(&mut self, painter: &Painter, props: &BaseBoardUIProps<'_>) {
-        for square in Square::all() {
-            if props.display_bitboard.get(square) {
-                let rect =
-                    props
-                        .board_style
-                        .board_square(square, self.board_rect, props.perspective);
-                painter.rect_filled(rect, 0.0, BOARD_BITBOARD_HIGHLIGHT);
             }
         }
     }
