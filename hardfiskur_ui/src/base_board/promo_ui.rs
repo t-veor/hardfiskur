@@ -1,12 +1,13 @@
 use egui::{Painter, PointerButton, Pos2, Rect, Rgba, TextureHandle, Ui, Vec2};
 use hardfiskur_core::board::{Color, PieceType, Square};
 
-use crate::constants::SCALE;
+use crate::board_style::BoardStyle;
 
 use super::BaseBoardUI;
 
 #[derive(Debug)]
-pub struct PromotionUi {
+pub struct PromotionUi<'a> {
+    board_style: &'a BoardStyle,
     board_rect: Rect,
     anchor: Pos2,
     for_player: Color,
@@ -34,21 +35,23 @@ impl PromotionResult {
     }
 }
 
-impl PromotionUi {
+impl<'a> PromotionUi<'a> {
     pub fn new(
+        board_style: &'a BoardStyle,
         promotion_square: Square,
         for_player: Color,
         board_rect: Rect,
         perspective: Color,
     ) -> Self {
-        let anchor = BaseBoardUI::square_center(promotion_square, board_rect, perspective);
-        let direction = if anchor.y - board_rect.left_top().y < SCALE * 4.5 {
-            SCALE
+        let anchor = board_style.square_center(promotion_square, board_rect, perspective);
+        let direction = if anchor.y - board_rect.left_top().y < board_style.square_size * 4.5 {
+            board_style.square_size
         } else {
-            -SCALE
+            -board_style.square_size
         };
 
         Self {
+            board_style,
             board_rect,
             anchor,
             for_player,
@@ -63,7 +66,10 @@ impl PromotionUi {
 
         let mouse_pos = response.interact_pointer_pos()?;
 
-        if !(self.anchor.x - SCALE / 2.0..=self.anchor.x + SCALE / 2.0).contains(&mouse_pos.x) {
+        if !(self.anchor.x - self.board_style.square_size / 2.0
+            ..=self.anchor.x + self.board_style.square_size / 2.0)
+            .contains(&mouse_pos.x)
+        {
             return Some(PromotionResult::Cancel);
         }
 
@@ -86,7 +92,13 @@ impl PromotionUi {
         );
 
         let bg_center = self.anchor + Vec2::new(0.0, 1.5 * self.direction);
-        let bg_rect = Rect::from_center_size(bg_center, Vec2::new(SCALE, 4.0 * SCALE));
+        let bg_rect = Rect::from_center_size(
+            bg_center,
+            Vec2::new(
+                self.board_style.square_size,
+                4.0 * self.board_style.square_size,
+            ),
+        );
 
         painter.rect_filled(bg_rect, 8.0, Rgba::from_rgb(0.8, 0.8, 0.8));
 
@@ -101,7 +113,7 @@ impl PromotionUi {
         {
             let src_rect = BaseBoardUI::get_piece_uv(piece_type.with_color(self.for_player));
             let dst_rect_center = self.anchor + Vec2::new(0.0, i as f32 * self.direction);
-            let dst_rect = Rect::from_center_size(dst_rect_center, Vec2::splat(SCALE));
+            let dst_rect = self.board_style.board_square_centered_at(dst_rect_center);
 
             egui::Image::new(sprite_handle)
                 .uv(src_rect)

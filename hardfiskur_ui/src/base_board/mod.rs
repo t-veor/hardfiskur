@@ -1,14 +1,17 @@
 use egui::{
     epaint::{ColorImage, PathShape, PathStroke, RectShape},
-    vec2, Align2, Color32, Id, Painter, PointerButton, Pos2, Rect, Rgba, Sense, Shadow,
-    TextureHandle, Ui, Vec2,
+    Align2, Color32, Id, Painter, PointerButton, Pos2, Rect, Rgba, Sense, Shadow, TextureHandle,
+    Ui, Vec2,
 };
 use hardfiskur_core::board::{Bitboard, Color, Piece, PieceType, Square};
 use sprite_state::{AnimatedPieceState, SpriteState};
 
-use crate::constants::{
-    BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_BLACK_FADED, BOARD_LAST_MOVE, BOARD_WHITE,
-    BOARD_WHITE_FADED, CHESS_PIECES_SPRITE, MOVE_COLOR, SCALE,
+use crate::{
+    board_style::BoardStyle,
+    constants::{
+        BOARD_BITBOARD_HIGHLIGHT, BOARD_BLACK, BOARD_BLACK_FADED, BOARD_LAST_MOVE, BOARD_WHITE,
+        BOARD_WHITE_FADED, CHESS_PIECES_SPRITE, MOVE_COLOR,
+    },
 };
 
 use self::{arrow::Arrow, promo_ui::PromotionUi};
@@ -30,6 +33,7 @@ pub struct BaseBoardUIProps<'a> {
     checked_king_position: Option<Square>,
     fade_out_board: bool,
     show_last_move: Option<(Square, Square)>,
+    board_style: BoardStyle,
 }
 
 impl<'a> BaseBoardUIProps<'a> {
@@ -45,6 +49,7 @@ impl<'a> BaseBoardUIProps<'a> {
             checked_king_position: None,
             fade_out_board: false,
             show_last_move: None,
+            board_style: BoardStyle::default(),
         }
     }
 
@@ -98,6 +103,16 @@ impl<'a> BaseBoardUIProps<'a> {
         self
     }
 
+    pub fn with_style(mut self, style: BoardStyle) -> Self {
+        self.board_style = style;
+        self
+    }
+
+    pub fn with_size(mut self, size: f32) -> Self {
+        self.board_style = BoardStyle::new(size / 8.0);
+        self
+    }
+
     fn piece_at(&self, square: Square) -> Option<Piece> {
         self.pieces.get(square.index()).copied().flatten()
     }
@@ -137,8 +152,6 @@ pub struct BaseBoardUI {
 
     arrow_start: Option<Square>,
     arrows: Vec<Arrow>,
-
-    promotion_ui: Option<PromotionUi>,
 }
 
 impl BaseBoardUI {
@@ -153,7 +166,6 @@ impl BaseBoardUI {
             holding: None,
             arrow_start: None,
             arrows: Vec::new(),
-            promotion_ui: None,
         }
     }
 
@@ -161,20 +173,22 @@ impl BaseBoardUI {
         BaseBoardUIProps::new()
     }
 
-    pub fn board_size() -> Vec2 {
-        Vec2::splat(SCALE * 8.0)
-    }
-
     pub fn ui(&mut self, ui: &mut Ui, props: BaseBoardUIProps<'_>) -> BaseBoardUIResponse {
-        let board_size = Vec2::splat(SCALE * 8.0);
+        let board_size = Vec2::splat(props.board_style.square_size * 8.0);
         let (egui_response, painter) = ui.allocate_painter(board_size, Sense::click_and_drag());
 
         self.board_rect = Rect::from_center_size(egui_response.rect.center(), board_size);
         if let Some(mouse_pos) = egui_response.interact_pointer_pos() {
+            // dbg!(mouse_pos);
             self.rel_mouse_pos = (mouse_pos - self.board_rect.left_top()).to_pos2();
+            // dbg!(self.rel_mouse_pos);
         }
         self.mouse_square = {
-            let Pos2 { x, y } = Self::render_to_board_coords(props.perspective, self.rel_mouse_pos);
+            let Pos2 { x, y } = Self::render_to_board_coords(
+                &props.board_style,
+                props.perspective,
+                self.rel_mouse_pos,
+            );
             if (0.0..8.0).contains(&x) && (0.0..8.0).contains(&y) {
                 Some(Square::new_unchecked(
                     y.clamp(0.0, 7.0) as _,
@@ -184,9 +198,11 @@ impl BaseBoardUI {
                 None
             }
         };
+        // dbg!(self.mouse_square);
 
-        self.promotion_ui = props.handle_promo_on.map(|(promotion_square, for_player)| {
+        let promotion_ui = props.handle_promo_on.map(|(promotion_square, for_player)| {
             PromotionUi::new(
+                &props.board_style,
                 promotion_square,
                 for_player,
                 self.board_rect,
@@ -211,12 +227,12 @@ impl BaseBoardUI {
 
         self.paint_arrows(&painter, &props);
 
-        self.paint_promotion_ui(ui, &painter);
+        self.paint_promotion_ui(ui, &painter, promotion_ui.as_ref());
 
         let mut response = BaseBoardUIResponse::new(egui_response);
         response.holding = self.holding;
 
-        self.handle_input(&props, &mut response);
+        self.handle_input(&props, &mut response, promotion_ui.as_ref());
 
         response
     }
@@ -235,19 +251,8 @@ impl BaseBoardUI {
             .clone()
     }
 
-    fn board_to_render_coords(perspective: Color, coords: Pos2) -> Pos2 {
-        let Pos2 { x, y } = coords;
-        let (x, y) = if perspective.is_white() {
-            (x, 8.0 - y)
-        } else {
-            (8.0 - x, y)
-        };
-
-        Pos2::new(x * SCALE, y * SCALE)
-    }
-
-    fn render_to_board_coords(perspective: Color, coords: Pos2) -> Pos2 {
-        let Vec2 { x, y } = coords.to_vec2() / SCALE;
+    fn render_to_board_coords(style: &BoardStyle, perspective: Color, coords: Pos2) -> Pos2 {
+        let Vec2 { x, y } = coords.to_vec2() / style.square_size;
         if perspective.is_white() {
             Pos2::new(x, 8.0 - y)
         } else {
@@ -272,24 +277,13 @@ impl BaseBoardUI {
         Rect::from_min_size(Pos2::new(x, y), Vec2::new(1.0 / 6.0, 0.5))
     }
 
-    fn square_center(square: Square, board_rect: Rect, perspective: Color) -> Pos2 {
-        board_rect.left_top()
-            + Self::board_to_render_coords(
-                perspective,
-                Pos2::new(square.file() as f32 + 0.5, square.rank() as f32 + 0.5),
-            )
-            .to_vec2()
-    }
-
-    fn dst_rect(square: Square, board_rect: Rect, perspective: Color) -> Rect {
-        Rect::from_center_size(
-            Self::square_center(square, board_rect, perspective),
-            Vec2::splat(SCALE),
-        )
-    }
-
-    fn handle_input(&mut self, props: &BaseBoardUIProps<'_>, response: &mut BaseBoardUIResponse) {
-        if let Some(promotion_ui) = self.promotion_ui.as_ref() {
+    fn handle_input(
+        &mut self,
+        props: &BaseBoardUIProps<'_>,
+        response: &mut BaseBoardUIResponse,
+        promotion_ui: Option<&PromotionUi<'_>>,
+    ) {
+        if let Some(promotion_ui) = promotion_ui {
             response.promotion_result = promotion_ui.handle_input(&response.egui_response);
         } else {
             self.handle_drag_piece(props, response);
@@ -407,7 +401,9 @@ impl BaseBoardUI {
 
         for square in Square::all() {
             let (rank, file) = (square.rank(), square.file());
-            let rect = Self::dst_rect(square, self.board_rect, props.perspective);
+            let rect = props
+                .board_style
+                .board_square(square, self.board_rect, props.perspective);
 
             let square_is_black = (rank + file) % 2 == 0;
             if square_is_black {
@@ -460,18 +456,29 @@ impl BaseBoardUI {
             let (square, dst_rect) = match piece_state {
                 AnimatedPieceState::Static(square) => (
                     square,
-                    Self::dst_rect(square, self.board_rect, props.perspective),
+                    props
+                        .board_style
+                        .board_square(square, self.board_rect, props.perspective),
                 ),
                 AnimatedPieceState::Moving { from, to, fraction } => {
-                    let from_rect = Self::dst_rect(from, self.board_rect, props.perspective);
-                    let to_rect = Self::dst_rect(to, self.board_rect, props.perspective);
+                    let from_rect =
+                        props
+                            .board_style
+                            .board_square(from, self.board_rect, props.perspective);
+                    let to_rect =
+                        props
+                            .board_style
+                            .board_square(to, self.board_rect, props.perspective);
                     let offset = to_rect.min - from_rect.min;
 
                     (to, from_rect.translate(offset * fraction))
                 }
-                AnimatedPieceState::Emphemeral { on, .. } => {
-                    (on, Self::dst_rect(on, self.board_rect, props.perspective))
-                }
+                AnimatedPieceState::Emphemeral { on, .. } => (
+                    on,
+                    props
+                        .board_style
+                        .board_square(on, self.board_rect, props.perspective),
+                ),
             };
 
             let mut image = egui::Image::new(&sprite_handle).uv(src_rect);
@@ -493,9 +500,8 @@ impl BaseBoardUI {
                 .flatten()
             {
                 let src_rect = Self::get_piece_uv(dragged_piece);
-                let dst_rect = Rect::from_center_size(
+                let dst_rect = props.board_style.board_square_centered_at(
                     self.board_rect.left_top() + self.rel_mouse_pos.to_vec2(),
-                    Vec2::splat(SCALE),
                 );
 
                 egui::Image::new(&sprite_handle)
@@ -524,34 +530,20 @@ impl BaseBoardUI {
                 continue;
             }
 
-            let dst_rect = Self::dst_rect(square, self.board_rect, props.perspective);
             if is_start_square || self.mouse_square == Some(square) {
-                painter.add(RectShape::filled(dst_rect, 0.0, MOVE_COLOR));
+                painter.add(RectShape::filled(
+                    props
+                        .board_style
+                        .board_square(square, self.board_rect, props.perspective),
+                    0.0,
+                    MOVE_COLOR,
+                ));
             } else if props.pieces[square.index()].is_some() {
-                let triangles = [
-                    vec![
-                        dst_rect.left_top(),
-                        dst_rect.left_top() + vec2(SCALE * 0.25, 0.0),
-                        dst_rect.left_top() + vec2(0.0, SCALE * 0.25),
-                    ],
-                    vec![
-                        dst_rect.right_top(),
-                        dst_rect.right_top() + vec2(-SCALE * 0.25, 0.0),
-                        dst_rect.right_top() + vec2(0.0, SCALE * 0.25),
-                    ],
-                    vec![
-                        dst_rect.left_bottom(),
-                        dst_rect.left_bottom() + vec2(SCALE * 0.25, 0.0),
-                        dst_rect.left_bottom() + vec2(0.0, -SCALE * 0.25),
-                    ],
-                    vec![
-                        dst_rect.right_bottom(),
-                        dst_rect.right_bottom() + vec2(-SCALE * 0.25, 0.0),
-                        dst_rect.right_bottom() + vec2(1.0, -SCALE * 0.25),
-                    ],
-                ];
-
-                for points in triangles {
+                for points in
+                    props
+                        .board_style
+                        .piece_surrounders(square, self.board_rect, props.perspective)
+                {
                     painter.add(PathShape {
                         points,
                         closed: true,
@@ -560,23 +552,33 @@ impl BaseBoardUI {
                     });
                 }
             } else {
-                painter.circle_filled(dst_rect.center(), SCALE * 0.125, MOVE_COLOR);
+                painter.circle_filled(
+                    props
+                        .board_style
+                        .square_center(square, self.board_rect, props.perspective),
+                    props.board_style.square_size * 0.125,
+                    MOVE_COLOR,
+                );
             }
         }
     }
 
     fn paint_in_check(&mut self, painter: &Painter, props: &BaseBoardUIProps<'_>) {
         if let Some(square) = props.checked_king_position {
+            let square_size = props.board_style.square_size;
+
             painter.add(
                 Shadow {
-                    blur: SCALE * 0.25,
-                    spread: -SCALE * 0.125,
+                    blur: square_size * 0.25,
+                    spread: -square_size * 0.125,
                     color: Color32::RED,
                     ..Default::default()
                 }
                 .as_shape(
-                    Self::dst_rect(square, self.board_rect, props.perspective),
-                    SCALE * 0.5,
+                    props
+                        .board_style
+                        .board_square(square, self.board_rect, props.perspective),
+                    square_size * 0.5,
                 ),
             );
         }
@@ -585,7 +587,10 @@ impl BaseBoardUI {
     fn paint_bitboard(&mut self, painter: &Painter, props: &BaseBoardUIProps<'_>) {
         for square in Square::all() {
             if props.display_bitboard.get(square) {
-                let rect = Self::dst_rect(square, self.board_rect, props.perspective);
+                let rect =
+                    props
+                        .board_style
+                        .board_square(square, self.board_rect, props.perspective);
                 painter.rect_filled(rect, 0.0, BOARD_BITBOARD_HIGHLIGHT);
             }
         }
@@ -593,7 +598,13 @@ impl BaseBoardUI {
 
     fn paint_arrows(&mut self, painter: &Painter, props: &BaseBoardUIProps<'_>) {
         for arrow in self.arrows.iter() {
-            arrow.draw(painter, self.board_rect, props.perspective, false);
+            arrow.draw(
+                painter,
+                &props.board_style,
+                self.board_rect,
+                props.perspective,
+                false,
+            );
         }
 
         if let Some(start) = self.arrow_start {
@@ -601,13 +612,24 @@ impl BaseBoardUI {
                 Some(end) => end,
                 None => start,
             };
-            Arrow { start, end }.draw(painter, self.board_rect, props.perspective, true);
+            Arrow { start, end }.draw(
+                painter,
+                &props.board_style,
+                self.board_rect,
+                props.perspective,
+                true,
+            );
         }
     }
 
-    fn paint_promotion_ui(&mut self, ui: &mut Ui, painter: &Painter) {
+    fn paint_promotion_ui(
+        &mut self,
+        ui: &mut Ui,
+        painter: &Painter,
+        promotion_ui: Option<&PromotionUi<'_>>,
+    ) {
         let texture_handle = self.get_piece_sprite(ui.ctx());
-        if let Some(promotion_ui) = self.promotion_ui.as_ref() {
+        if let Some(promotion_ui) = promotion_ui {
             promotion_ui.draw(ui, painter, &texture_handle);
         }
     }

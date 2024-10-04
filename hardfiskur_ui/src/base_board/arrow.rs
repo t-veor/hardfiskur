@@ -5,13 +5,7 @@ use egui::{
 };
 use hardfiskur_core::board::{Color, Square};
 
-use crate::{
-    base_board::BaseBoardUI,
-    constants::{
-        ARROW_COLOR, ARROW_HEAD_SIZE, ARROW_SELECTED_HEAD_SIZE, ARROW_SELECTED_WIDTH, ARROW_WIDTH,
-        HIGHLIGHTED_CIRCLE_SELECTED_WIDTH, HIGHLIGHTED_CIRCLE_WIDTH, SCALE,
-    },
-};
+use crate::{board_style::BoardStyle, constants::ARROW_COLOR};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Arrow {
@@ -20,27 +14,34 @@ pub struct Arrow {
 }
 
 impl Arrow {
-    pub fn draw(&self, painter: &Painter, board_rect: Rect, perspective: Color, is_selected: bool) {
-        let origin = BaseBoardUI::square_center(self.start, board_rect, perspective);
+    pub fn draw(
+        &self,
+        painter: &Painter,
+        style: &BoardStyle,
+        board_rect: Rect,
+        perspective: Color,
+        is_selected: bool,
+    ) {
+        let origin = style.square_center(self.start, board_rect, perspective);
 
         if self.start == self.end {
-            self.draw_circle(painter, origin, is_selected);
+            self.draw_circle(painter, style, origin, is_selected);
         } else {
-            let end = BaseBoardUI::square_center(self.end, board_rect, perspective);
-            self.draw_arrow(painter, origin, end, is_selected);
+            let end = style.square_center(self.end, board_rect, perspective);
+            self.draw_arrow(painter, style, origin, end, is_selected);
         }
     }
 
-    fn draw_circle(&self, painter: &Painter, origin: Pos2, is_selected: bool) {
+    fn draw_circle(&self, painter: &Painter, style: &BoardStyle, origin: Pos2, is_selected: bool) {
         let stroke_width = if is_selected {
-            HIGHLIGHTED_CIRCLE_SELECTED_WIDTH
+            style.highlighted_circle_selected_width
         } else {
-            HIGHLIGHTED_CIRCLE_WIDTH
+            style.highlighted_circle_width
         };
 
         painter.circle_stroke(
             origin,
-            SCALE / 2.0 - HIGHLIGHTED_CIRCLE_WIDTH,
+            style.square_size / 2.0 - style.highlighted_circle_selected_width,
             Stroke {
                 width: stroke_width,
                 color: ARROW_COLOR,
@@ -48,14 +49,21 @@ impl Arrow {
         );
     }
 
-    fn draw_arrow(&self, painter: &Painter, origin: Pos2, end: Pos2, is_selected: bool) {
+    fn draw_arrow(
+        &self,
+        painter: &Painter,
+        style: &BoardStyle,
+        origin: Pos2,
+        end: Pos2,
+        is_selected: bool,
+    ) {
         use std::f32::consts::PI;
         const SEMICIRCLE_POINTS: usize = 8;
 
         let (width, head_size) = if is_selected {
-            (ARROW_SELECTED_WIDTH, ARROW_SELECTED_HEAD_SIZE)
+            (style.arrow_selected_width, style.arrow_selected_head_size)
         } else {
-            (ARROW_WIDTH, ARROW_HEAD_SIZE)
+            (style.arrow_width, style.arrow_head_size)
         };
 
         let vector = end - origin;

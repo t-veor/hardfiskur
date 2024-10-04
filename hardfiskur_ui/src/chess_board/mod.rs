@@ -1,7 +1,10 @@
-use egui::{Id, Ui, Vec2};
+use egui::{Id, Ui};
 use hardfiskur_core::board::{Bitboard, Board, Color, Move, Piece, Square};
 
-use crate::base_board::{BaseBoardUI, BaseBoardUIProps, BaseBoardUIResponse, PromotionResult};
+use crate::{
+    base_board::{BaseBoardUI, BaseBoardUIProps, BaseBoardUIResponse, PromotionResult},
+    constants::MIN_BOARD_SIZE,
+};
 
 #[derive(Debug)]
 pub struct ChessBoardUIProps<'a> {
@@ -10,6 +13,9 @@ pub struct ChessBoardUIProps<'a> {
     perspective: Color,
     fade_out_board: bool,
     show_last_move: Option<(Square, Square)>,
+
+    // min, max
+    board_size: (Option<f32>, Option<f32>),
 }
 
 impl<'a> ChessBoardUIProps<'a> {
@@ -20,6 +26,7 @@ impl<'a> ChessBoardUIProps<'a> {
             perspective: Color::White,
             fade_out_board: false,
             show_last_move: None,
+            board_size: (None, Some(640.0)),
         }
     }
 
@@ -40,6 +47,21 @@ impl<'a> ChessBoardUIProps<'a> {
 
     pub fn show_last_move(mut self, from: Square, to: Square) -> Self {
         self.show_last_move = Some((from, to));
+        self
+    }
+
+    pub fn min_size(mut self, min_size: f32) -> Self {
+        self.board_size.0 = Some(min_size);
+        self
+    }
+
+    pub fn max_size(mut self, max_size: f32) -> Self {
+        self.board_size.1 = Some(max_size);
+        self
+    }
+
+    pub fn exact_size(mut self, size: f32) -> Self {
+        self.board_size = (Some(size), Some(size));
         self
     }
 }
@@ -71,10 +93,6 @@ impl ChessBoardUI {
         ChessBoardUIProps::new(board)
     }
 
-    pub fn board_size() -> Vec2 {
-        BaseBoardUI::board_size()
-    }
-
     pub fn ui(&mut self, ui: &mut Ui, props: ChessBoardUIProps<'_>) -> ChessBoardResponse {
         let pieces = self.get_pieces(props.board);
         let (moves, move_gen_res) = props.board.legal_moves_and_meta();
@@ -97,7 +115,7 @@ impl ChessBoardUI {
         }
 
         let base_board_data =
-            self.gather_baseboard_props(props, &pieces, &possible_moves, in_check);
+            self.gather_baseboard_props(ui, props, &pieces, &possible_moves, in_check);
 
         let base_board_response = self.base_board.ui(ui, base_board_data);
 
@@ -116,7 +134,8 @@ impl ChessBoardUI {
 
     fn gather_baseboard_props<'a>(
         &mut self,
-        data: ChessBoardUIProps<'_>,
+        ui: &Ui,
+        props: ChessBoardUIProps<'_>,
         pieces: &'a [Option<Piece>],
         possible_moves: &'a [(Square, Square)],
         in_check: bool,
@@ -127,7 +146,25 @@ impl ChessBoardUI {
             perspective,
             fade_out_board,
             show_last_move: last_move,
-        } = data;
+
+            board_size,
+        } = props;
+
+        let board_size = {
+            let available_size = ui.available_size();
+            let mut size = available_size.x.min(available_size.y);
+
+            if let Some(min_size) = board_size.0 {
+                size = size.max(min_size);
+            }
+
+            if let Some(max_size) = board_size.1 {
+                size = size.min(max_size)
+            }
+
+            size = size.max(MIN_BOARD_SIZE);
+            size
+        };
 
         let mut base_props = BaseBoardUI::props()
             .pieces(pieces)
@@ -138,7 +175,8 @@ impl ChessBoardUI {
             } else {
                 Bitboard::EMPTY
             })
-            .fade_out_board(fade_out_board);
+            .fade_out_board(fade_out_board)
+            .with_size(board_size);
 
         if let Some(((_start, end), color)) = self.promotion_progress {
             base_props = base_props.handle_promo_on(end, color);
