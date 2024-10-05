@@ -15,6 +15,10 @@ use crate::evaluation::piece_tables::material_score;
 pub struct Seer<'a> {
     board: &'a Board,
     lookups: &'static Lookups,
+
+    occupied: Bitboard,
+    diagonal_attackers: Bitboard,
+    orthogonal_attackers: Bitboard,
 }
 
 impl<'a> Seer<'a> {
@@ -22,17 +26,21 @@ impl<'a> Seer<'a> {
         Self {
             board,
             lookups: Lookups::get_instance(),
+
+            occupied: board.get_occupied_bitboard(),
+            diagonal_attackers: Self::diagonal_pieces(board),
+            orthogonal_attackers: Self::orthogonal_pieces(board),
         }
     }
 
-    fn diagonal_pieces(&self) -> Bitboard {
-        self.board.get_bitboard_for_piece_type(PieceType::Bishop)
-            | self.board.get_bitboard_for_piece_type(PieceType::Queen)
+    fn diagonal_pieces(board: &Board) -> Bitboard {
+        board.get_bitboard_for_piece_type(PieceType::Bishop)
+            | board.get_bitboard_for_piece_type(PieceType::Queen)
     }
 
-    fn orthogonal_pieces(&self) -> Bitboard {
-        self.board.get_bitboard_for_piece_type(PieceType::Rook)
-            | self.board.get_bitboard_for_piece_type(PieceType::Queen)
+    fn orthogonal_pieces(board: &Board) -> Bitboard {
+        board.get_bitboard_for_piece_type(PieceType::Rook)
+            | board.get_bitboard_for_piece_type(PieceType::Queen)
     }
 
     pub fn see(
@@ -44,11 +52,8 @@ impl<'a> Seer<'a> {
     ) -> i32 {
         let mut gain = Vec::with_capacity(32);
 
-        let diagonal_attackers = self.diagonal_pieces();
-        let potential_orthogonal_attackers = self.orthogonal_pieces();
-
         let mut attacker_bb = Bitboard::from_square(from_square);
-        let mut occupied = self.board.get_occupied_bitboard();
+        let mut occupied = self.occupied;
         let mut attackers_and_defenders =
             move_gen::attackers_on(self.board.repr(), occupied, to_square, self.lookups);
 
@@ -69,11 +74,11 @@ impl<'a> Seer<'a> {
                 .contains(&attacker.piece_type())
             {
                 attackers_and_defenders |=
-                    self.lookups.get_bishop_attacks(occupied, to_square) & diagonal_attackers;
+                    self.lookups.get_bishop_attacks(occupied, to_square) & self.diagonal_attackers;
             }
             if [PieceType::Rook, PieceType::Queen].contains(&attacker.piece_type()) {
-                attackers_and_defenders |= self.lookups.get_rook_attacks(occupied, to_square)
-                    & potential_orthogonal_attackers;
+                attackers_and_defenders |=
+                    self.lookups.get_rook_attacks(occupied, to_square) & self.orthogonal_attackers;
             }
             // Note that diagonal/orthogonal_attackers don't change as pieces
             // are exchanged off, so we need to mask them with the occupied mask
