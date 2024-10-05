@@ -1,18 +1,22 @@
+mod history_table;
 mod killer_table;
 mod see;
 
 use hardfiskur_core::board::{Board, Move, Piece};
+use history_table::HistoryTable;
 use killer_table::KillerTable;
 use see::Seer;
 
 pub struct MoveOrderer {
     killers: KillerTable,
+    history_table: HistoryTable,
 }
 
 impl MoveOrderer {
     pub fn new() -> Self {
         Self {
             killers: KillerTable::default(),
+            history_table: HistoryTable::default(),
         }
     }
 
@@ -22,6 +26,14 @@ impl MoveOrderer {
 
     pub fn is_killer(&self, ply_from_root: u32, m: Move) -> bool {
         self.killers.is_killer(ply_from_root, m)
+    }
+
+    pub fn get_history_value(&self, m: Move) -> i32 {
+        self.history_table.get_history_value(m)
+    }
+
+    pub fn apply_history_bonus(&mut self, m: Move, bonus: i32) {
+        self.history_table.apply_bonus(m, bonus)
     }
 }
 
@@ -71,7 +83,9 @@ impl MoveOrderer {
         } else if self.is_killer(ply_from_root, m) {
             Self::KILLER_BIAS
         } else {
-            Self::QUIET_BIAS
+            // Order quiets by history score
+            let history_score = self.get_history_value(m);
+            Self::QUIET_BIAS + history_score
         }
     }
 

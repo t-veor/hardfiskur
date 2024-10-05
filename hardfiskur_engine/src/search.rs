@@ -179,7 +179,7 @@ pub fn simple_negamax_search(
     let mut best_move_idx = None;
     let mut best_move = None;
 
-    for (move_idx, m) in legal_moves.into_iter().enumerate() {
+    for (move_idx, &m) in legal_moves.iter().enumerate() {
         ctx.board.push_move_unchecked(m);
         let eval = -simple_negamax_search(ctx, depth - 1, ply_from_root + 1, -beta, -alpha).0;
         ctx.board.pop_move();
@@ -222,6 +222,19 @@ pub fn simple_negamax_search(
 
                 // Update killer moves
                 ctx.move_orderer.store_killer(ply_from_root, m);
+
+                if !m.is_capture() {
+                    // Apply history bonus to current non-capture move
+                    let bonus = (depth * depth) as i32;
+                    ctx.move_orderer.apply_history_bonus(m, bonus);
+                    // Apply history maluses to non-capture moves considered
+                    // before this one
+                    for i in 0..move_idx {
+                        if !legal_moves[i].is_capture() {
+                            ctx.move_orderer.apply_history_bonus(m, -bonus);
+                        }
+                    }
+                }
 
                 ctx.tt.set(
                     ctx.board.zobrist_hash(),
