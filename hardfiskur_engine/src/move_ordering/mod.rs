@@ -28,7 +28,6 @@ impl MoveOrderer {
 impl MoveOrderer {
     const HASH_MOVE_SCORE: i32 = 100_000_000;
     const WINNING_CAPTURE_BIAS: i32 = 8_000_000;
-    const EQUAL_CAPTURE_BIAS: i32 = 6_000_000;
     const KILLER_BIAS: i32 = 4_000_000;
     const QUIET_BIAS: i32 = 0;
     const LOSING_CAPTURE_BIAS: i32 = -2_000_000;
@@ -57,15 +56,9 @@ impl MoveOrderer {
         } else if let Some(victim) = m.captured_piece() {
             let aggressor = m.piece();
             // Is the capture actually good?
-            let bias = if self.is_obviously_winning_capture(victim, aggressor) {
-                Self::WINNING_CAPTURE_BIAS
-            } else {
-                // Perform a SEE
-                match seer.see(m.from_square(), aggressor, m.to_square(), victim) {
-                    n if n > 0 => Self::WINNING_CAPTURE_BIAS,
-                    0 => Self::EQUAL_CAPTURE_BIAS,
-                    _ => Self::LOSING_CAPTURE_BIAS,
-                }
+            let bias = match seer.see(m.from_square(), aggressor, m.to_square(), victim, 1) {
+                true => Self::WINNING_CAPTURE_BIAS,
+                false => Self::LOSING_CAPTURE_BIAS,
             };
             // Order by MVV-LVA next
             bias + self.mvv_lva_score(victim, aggressor)
@@ -73,15 +66,6 @@ impl MoveOrderer {
             Self::KILLER_BIAS
         } else {
             Self::QUIET_BIAS
-        }
-    }
-
-    fn is_obviously_winning_capture(&self, victim: Piece, aggressor: Piece) -> bool {
-        match (victim.piece_type(), aggressor.piece_type()) {
-            (PieceType::Bishop, PieceType::Knight) | (PieceType::Knight, PieceType::Bishop) => {
-                false
-            }
-            (v, a) => (v as u8) > (a as u8),
         }
     }
 

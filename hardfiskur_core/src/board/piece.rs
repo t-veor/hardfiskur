@@ -88,6 +88,12 @@ impl PieceType {
     pub const K: Self = Self::King;
 }
 
+impl From<Piece> for PieceType {
+    fn from(value: Piece) -> Self {
+        value.piece_type()
+    }
+}
+
 /// Represents a player in a chess game (either white or black).
 ///
 /// Used for representing who a [`Piece`] belongs to. Uses 0 for white and 8 for
@@ -365,6 +371,12 @@ impl FromStr for Piece {
         } else {
             Err(())
         }
+    }
+}
+
+impl From<(Color, PieceType)> for Piece {
+    fn from((color, piece_type): (Color, PieceType)) -> Self {
+        Self::new(color, piece_type)
     }
 }
 
