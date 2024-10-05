@@ -370,7 +370,37 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
             }
             println!();
 
-            println!("info string {:?}", ctx.stats.move_ordering);
+            let pv_nodes = ctx
+                .stats
+                .move_ordering
+                .pv_node_best_move_idxs
+                .iter()
+                .sum::<u32>();
+            let cut_nodes = ctx
+                .stats
+                .move_ordering
+                .beta_cutoff_move_idxs
+                .iter()
+                .sum::<u32>();
+
+            println!(
+                "info string pv_node_proportions {:?}",
+                ctx.stats
+                    .move_ordering
+                    .pv_node_best_move_idxs
+                    .iter()
+                    .map(|&x| x as u64 * 1000 / pv_nodes as u64)
+                    .collect::<Vec<_>>()
+            );
+            println!(
+                "info string beta_node_proportions {:?}",
+                ctx.stats
+                    .move_ordering
+                    .beta_cutoff_move_idxs
+                    .iter()
+                    .map(|&x| x as u64 * 1000 / cut_nodes as u64)
+                    .collect::<Vec<_>>()
+            );
         }
 
         if ctx.should_exit_search() {

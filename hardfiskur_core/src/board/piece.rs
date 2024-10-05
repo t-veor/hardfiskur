@@ -78,6 +78,16 @@ impl PieceType {
     }
 }
 
+/// Convenience aliases.
+impl PieceType {
+    pub const P: Self = Self::Pawn;
+    pub const N: Self = Self::Knight;
+    pub const B: Self = Self::Bishop;
+    pub const R: Self = Self::Rook;
+    pub const Q: Self = Self::Queen;
+    pub const K: Self = Self::King;
+}
+
 /// Represents a player in a chess game (either white or black).
 ///
 /// Used for representing who a [`Piece`] belongs to. Uses 0 for white and 8 for

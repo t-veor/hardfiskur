@@ -213,8 +213,8 @@ impl Move {
         MoveBuilder::new(from, to, piece)
     }
 
-    pub const fn from_to_square_id(self) -> u32 {
-        self.0.get() & 0xFFF
+    pub const fn butterfly_index(self) -> usize {
+        (self.0.get() & 0xFFF) as usize
     }
 
     /// Convert this move into a pre-populated [`MoveBuilder`]. Useful for

@@ -1,4 +1,5 @@
 mod killer_table;
+mod see;
 
 use hardfiskur_core::board::Move;
 use killer_table::KillerTable;
