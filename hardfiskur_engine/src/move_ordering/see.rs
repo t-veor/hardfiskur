@@ -62,7 +62,9 @@ impl<'a> Seer<'a> {
         // So gain[0] = value of the target piece
         gain.push(material_score(target.piece_type()));
         loop {
-            // Then, gain[i] = value of taking on the target square with
+            // Then, gain[i] = value of taking on the target square with the
+            // current attacker for the opponent, assuming the attacker can also
+            // be taken en-prise.
             gain.push(material_score(attacker.piece_type()) - gain.last().unwrap());
 
             attackers_and_defenders ^= attacker_bb;

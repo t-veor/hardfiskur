@@ -1,7 +1,7 @@
 mod killer_table;
 mod see;
 
-use hardfiskur_core::board::{Board, Move, Piece};
+use hardfiskur_core::board::{Board, Move, Piece, PieceType};
 use killer_table::KillerTable;
 use see::Seer;
 
@@ -54,19 +54,34 @@ impl MoveOrderer {
     ) -> i32 {
         if Some(m) == tt_move {
             Self::HASH_MOVE_SCORE
-        } else if let Some(captured) = m.captured_piece() {
+        } else if let Some(victim) = m.captured_piece() {
+            let aggressor = m.piece();
             // Is the capture actually good?
-            let bias = match seer.see(m.from_square(), m.piece(), m.to_square(), captured) {
-                n if n > 0 => Self::WINNING_CAPTURE_BIAS,
-                0 => Self::EQUAL_CAPTURE_BIAS,
-                _ => Self::LOSING_CAPTURE_BIAS,
+            let bias = if self.is_obviously_winning_capture(victim, aggressor) {
+                Self::WINNING_CAPTURE_BIAS
+            } else {
+                // Perform a SEE
+                match seer.see(m.from_square(), aggressor, m.to_square(), victim) {
+                    n if n > 0 => Self::WINNING_CAPTURE_BIAS,
+                    0 => Self::EQUAL_CAPTURE_BIAS,
+                    _ => Self::LOSING_CAPTURE_BIAS,
+                }
             };
             // Order by MVV-LVA next
-            bias + self.mvv_lva_score(captured, m.piece())
+            bias + self.mvv_lva_score(victim, aggressor)
         } else if self.is_killer(ply_from_root, m) {
             Self::KILLER_BIAS
         } else {
             Self::QUIET_BIAS
+        }
+    }
+
+    fn is_obviously_winning_capture(&self, victim: Piece, aggressor: Piece) -> bool {
+        match (victim.piece_type(), aggressor.piece_type()) {
+            (PieceType::Bishop, PieceType::Knight) | (PieceType::Knight, PieceType::Bishop) => {
+                false
+            }
+            (v, a) => (v as u8) > (a as u8),
         }
     }
 

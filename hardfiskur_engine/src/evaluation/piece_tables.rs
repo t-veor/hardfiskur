@@ -87,7 +87,7 @@ pub const fn material_score(piece_type: PieceType) -> i32 {
         PieceType::Bishop => 3300,
         PieceType::Rook => 5000,
         PieceType::Queen => 9000,
-        PieceType::King => 0,
+        PieceType::King => 200_000,
     }
 }
 
