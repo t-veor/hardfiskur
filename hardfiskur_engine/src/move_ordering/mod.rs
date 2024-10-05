@@ -1,8 +1,9 @@
 mod killer_table;
 mod see;
 
-use hardfiskur_core::board::Move;
+use hardfiskur_core::board::{Board, Move, Piece};
 use killer_table::KillerTable;
+use see::Seer;
 
 pub struct MoveOrderer {
     killers: KillerTable,
@@ -26,31 +27,55 @@ impl MoveOrderer {
 
 impl MoveOrderer {
     const HASH_MOVE_SCORE: i32 = 100_000_000;
-    // const WINNING_CAPTURE_BIAS: i32 = 8_000_000;
-    const CAPTURE_BIAS: i32 = 8_000_000;
+    const WINNING_CAPTURE_BIAS: i32 = 8_000_000;
     const KILLER_BIAS: i32 = 4_000_000;
-    // const LOSING_CAPTURE_BIAS: i32 = 2_000_000;
+    const LOSING_CAPTURE_BIAS: i32 = 2_000_000;
     const QUIET_BIAS: i32 = 0;
 
-    pub fn order_moves(&self, ply_from_root: u32, tt_move: Option<Move>, moves: &mut [Move]) {
-        moves.sort_by_cached_key(|m| -self.score_move(ply_from_root, tt_move, *m));
+    pub fn order_moves(
+        &self,
+        board: &Board,
+        ply_from_root: u32,
+        tt_move: Option<Move>,
+        moves: &mut [Move],
+    ) {
+        let seer = Seer::new(board);
+
+        moves.sort_by_cached_key(|m| -self.score_move(ply_from_root, tt_move, &seer, *m));
     }
 
-    pub fn score_move(&self, ply_from_root: u32, tt_move: Option<Move>, m: Move) -> i32 {
+    pub fn score_move(
+        &self,
+        ply_from_root: u32,
+        tt_move: Option<Move>,
+        seer: &Seer,
+        m: Move,
+    ) -> i32 {
         if Some(m) == tt_move {
             Self::HASH_MOVE_SCORE
         } else if let Some(captured) = m.captured_piece() {
-            // Order by Most Valuable Victim - Least Valuable Aggressor (MVV-LVA)
-            Self::CAPTURE_BIAS
-                // Most valuable victim (* 10 to make sure it's always
-                // considered above the aggressor)
-                + (captured.piece_type() as i32) * 10
-                // Least valuable aggressor
-                - (m.piece().piece_type() as i32)
+            // Is the capture actually good?
+            let is_winning_capture =
+                seer.see(m.from_square(), m.piece(), m.to_square(), captured) > 0;
+            let bias = if is_winning_capture {
+                Self::WINNING_CAPTURE_BIAS
+            } else {
+                Self::LOSING_CAPTURE_BIAS
+            };
+            // Order by MVV-LVA next
+            bias + self.mvv_lva_score(captured, m.piece())
         } else if self.is_killer(ply_from_root, m) {
             Self::KILLER_BIAS
         } else {
             Self::QUIET_BIAS
         }
+    }
+
+    fn mvv_lva_score(&self, victim: Piece, aggressor: Piece) -> i32 {
+        // Most valuable victim (* 10 to make sure it's always considered above
+        // the aggressor)
+        (victim.piece_type() as i32) * 10
+        // Least valuable aggressor
+        - (aggressor.piece_type() as i32)
     }
 }

@@ -174,7 +174,7 @@ pub fn simple_negamax_search(
     }
 
     ctx.move_orderer
-        .order_moves(ply_from_root, tt_move, &mut legal_moves);
+        .order_moves(&ctx.board, ply_from_root, tt_move, &mut legal_moves);
 
     let mut best_move_idx = None;
     let mut best_move = None;
@@ -298,7 +298,7 @@ pub fn quiescence_search(
     alpha = alpha.max(stand_pat_score);
 
     ctx.move_orderer
-        .order_moves(ply_from_root, None, &mut capturing_moves);
+        .order_moves(&ctx.board, ply_from_root, None, &mut capturing_moves);
 
     let mut best_move_idx = None;
 
