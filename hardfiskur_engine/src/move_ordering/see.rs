@@ -50,6 +50,8 @@ impl<'a> Seer<'a> {
             | board.get_bitboard_for_piece_type(PieceType::Queen)
     }
 
+    /// Returns whether the SEE (Static Exchange Evaluation) value of this
+    /// capture is greater than or equal to the given threshold.
     pub fn see(
         &self,
         from_square: Square,
@@ -58,17 +60,26 @@ impl<'a> Seer<'a> {
         target: Piece,
         threshold: i32,
     ) -> bool {
-        // First, simulate making the capture.
-
+        // Worst case: suppose we make the capture, and our attacker can't be
+        // recaptured. Then the most value we could get would be target.value,
+        // and if this is < threshold then there's no way any further exchanges
+        // can improve the situation.
         let mut balance = Self::value(target) - threshold;
         if balance < 0 {
             return false;
         }
 
+        // Best case: suppose we make the capture, and our attacker is
+        // immediately recaptured. If this value is still >= threshold then this
+        // is obviously a winning capture, and we don't need to look at any more
+        // exchanges.
         balance -= Self::value(attacker);
         if balance >= 0 {
             return true;
         }
+
+        // Remove the attacker from the occupied and attackers/defenders
+        // bitboard to reflect the situation after the first capture.
 
         let attacker_bb = Bitboard::from_square(from_square);
         let mut occupied = self.occupied ^ attacker_bb;
@@ -76,6 +87,22 @@ impl<'a> Seer<'a> {
             move_gen::attackers_on(self.board.repr(), occupied, to_square, self.lookups)
                 ^ attacker_bb;
 
+        // Then we loop based on the following principle:
+        // 1. Look for the least valuable attacker from the side_to_move.
+        //    i. If there are no more attackers we break, declaring that the
+        //       current side_to_move couldn't continue the exchange.
+        // 2. Check if making the capture improves the situation for the
+        //    side_to_move enough to be worthwhile.
+        //    i. If the situation is not good enough, then we can break
+        //       immediately, declaring that the current side_to_move would be
+        //       unwilling to continue the exchange.
+        // 3. (Update the occupied and attacker/defender bitboards to reflect
+        //     the situation after the capture.)
+        // After breaking out of the loop, the side_to_move is the side that
+        // either couldn't or would be unwilling to make the exchange.
+
+        // We've already "performed" the first capture, so the side to move is
+        // now flipped.
         let mut side_to_move = self.board.to_move().flip();
 
         loop {
@@ -85,6 +112,9 @@ impl<'a> Seer<'a> {
                     None => break,
                 };
 
+            // Special case: if the the least valuable attacker is the king,
+            // then obviously the side_to_move can't make the capture if the
+            // target square is still defended.
             if attacker.is_king()
                 && (attackers_and_defenders & self.board.repr()[side_to_move.flip()]).has_piece()
             {
@@ -101,7 +131,7 @@ impl<'a> Seer<'a> {
 
             side_to_move = side_to_move.flip();
 
-            balance = -balance - Self::value(attacker);
+            balance = -balance - 1 - Self::value(attacker);
             if balance >= 0 {
                 break;
             }
@@ -124,6 +154,9 @@ impl<'a> Seer<'a> {
             attackers_and_defenders &= occupied;
         }
 
+        // We succeed the test that the SEE value is >= the threshold if the
+        // side_to_move that couldn't or was unwilling to make the capture
+        // wasn't the starting side.
         side_to_move != self.board.to_move()
     }
 
@@ -231,12 +264,28 @@ mod test {
             let target = board.get_piece(*to).unwrap();
 
             let seer = Seer::new(&board);
-            let see_value = seer.see(*from, attacker, *to, target, 1);
-            // assert_eq!(
-            //     see_value, *expected_value,
-            //     "Incorrect SEE value received in position {} with move {}{}",
-            //     fen, from, to
-            // );
+
+            let sample_points = [
+                -20000,
+                20000,
+                0,
+                expected_value - 100,
+                expected_value - 50,
+                expected_value - 1,
+                *expected_value,
+                expected_value + 1,
+                expected_value + 50,
+                expected_value + 100,
+            ];
+
+            for sample_point in sample_points {
+                let see_value = seer.see(*from, attacker, *to, target, sample_point);
+                assert_eq!(
+                    see_value, *expected_value >= sample_point,
+                    "Incorrect SEE value received in position {} with move {}{} (expected (see >= {sample_point}) == ({expected_value} >= {sample_point}))",
+                    fen, from, to
+                );
+            }
         }
     }
 }

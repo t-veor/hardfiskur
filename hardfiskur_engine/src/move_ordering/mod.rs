@@ -1,7 +1,7 @@
 mod killer_table;
 mod see;
 
-use hardfiskur_core::board::{Board, Move, Piece, PieceType};
+use hardfiskur_core::board::{Board, Move, Piece};
 use killer_table::KillerTable;
 use see::Seer;
 
@@ -56,10 +56,16 @@ impl MoveOrderer {
         } else if let Some(victim) = m.captured_piece() {
             let aggressor = m.piece();
             // Is the capture actually good?
-            let bias = match seer.see(m.from_square(), aggressor, m.to_square(), victim, 1) {
-                true => Self::WINNING_CAPTURE_BIAS,
-                false => Self::LOSING_CAPTURE_BIAS,
+            // (Assume promotion-captures are always good)
+            let is_winning = m.promotion().is_some()
+                || seer.see(m.from_square(), aggressor, m.to_square(), victim, 0);
+
+            let bias = if is_winning {
+                Self::WINNING_CAPTURE_BIAS
+            } else {
+                Self::LOSING_CAPTURE_BIAS
             };
+
             // Order by MVV-LVA next
             bias + self.mvv_lva_score(victim, aggressor)
         } else if self.is_killer(ply_from_root, m) {
