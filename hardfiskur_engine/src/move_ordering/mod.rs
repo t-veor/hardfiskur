@@ -28,9 +28,10 @@ impl MoveOrderer {
 impl MoveOrderer {
     const HASH_MOVE_SCORE: i32 = 100_000_000;
     const WINNING_CAPTURE_BIAS: i32 = 8_000_000;
+    const EQUAL_CAPTURE_BIAS: i32 = 6_000_000;
     const KILLER_BIAS: i32 = 4_000_000;
-    const LOSING_CAPTURE_BIAS: i32 = 2_000_000;
     const QUIET_BIAS: i32 = 0;
+    const LOSING_CAPTURE_BIAS: i32 = -2_000_000;
 
     pub fn order_moves(
         &self,
@@ -55,12 +56,10 @@ impl MoveOrderer {
             Self::HASH_MOVE_SCORE
         } else if let Some(captured) = m.captured_piece() {
             // Is the capture actually good?
-            let is_winning_capture =
-                seer.see(m.from_square(), m.piece(), m.to_square(), captured) > 0;
-            let bias = if is_winning_capture {
-                Self::WINNING_CAPTURE_BIAS
-            } else {
-                Self::LOSING_CAPTURE_BIAS
+            let bias = match seer.see(m.from_square(), m.piece(), m.to_square(), captured) {
+                n if n > 0 => Self::WINNING_CAPTURE_BIAS,
+                0 => Self::EQUAL_CAPTURE_BIAS,
+                _ => Self::LOSING_CAPTURE_BIAS,
             };
             // Order by MVV-LVA next
             bias + self.mvv_lva_score(captured, m.piece())
