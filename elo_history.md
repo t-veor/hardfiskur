@@ -61,3 +61,21 @@ Games: 1000, Wins: 671, Losses: 106, Draws: 223, Points: 782.5 (78.25 %)
 Ptnml(0-2): [2, 30, 96, 145, 227]
 --------------------------------------------------
 ```
+
+# 68b3446 (Move Ordering pt. 1)
+
+Replaced the weird ad-hoc move ordering with something a bit more sound.
+
+-   Order hash move first
+-   Order captures by MVV-LVA
+-   Add killer move table and order quiets by killer move
+
+```
+--------------------------------------------------
+Results of HF-new-68b3446 vs HF-old-11632cf (10+0.1, 1t, MB, opening_book.epd):
+Elo: 45.78 +/- 16.30, nElo: 61.22 +/- 21.53
+LOS: 100.00 %, DrawRatio: 36.60 %, PairsRatio: 1.78
+Games: 1000, Wins: 381, Losses: 250, Draws: 369, Points: 565.5 (56.55 %)
+Ptnml(0-2): [24, 90, 183, 137, 66]
+--------------------------------------------------
+```
