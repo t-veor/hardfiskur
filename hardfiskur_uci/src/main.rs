@@ -141,6 +141,7 @@ fn main() {
                         "{}",
                         UCIMessage::Info(UCIInfo {
                             depth: Some(stats.depth),
+                            sel_depth: Some(stats.sel_depth),
                             time: Some(elapsed),
                             nodes: Some(stats.nodes_searched),
                             score: Some(score.into()),

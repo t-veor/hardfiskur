@@ -1,8 +1,11 @@
+mod extensions;
+
 use std::{
     sync::atomic::{AtomicBool, Ordering as AtomicOrdering},
     time::Instant,
 };
 
+use extensions::extensions;
 use hardfiskur_core::{
     board::{Board, Color, Move, UCIMove},
     move_gen::{MoveGenFlags, MoveVec},
@@ -87,8 +90,10 @@ pub fn simple_negamax_search(
     ply_from_root: u32,
     mut alpha: Score,
     mut beta: Score,
+    extension_count: u32,
 ) -> (Score, Option<Move>) {
     ctx.stats.nodes_searched += 1;
+    ctx.stats.sel_depth = ctx.stats.sel_depth.max(ply_from_root);
 
     diag!(
         ctx.board,
@@ -157,6 +162,7 @@ pub fn simple_negamax_search(
     let (mut legal_moves, move_gen_result) = ctx.board.legal_moves_and_meta();
 
     // Handle checkmate/stalemate
+    let in_check = move_gen_result.checker_count > 0;
     if legal_moves.is_empty() {
         return if move_gen_result.checker_count > 0 {
             diag!(ctx.board, "Found a checkmate");
@@ -181,7 +187,18 @@ pub fn simple_negamax_search(
 
     for (move_idx, m) in legal_moves.into_iter().enumerate() {
         ctx.board.push_move_unchecked(m);
-        let eval = -simple_negamax_search(ctx, depth - 1, ply_from_root + 1, -beta, -alpha).0;
+
+        let extension = extensions(in_check, extension_count);
+        let eval = -simple_negamax_search(
+            ctx,
+            depth - 1 + extension,
+            ply_from_root + 1,
+            -beta,
+            -alpha,
+            extension_count + extension,
+        )
+        .0;
+
         ctx.board.pop_move();
 
         diag!(
@@ -332,7 +349,7 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
     let mut best_move = None;
 
     for depth in 1..=(ctx.search_limits.depth.min(MAX_SEARCH_DEPTH)) {
-        let (score, m) = simple_negamax_search(&mut ctx, depth, 0, -Score::INF, Score::INF);
+        let (score, m) = simple_negamax_search(&mut ctx, depth, 0, -Score::INF, Score::INF, 0);
 
         if let Some(m) = m {
             best_score = score;
@@ -340,16 +357,13 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
 
             ctx.stats.depth = depth;
 
-            // Already found a mate, don't need to look any further
-            // TODO: It seems like there may be a bug with immediately quitting
-            // here as the mating move may be a lookup from the transposition
-            // table, which is unaware that it's repeated?
-            // TOOD: Also, when search extensions are implemented, then a mate
-            // score found here may be "outside" the actual depth due to
-            // extensions, which means that we can't trust it as there may be a
-            // faster mate available.
-            if best_score.is_mate() {
-                break;
+            // Already found a mate, don't need to look any further -- although,
+            // don't trust mate scores that are greater than the current depth,
+            // as they may be from the TT or extensions
+            if let Some(signed_plies) = best_score.as_mate_in_plies() {
+                if signed_plies.abs() as u32 <= depth {
+                    break;
+                }
             }
         }
 

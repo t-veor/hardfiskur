@@ -54,8 +54,9 @@ impl SearchThread {
                 };
 
                 println!(
-                    "score {score} depth {} nodes {} time {:?} tt_hits {}",
+                    "score {score} depth {} seldepth {} nodes {} time {:?} tt_hits {}",
                     result.stats.depth,
+                    result.stats.sel_depth,
                     result.stats.nodes_searched,
                     result.elapsed,
                     result.stats.tt_hits

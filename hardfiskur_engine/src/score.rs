@@ -35,6 +35,14 @@ impl Score {
         }
     }
 
+    pub const fn as_mate_in_plies(self) -> Option<i32> {
+        if self.0.abs() > Self::MATE_THRESHOLD {
+            Some(self.0.signum() * (Self::MATE_SCORE - self.0.abs()))
+        } else {
+            None
+        }
+    }
+
     pub const fn as_centipawns(self) -> Option<i32> {
         if self.0.abs() > Self::MATE_THRESHOLD {
             None
