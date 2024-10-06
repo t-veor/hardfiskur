@@ -18,7 +18,7 @@ pub struct Seer<'a> {
 }
 
 impl<'a> Seer<'a> {
-    // (unused), pawn, knight, bishop, rook, queen
+    // (unused), pawn, knight, bishop, rook, queen, (king)
     const SEE_VALUES: [i32; 7] = [0, 100, 400, 400, 650, 1200, 0];
 
     pub fn new(board: &'a Board) -> Self {
@@ -63,16 +63,23 @@ impl<'a> Seer<'a> {
         // Worst case: suppose we make the capture, and our attacker can't be
         // recaptured. Then the most value we could get would be target.value,
         // and if this is < threshold then there's no way any further exchanges
-        // can improve the situation.
+        // can improve the situation. (In order for the balance to increase the
+        // opponent has to play another losing capture on this square, which
+        // they obviously won't do.)
         let mut balance = Self::value(target) - threshold;
         if balance < 0 {
             return false;
         }
 
         // Best case: suppose we make the capture, and our attacker is
-        // immediately recaptured. If this value is still >= threshold then this
-        // is obviously a winning capture, and we don't need to look at any more
-        // exchanges.
+        // immediately recaptured for free (without opportunity for us to
+        // recapture). If this value is still >= threshold then this is
+        // obviously a winning capture, and we don't need to look at any more
+        // exchanges since we can get at least this value by not recapturing
+        // after our attacker is recaptured.
+        // This lets the SEE routine quit early in the case of "obviously"
+        // winning captures, e.g. BxQ, where we'd be very happy even if we
+        // immediately lose the bishop (because we got a queen for it).
         balance -= Self::value(attacker);
         if balance >= 0 {
             return true;
@@ -87,32 +94,91 @@ impl<'a> Seer<'a> {
             move_gen::attackers_on(self.board.repr(), occupied, to_square, self.lookups)
                 ^ attacker_bb;
 
-        // Then we loop based on the following principle:
-        // 1. Look for the least valuable attacker from the side_to_move.
-        //    i. If there are no more attackers we break, declaring that the
-        //       current side_to_move couldn't continue the exchange.
-        // 2. Check if making the capture improves the situation for the
-        //    side_to_move enough to be worthwhile.
-        //    i. If the situation is not good enough, then we can break
-        //       immediately, declaring that the current side_to_move would be
-        //       unwilling to continue the exchange.
-        // 3. (Update the occupied and attacker/defender bitboards to reflect
-        //     the situation after the capture.)
-        // After breaking out of the loop, the side_to_move is the side that
-        // either couldn't or would be unwilling to make the exchange.
-
-        // We've already "performed" the first capture, so the side to move is
-        // now flipped.
+        // We've just simulated the first capture so it is now the opponent's
+        // turn to move.
         let mut side_to_move = self.board.to_move().flip();
 
+        // balance represents the value for our original side if the previous
+        // attacker could be captured for free, minus the threshold.
+        // It's kept as a negamax score, so it can be interpreted as:
+        // * If it is the opponent's turn, it's the value of the exchange for us
+        //   if the piece we just captured with can be captured for free, minus
+        //   the threshold.
+        //   Therefore, checking balance >= 0 is equivalent to checking
+        //   exchange value >= threshold.
+        // * If it is our turn, it's _minus_ the value of the exchange for us if
+        //   the piece we just captured with can be captured for free, _plus_
+        //   the threshold, _minus an additional one_.
+        //   i.e. balance = -(exchange value) + threshold - 1
+        //   Therefore, checking balance >= 0 is equivalent to checking
+        //   exchange value < threshold, because:
+        //
+        //        balance >= 0
+        //   <==> -(exchange value) + threshold - 1 >= 0
+        //   <==> threshold - 1 >= exchange value
+        //   <==> exchange value <= threshold - 1
+        //   <==> exchange value < threshold
+
+        // We say a result is good for us if the exchange value >= threshold,
+        // and it's good for the opponent if the exchange value < threshold.
+        // Thus if it's our turn and the balance >= 0, it's good for the
+        // opponent, and if it's the opponent's turn and balance >= 0, it's good
+        // for us.
+
+        // Then we loop:
+        //
+        // 1. We can assume that if we're still in the loop, then the previous
+        //    capture may be good for the current side_to_move if they could
+        //    take it for free, but if not taken then capture was good for the
+        //    other side.
+        //    - This is true for the first iteration due to the two checks we
+        //      did earlier.
+        //    - For subsequent iterations, if this was not true we would have
+        //      broken out of the loop in 4. on the previous iteration.
+        //    - Due to us keeping the balance as a negamax score, in practice
+        //      this actually means that balance is always negative.
+        //
+        // 2. Look for the least valuable attacker from the side_to_move, and
+        //    make the capture with it.
+        //    - If there are no more attackers, by our loop invariant in 1. this
+        //      means the exchange was good for the other side. We therefore
+        //      break, declaring that the current side_to_move couldn't continue
+        //      the exchange.
+        //
+        // 3. Update the balance after making the capture with the least
+        //    valuable attacker and flip the side to move.
+        //    - This means flipping the sign of balance, and then subtracting
+        //      the value of the attacker (representing that we expect to lose
+        //      it for free).
+        //
+        // 4. Check if on completing the capture the value is good for the
+        //    previous side_to_move, i.e. if balance >= 0.
+        //    - Good for the previous side_to_move means that the exchange value
+        //      supposing the last attacker could be taken for free was already
+        //      good for the previous side to move. They would be happy even if
+        //      the current side took the last attacker for free, so it's
+        //      obviously losing for the current side_to_move.
+        //    - Therefore if balance >= 0 we break, declaring that the current
+        //      side_to_move couldn't push the exchange value back to the other
+        //      side of the threshold.
+        //
+        // 5. (Update the occupied and attacker/defender bitboards to reflect
+        //     the situation after the capture.)
+        //
+        // After breaking out of the loop, the side_to_move is the side that
+        // couldn't push the exchange value to their side of the threshold. So
+        // the exchange was good for us if the side_to_move wasn't the original
+        // side.
+
         loop {
+            // 2. Look for least valuable attacker
             let (attacker_bb, attacker) =
                 match self.get_least_valuable_piece(attackers_and_defenders, side_to_move) {
                     Some(x) => x,
                     None => break,
                 };
 
-            // Special case: if the the least valuable attacker is the king,
+            // 2. Special case: if the the least valuable attacker is the king,
             // then obviously the side_to_move can't make the capture if the
             // target square is still defended.
             if attacker.is_king()
@@ -121,21 +187,19 @@ impl<'a> Seer<'a> {
                 break;
             }
 
-            // Make the capture
-            occupied ^= attacker_bb;
-
-            // Don't need this line because the attacker gets cleared off the
-            // attackers_and_defenders bitboard by the final &= occupied mask at
-            // the end of this loop
-            // attackers_and_defenders ^= attacker_bb;
-
+            // 3. Update the balance and flip side_to_move.
             side_to_move = side_to_move.flip();
-
             balance = -balance - 1 - Self::value(attacker);
+
+            // 4. Check if on completing the capture the value is good for the
+            // previous side_to_move
             if balance >= 0 {
                 break;
             }
 
+            // 5. Update the occupied and attackers_and_defeners bitboard to
+            // reflect the situation after the capture
+            occupied ^= attacker_bb;
             // The capture may reveal a new sliding attacker, add it to the
             // attackers_and_defenders bitboard
             if [PieceType::Pawn, PieceType::Bishop, PieceType::Queen]
@@ -150,12 +214,15 @@ impl<'a> Seer<'a> {
             }
             // Note that diagonal/orthogonal_attackers don't change as pieces
             // are exchanged off, so we need to mask them with the occupied mask
-            // to remove pieces that are actually already gone
+            // to remove pieces that are actually already gone.
+            // This also has the effect of clearing the attacker that just
+            // captured from the attackers_and_defenders bitboard since we
+            // cleared it from the occupied bitboard earlier.
             attackers_and_defenders &= occupied;
         }
 
         // We succeed the test that the SEE value is >= the threshold if the
-        // side_to_move that couldn't or was unwilling to make the capture
+        // side_to_move that couldn't shift the value across the threshold
         // wasn't the starting side.
         side_to_move != self.board.to_move()
     }
@@ -249,6 +316,16 @@ mod test {
             N + N - B + R - Q
         ),
     ];
+
+    #[test]
+    fn piece_values() {
+        assert_eq!(Seer::value(PieceType::Pawn), 100);
+        assert_eq!(Seer::value(PieceType::Knight), 400);
+        assert_eq!(Seer::value(PieceType::Bishop), 400);
+        assert_eq!(Seer::value(PieceType::Rook), 650);
+        assert_eq!(Seer::value(PieceType::Queen), 1200);
+        assert_eq!(Seer::value(PieceType::King), 0);
+    }
 
     #[test]
     fn run_test_cases() {
