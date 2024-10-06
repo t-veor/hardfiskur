@@ -5,12 +5,12 @@ use std::{
 
 use hardfiskur_core::{
     board::{Board, Color, Move, UCIMove},
-    move_gen::{MoveGenFlags, MoveVec},
+    move_gen::{lookups::Lookups, MoveGenFlags, MoveVec},
 };
 
 use crate::{
     diag,
-    evaluation::evaluate,
+    evaluation::EvalContext,
     move_ordering::MoveOrderer,
     score::Score,
     search_limits::SearchLimits,
@@ -30,6 +30,7 @@ pub struct SearchContext<'a> {
     pub start_time: Instant,
     pub stats: SearchStats,
     pub time_up: bool,
+    pub lookups: &'static Lookups,
 
     pub tt: &'a mut TranspositionTable,
     pub move_orderer: MoveOrderer,
@@ -50,6 +51,7 @@ impl<'a> SearchContext<'a> {
             start_time: Instant::now(),
             stats: SearchStats::default(),
             time_up: false,
+            lookups: Lookups::get_instance(),
             tt,
             move_orderer: MoveOrderer::new(),
             abort_flag,
@@ -280,7 +282,8 @@ pub fn quiescence_search(
         .legal_moves_ex(MoveGenFlags::GEN_CAPTURES, &mut capturing_moves);
 
     let stand_pat_score = {
-        let score = evaluate(ctx.board);
+        let eval_ctx = EvalContext::new(&ctx.board, ctx.lookups);
+        let score = eval_ctx.evaluate();
 
         match ctx.board.to_move() {
             Color::White => score,

@@ -3,8 +3,11 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use evaluation::evaluate;
-use hardfiskur_core::board::{Board, Move};
+use evaluation::EvalContext;
+use hardfiskur_core::{
+    board::{Board, Move},
+    move_gen::lookups::Lookups,
+};
 use score::Score;
 use search::{iterative_deepening_search, SearchContext};
 use search_limits::SearchLimits;
@@ -77,7 +80,8 @@ impl Engine {
     }
 
     pub fn debug_eval(&self, current_board: &Board) -> Score {
-        evaluate(&current_board)
+        let eval_ctx = EvalContext::new(current_board, Lookups::get_instance());
+        eval_ctx.evaluate()
     }
 }
 
