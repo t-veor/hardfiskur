@@ -530,6 +530,39 @@ pub fn attacked_squares(
     attacked_squares
 }
 
+pub fn attackers_on(
+    board: &BoardRepr,
+    occupied: Bitboard,
+    square: Square,
+    lookups: &Lookups,
+) -> Bitboard {
+    let mut attackers = Bitboard::EMPTY;
+    let b = Bitboard::from_square(square);
+
+    attackers |= (b.step_south_east() | b.step_south_west()) & board[Piece::pawn(Color::White)];
+    attackers |= (b.step_north_east() | b.step_north_west()) & board[Piece::pawn(Color::Black)];
+
+    attackers |= lookups.get_knight_moves(square)
+        & (board[Piece::knight(Color::White)] | board[Piece::knight(Color::Black)]);
+
+    attackers |= lookups.get_bishop_attacks(occupied, square)
+        & (board[Piece::bishop(Color::White)]
+            | board[Piece::bishop(Color::Black)]
+            | board[Piece::queen(Color::White)]
+            | board[Piece::queen(Color::Black)]);
+
+    attackers |= lookups.get_rook_attacks(occupied, square)
+        & (board[Piece::rook(Color::White)]
+            | board[Piece::rook(Color::Black)]
+            | board[Piece::queen(Color::White)]
+            | board[Piece::queen(Color::Black)]);
+
+    attackers |= lookups.get_king_moves(square)
+        & (board[Piece::king(Color::White)] | board[Piece::king(Color::Black)]);
+
+    attackers
+}
+
 fn xray_bishop_attacks(
     occupied: Bitboard,
     xrayable_pieces: Bitboard,

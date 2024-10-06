@@ -190,6 +190,10 @@ impl Bitboard {
         }
     }
 
+    pub const fn isolate_lsb(self) -> Bitboard {
+        Self(self.0 & self.0.wrapping_neg())
+    }
+
     /// Converts a bitboard with a single bit set to a [`Square`] representing
     /// the set bit.
     ///

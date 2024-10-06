@@ -1,6 +1,7 @@
 use std::{fmt::Debug, num::NonZeroU32};
 
 use bitflags::bitflags;
+use zerocopy::FromZeroes;
 
 use super::{Piece, PieceType, Square};
 
@@ -19,13 +20,13 @@ bitflags! {
     pub struct MoveFlags: u32 {
         /// Whether this move is the initial double move of a pawn. This is
         /// useful for knowing if en passant is available on the next turn.
-        const DOUBLE_PAWN_PUSH = 0b0001 << 28;
+        const DOUBLE_PAWN_PUSH = 0b0001 << 24;
         /// Whether this move is a castle. The move should be a double-step
         /// king move, and the direction can be determined by the direction the
         /// king moves in.
-        const CASTLE           = 0b0010 << 28;
+        const CASTLE           = 0b0010 << 24;
         /// Whether this move is an en passant capture.
-        const EN_PASSANT       = 0b0100 << 28;
+        const EN_PASSANT       = 0b0100 << 24;
     }
 }
 
@@ -41,33 +42,25 @@ bitflags! {
 /// The internal representation is a 32-bit integer which packs all the fields
 /// of the move thusly:
 /// ```txt
-/// 3  2    2    2    1
-/// 1  8    4    0    6        8        0
-/// 0XXX_PPPP CCCC_MMMM 00TTTTTT 00FFFFFF
-/// ^^^^ ^^^^ ^^^^ ^^^^   ^^^^^^   ^^^^^^
-///    |    |    |    |        |        |
-///    |    |    |    |        |        +-- from square
-///    |    |    |    |        +----------- to square
-///    |    |    |    +-------------------- moved piece
-///    |    |    +------------------------- captured piece (0 if none)
-///    |    +------------------------------ promoted to piece (0 if none)
-///    +----------------------------------- move flags
+/// 3       2    2    1    1
+/// 1       4    0    6    2      6      0
+/// 0000_0XXX CCCC_MMMM PPPP_TTTTTT_FFFFFF
+///       ^^^ ^^^^ ^^^^ ^^^^ ^^^^^^ ^^^^^^
+///         |    |    |    |      |      |
+///         |    |    |    |      |      +-- from square
+///         |    |    |    |      +--------- to square
+///         |    |    |    +---------------- promoted piece (0 if none)
+///         |    |    +--------------------- moved piece
+///         |    +-------------------------- captured piece (0 if none)
+///         +------------------------------- move flags
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// This representation allows a move to still be uniquely identifiable in a
+/// given board state with the lower 16 bits (12 bits if the promotion piece is
+/// not needed).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(transparent)]
 pub struct Move(NonZeroU32);
-
-impl PartialOrd for Move {
-    // Used for testing
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
-impl Ord for Move {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.get().swap_bytes().cmp(&other.0.get().swap_bytes())
-    }
-}
 
 impl Move {
     /// Constructs a new [`Move`].
@@ -85,16 +78,17 @@ impl Move {
         flags: MoveFlags,
     ) -> Self {
         let from = from.get() as u32;
-        let to = (to.get() as u32) << 8;
+        let to = (to.get() as u32) << 6;
+        let promotion = (match promotion {
+            Some(piece) => piece.get() as u32,
+            None => 0,
+        }) << 12;
         let piece = (piece.get() as u32) << 16;
         let captured_piece = (match captured_piece {
             Some(piece) => piece.get() as u32,
             None => 0,
         }) << 20;
-        let promotion = (match promotion {
-            Some(piece) => piece.get() as u32,
-            None => 0,
-        }) << 24;
+
         let flags = flags.bits();
 
         unsafe {
@@ -105,14 +99,6 @@ impl Move {
         }
     }
 
-    pub const fn from_nonzero(value: NonZeroU32) -> Self {
-        Self(value)
-    }
-
-    pub const fn get(&self) -> NonZeroU32 {
-        self.0
-    }
-
     /// Returns the source square of the moved piece.
     pub const fn from_square(self) -> Square {
         Square::from_u8_unchecked((self.0.get() & 0x3F) as u8)
@@ -120,7 +106,7 @@ impl Move {
 
     /// Returns the destination square of the moved piece.
     pub const fn to_square(self) -> Square {
-        Square::from_u8_unchecked(((self.0.get() & 0x3F00) >> 8) as u8)
+        Square::from_u8_unchecked(((self.0.get() & 0xFC0) >> 6) as u8)
     }
 
     // Would really like this to be a const function, but alas
@@ -156,7 +142,7 @@ impl Move {
     /// If this was a pawn move that reached the final rank, returns the
     /// promotion target for this pawn.
     pub const fn promotion(self) -> Option<Piece> {
-        Piece::try_from_u8(((self.0.get() & 0x0F000000) >> 24) as u8)
+        Piece::try_from_u8(((self.0.get() & 0xF000) >> 12) as u8)
     }
 
     /// Returns the special move flags for this move.
@@ -227,6 +213,10 @@ impl Move {
         MoveBuilder::new(from, to, piece)
     }
 
+    pub const fn butterfly_index(self) -> usize {
+        (self.0.get() & 0xFFF) as usize
+    }
+
     /// Convert this move into a pre-populated [`MoveBuilder`]. Useful for
     /// editing just one aspect of the move.
     pub fn into_builder(self) -> MoveBuilder {
@@ -250,6 +240,35 @@ impl Debug for Move {
             .field("captured_piece", &self.captured_piece())
             .field("promotion", &self.promotion())
             .field("flags", &self.flags())
+            .finish()
+    }
+}
+
+/// Workaround type for supporting zerocopy's [`FromZeroes`] trait.
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, FromZeroes)]
+#[repr(transparent)]
+pub struct OptionalMove(Option<NonZeroU32>);
+
+impl OptionalMove {
+    pub fn from_option_move(value: Option<Move>) -> Self {
+        Self(value.map(|value| value.0))
+    }
+
+    pub fn as_option_move(self) -> Option<Move> {
+        self.0.map(|value| Move(value))
+    }
+}
+
+impl From<Option<Move>> for OptionalMove {
+    fn from(value: Option<Move>) -> Self {
+        Self::from_option_move(value)
+    }
+}
+
+impl Debug for OptionalMove {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("OptionalMove")
+            .field(&self.as_option_move())
             .finish()
     }
 }

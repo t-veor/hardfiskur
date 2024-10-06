@@ -17,7 +17,7 @@ pub use bitboard::Bitboard;
 pub use board_repr::BoardRepr;
 pub use castling::Castling;
 pub use fen::FenParseError;
-pub use move_repr::{Move, MoveBuilder, MoveFlags};
+pub use move_repr::{Move, MoveBuilder, MoveFlags, OptionalMove};
 pub use piece::{Color, Piece, PieceType};
 pub use san::SAN;
 pub use square::{ParseSquareError, Square};
@@ -370,6 +370,10 @@ impl Board {
         unmake_data.the_move
     }
 
+    pub fn repr(&self) -> &BoardRepr {
+        &self.board
+    }
+
     /// Returns the bitboard representing all pieces of the given color.
     pub fn get_bitboard_for_color(&self, color: Color) -> Bitboard {
         self.board[color]
@@ -378,6 +382,15 @@ impl Board {
     /// Returns the bitboard representing all positions of the given piece.
     pub fn get_bitboard_for_piece(&self, piece: Piece) -> Bitboard {
         self.board[piece]
+    }
+
+    pub fn get_bitboard_for_piece_type(&self, piece_type: PieceType) -> Bitboard {
+        self.board[piece_type.with_color(Color::White)]
+            | self.board[piece_type.with_color(Color::Black)]
+    }
+
+    pub fn get_occupied_bitboard(&self) -> Bitboard {
+        self.board[Color::White] | self.board[Color::Black]
     }
 
     /// Returns all positions of the given piece.
