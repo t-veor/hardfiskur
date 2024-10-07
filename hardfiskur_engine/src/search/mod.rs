@@ -403,7 +403,7 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
                     .move_ordering
                     .pv_node_best_move_idxs
                     .iter()
-                    .map(|&x| x as u64 * 1000 / pv_nodes as u64)
+                    .map(|&x| x as u64 * 1000 / pv_nodes.max(1) as u64)
                     .collect::<Vec<_>>()
             );
             println!(
@@ -412,7 +412,7 @@ pub fn iterative_deepening_search(mut ctx: SearchContext) -> SearchResult {
                     .move_ordering
                     .beta_cutoff_move_idxs
                     .iter()
-                    .map(|&x| x as u64 * 1000 / cut_nodes as u64)
+                    .map(|&x| x as u64 * 1000 / cut_nodes.max(1) as u64)
                     .collect::<Vec<_>>()
             );
         }

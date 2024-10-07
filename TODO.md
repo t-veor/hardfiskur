@@ -1,0 +1,1 @@
+-   [ ] Make the uci executable crash when the background thread crashes.
