@@ -3000,6 +3000,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pst_viewer"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "hardfiskur_core",
+ "hardfiskur_engine",
+]
+
+[[package]]
 name = "qoi"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
