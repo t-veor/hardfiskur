@@ -119,7 +119,7 @@ LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
 
-# 12fb13e (In-check extension)
+## 12fb13e (In-check extension)
 
 -   Added in-check extensions
 
@@ -133,7 +133,7 @@ Ptnml(0-2): [21, 79, 177, 151, 72]
 --------------------------------------------------
 ```
 
-# 69af9b1 (Fail-soft framework)
+## 69af9b1 (Fail-soft framework)
 
 Finally read up a little bit more on the difference between fail-hard and
 fail-soft, and changed the search framework to fail-soft. I wasn't expecting
