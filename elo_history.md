@@ -132,3 +132,23 @@ Games: 1000, Wins: 399, Losses: 225, Draws: 376, Points: 587.0 (58.70 %)
 Ptnml(0-2): [21, 79, 177, 151, 72]
 --------------------------------------------------
 ```
+
+# 69af9b1 (Fail-soft framework)
+
+Finally read up a little bit more on the difference between fail-hard and
+fail-soft, and changed the search framework to fail-soft. I wasn't expecting
+this to help much but it seems like the engine really is playing better.
+
+-   Changed the search routine to a fail-soft framework, which seems to help in
+    providing better bounds for transposition table lookups
+-   Refactored the search implementation smoewhat
+
+```
+--------------------------------------------------
+Results of HF-new-69af9b1 vs HF-old-dae9d60 (10+0.1, 1t, MB, opening_book.epd):
+Elo: 22.62 +/- 15.16, nElo: 32.24 +/- 21.53
+LOS: 99.83 %, DrawRatio: 45.20 %, PairsRatio: 1.47
+Games: 1000, Wins: 356, Losses: 291, Draws: 353, Points: 532.5 (53.25 %)
+Ptnml(0-2): [31, 80, 226, 119, 44]
+--------------------------------------------------
+```
