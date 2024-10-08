@@ -3,16 +3,17 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use evaluation::evaluate;
+use evaluation::evaluate_for_white;
 use hardfiskur_core::board::{Board, Move};
 use score::Score;
-use search::{iterative_deepening_search, SearchContext};
+use search::SearchContext;
 use search_limits::SearchLimits;
 use search_result::SearchResult;
 use transposition_table::{TranspositionEntry, TranspositionTable};
 
 pub mod evaluation;
 pub mod move_ordering;
+pub mod parameters;
 pub mod score;
 pub mod search;
 pub mod search_limits;
@@ -52,7 +53,7 @@ impl Engine {
             let mut tt = transposition_table.lock().unwrap();
             let ctx = SearchContext::new(&mut board, search_limits, &mut tt, &abort_flag);
 
-            callback(iterative_deepening_search(ctx));
+            callback(ctx.iterative_deepening_search());
         });
     }
 
@@ -77,7 +78,7 @@ impl Engine {
     }
 
     pub fn debug_eval(&self, current_board: &Board) -> Score {
-        evaluate(&current_board)
+        evaluate_for_white(&current_board)
     }
 }
 
@@ -86,11 +87,3 @@ impl Drop for Engine {
         self.curr_abort_flag.store(true, AtomicOrdering::Relaxed);
     }
 }
-
-macro_rules! diag {
-    ($board:expr,$($t:tt)*) => {
-        // eprintln!($($t)*)
-        ()
-    };
-}
-pub(crate) use diag;

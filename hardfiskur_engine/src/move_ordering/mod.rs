@@ -16,11 +16,11 @@ impl MoveOrderer {
         }
     }
 
-    pub fn store_killer(&mut self, ply_from_root: u32, m: Move) {
+    pub fn store_killer(&mut self, ply_from_root: u16, m: Move) {
         self.killers.store(ply_from_root, m);
     }
 
-    pub fn is_killer(&self, ply_from_root: u32, m: Move) -> bool {
+    pub fn is_killer(&self, ply_from_root: u16, m: Move) -> bool {
         self.killers.is_killer(ply_from_root, m)
     }
 }
@@ -35,7 +35,7 @@ impl MoveOrderer {
     pub fn order_moves(
         &self,
         board: &Board,
-        ply_from_root: u32,
+        ply_from_root: u16,
         tt_move: Option<Move>,
         moves: &mut [Move],
     ) {
@@ -46,7 +46,7 @@ impl MoveOrderer {
 
     pub fn score_move(
         &self,
-        ply_from_root: u32,
+        ply_from_root: u16,
         tt_move: Option<Move>,
         seer: &Seer,
         m: Move,

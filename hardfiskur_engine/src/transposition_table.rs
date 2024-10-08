@@ -1,4 +1,4 @@
-use std::{fmt::Display, num::NonZeroUsize, u32};
+use std::{fmt::Display, num::NonZeroUsize};
 
 use hardfiskur_core::board::{Board, Move, OptionalMove, UCIMove, ZobristHash};
 use zerocopy::FromZeroes;
@@ -15,7 +15,7 @@ pub enum TranspositionFlag {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TranspositionEntry {
     pub flag: TranspositionFlag,
-    pub depth: u32,
+    pub depth: i16,
     score: Score,
     pub best_move: Option<Move>,
 }
@@ -23,10 +23,10 @@ pub struct TranspositionEntry {
 impl TranspositionEntry {
     pub fn new(
         flag: TranspositionFlag,
-        depth: u32,
+        depth: i16,
         score: Score,
         best_move: Option<Move>,
-        ply_from_root: u32,
+        ply_from_root: u16,
     ) -> Self {
         Self {
             flag,
@@ -36,7 +36,7 @@ impl TranspositionEntry {
         }
     }
 
-    pub fn get_score(&self, ply_from_root: u32) -> Score {
+    pub fn get_score(&self, ply_from_root: u16) -> Score {
         self.score.add_plies_for_mate(ply_from_root)
     }
 }
@@ -89,7 +89,7 @@ impl TryFrom<TranspositionFlagInternal> for TranspositionFlag {
 struct TranspositionEntryInternal {
     key: ZobristHash,
     flag: TranspositionFlagInternal,
-    depth: u32,
+    depth: i16,
     score: Score,
     best_move: OptionalMove,
 }

@@ -11,13 +11,13 @@ struct KillerTableBucket {
 }
 
 impl KillerTable {
-    pub fn store(&mut self, ply_from_root: u32, m: Move) {
+    pub fn store(&mut self, ply_from_root: u16, m: Move) {
         if let Some(bucket) = self.buckets.get_mut(ply_from_root as usize) {
             bucket.store(m)
         }
     }
 
-    pub fn is_killer(&self, ply_from_root: u32, m: Move) -> bool {
+    pub fn is_killer(&self, ply_from_root: u16, m: Move) -> bool {
         self.buckets
             .get(ply_from_root as usize)
             .map(|bucket| bucket.contains(m))

@@ -1,6 +1,6 @@
-pub const MAX_EXTENSIONS: u32 = 16;
+use crate::parameters::MAX_EXTENSIONS;
 
-pub const fn extensions(in_check: bool, extension_count: u32) -> u32 {
+pub const fn extensions(in_check: bool, extension_count: i16) -> i16 {
     let mut extensions = 0;
 
     if extension_count < MAX_EXTENSIONS {

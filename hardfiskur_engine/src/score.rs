@@ -19,7 +19,7 @@ impl Score {
         self.0
     }
 
-    pub const fn mate_in_plies(ply_from_root: u32) -> Self {
+    pub const fn mate_in_plies(ply_from_root: u16) -> Self {
         Self(Self::MATE_SCORE - ply_from_root as i32)
     }
 
@@ -51,7 +51,7 @@ impl Score {
         }
     }
 
-    pub const fn sub_plies_for_mate(self, ply_from_root: u32) -> Self {
+    pub const fn sub_plies_for_mate(self, ply_from_root: u16) -> Self {
         if self.0 > Self::MATE_THRESHOLD {
             Self(self.0 + ply_from_root as i32)
         } else if self.0 < Self::MATE_THRESHOLD {
@@ -61,7 +61,7 @@ impl Score {
         }
     }
 
-    pub const fn add_plies_for_mate(self, ply_from_root: u32) -> Self {
+    pub const fn add_plies_for_mate(self, ply_from_root: u16) -> Self {
         if self.0 > Self::MATE_THRESHOLD {
             Self(self.0 - ply_from_root as i32)
         } else if self.0 < Self::MATE_THRESHOLD {

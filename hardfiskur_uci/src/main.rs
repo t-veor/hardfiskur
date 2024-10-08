@@ -114,7 +114,8 @@ fn main() {
                     depth: search_control
                         .as_ref()
                         .and_then(|s| s.depth)
-                        .unwrap_or(u32::MAX),
+                        .and_then(|d| d.try_into().ok())
+                        .unwrap_or(i16::MAX),
                 };
 
                 engine.start_search(&current_board, search_limits, |result| {
@@ -140,8 +141,8 @@ fn main() {
                     println!(
                         "{}",
                         UCIMessage::Info(UCIInfo {
-                            depth: Some(stats.depth),
-                            sel_depth: Some(stats.sel_depth),
+                            depth: Some(stats.depth as _),
+                            sel_depth: Some(stats.sel_depth as _),
                             time: Some(elapsed),
                             nodes: Some(stats.nodes_searched),
                             score: Some(score.into()),

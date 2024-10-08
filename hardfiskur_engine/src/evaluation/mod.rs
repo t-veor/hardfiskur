@@ -5,10 +5,10 @@ use piece_tables::{material_score, phase_modifier, piece_square_table, FULL_ENDG
 
 use crate::score::Score;
 
-pub fn evaluate(board: &Board) -> Score {
+pub fn evaluate_for_white(board: &Board) -> Score {
     let mut material = 0;
-    let mut middlegame_pst = 0;
-    let mut endgame_pst = 0;
+    let mut middlegame_eval = 0;
+    let mut endgame_eval = 0;
 
     let mut game_phase = 0;
 
@@ -28,15 +28,23 @@ pub fn evaluate(board: &Board) -> Score {
 
         // Piece square table values
         let (mid, end) = piece_square_table(piece.piece_type(), square);
-        middlegame_pst += mid * sign;
-        endgame_pst += end * sign;
+        middlegame_eval += mid * sign;
+        endgame_eval += end * sign;
 
         game_phase += phase_modifier(piece.piece_type());
     }
 
-    let tapered_eval = (middlegame_pst * game_phase
-        + endgame_pst * (FULL_ENDGAME_PHASE - game_phase))
+    let tapered_eval = (middlegame_eval * game_phase
+        + endgame_eval * (FULL_ENDGAME_PHASE - game_phase))
         / FULL_ENDGAME_PHASE;
 
     Score(material + tapered_eval)
+}
+
+pub fn evaluate(board: &Board) -> Score {
+    let score = evaluate_for_white(board);
+    match board.to_move() {
+        Color::White => score,
+        Color::Black => -score,
+    }
 }

@@ -4,7 +4,7 @@ use std::{time::Duration, u64};
 pub struct SearchLimits {
     pub allocated_time: Duration,
     pub node_budget: u64,
-    pub depth: u32,
+    pub depth: i16,
 }
 
 impl SearchLimits {
@@ -12,7 +12,7 @@ impl SearchLimits {
         Self {
             allocated_time: Duration::MAX,
             node_budget: u64::MAX,
-            depth: u32::MAX,
+            depth: i16::MAX,
         }
     }
 }
@@ -22,7 +22,7 @@ impl Default for SearchLimits {
         Self {
             allocated_time: Duration::from_millis(1000),
             node_budget: u64::MAX,
-            depth: u32::MAX,
+            depth: i16::MAX,
         }
     }
 }

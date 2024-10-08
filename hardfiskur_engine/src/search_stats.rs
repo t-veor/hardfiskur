@@ -1,10 +1,10 @@
 #[derive(Debug, Default, Clone)]
 pub struct SearchStats {
-    pub depth: u32,
-    pub sel_depth: u32,
+    pub depth: u16,
+    pub sel_depth: u16,
     pub nodes_searched: u64,
     pub quiescence_nodes: u64,
-    pub beta_cutoffs: u32,
+    pub beta_cutoffs: u64,
     pub tt_hits: u64,
     pub move_ordering: MoveOrderingStats,
 }
@@ -12,8 +12,8 @@ pub struct SearchStats {
 #[derive(Debug, Default, Clone)]
 pub struct MoveOrderingStats {
     // Last element is all the remaining cases.
-    pub pv_node_best_move_idxs: [u32; 8],
-    pub beta_cutoff_move_idxs: [u32; 8],
+    pub pv_node_best_move_idxs: [u64; 8],
+    pub beta_cutoff_move_idxs: [u64; 8],
 }
 
 impl MoveOrderingStats {
