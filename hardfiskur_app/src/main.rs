@@ -69,10 +69,8 @@ impl eframe::App for HardfiskurApp {
             .resizable(false)
             .min_width(200.0)
             .show(ctx, |ui| {
-                if ui.button("Make move").clicked() {
-                    if self.game_manager.playing() {
-                        self.start_search(ctx);
-                    }
+                if ui.button("Make move").clicked() && self.game_manager.playing() {
+                    self.start_search(ctx);
                 }
 
                 if ui.button("Reset").clicked() {

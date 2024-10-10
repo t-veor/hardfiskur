@@ -25,6 +25,12 @@ impl MoveOrderer {
     }
 }
 
+impl Default for MoveOrderer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MoveOrderer {
     const HASH_MOVE_SCORE: i32 = 100_000_000;
     const WINNING_CAPTURE_BIAS: i32 = 8_000_000;

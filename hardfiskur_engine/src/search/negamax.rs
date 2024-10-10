@@ -60,57 +60,54 @@ impl<'a> SearchContext<'a> {
         }
 
         let mut tt_move = None;
-        match self.tt.get(self.board.zobrist_hash()) {
-            Some(entry) => {
-                tt_move = entry.best_move;
-                diag!(
-                    "TT hit: depth={} score={} flag={:?} best_move={}",
-                    entry.depth,
-                    entry.get_score(ply_from_root),
-                    entry.flag,
-                    if let Some(m) = entry.best_move {
-                        format!("{}", UCIMove::from(m))
-                    } else {
-                        "none".to_string()
-                    }
-                );
+        if let Some(entry) = self.tt.get(self.board.zobrist_hash()) {
+            tt_move = entry.best_move;
+            diag!(
+                "TT hit: depth={} score={} flag={:?} best_move={}",
+                entry.depth,
+                entry.get_score(ply_from_root),
+                entry.flag,
+                if let Some(m) = entry.best_move {
+                    format!("{}", UCIMove::from(m))
+                } else {
+                    "none".to_string()
+                }
+            );
 
-                if entry.depth >= depth {
-                    self.stats.tt_hits += 1;
+            if entry.depth >= depth {
+                self.stats.tt_hits += 1;
 
-                    let score = entry.get_score(ply_from_root);
-                    match entry.flag {
-                        TranspositionFlag::Exact => {
-                            if ROOT {
-                                self.best_root_move = entry.best_move;
-                            }
-                            diag!("=> {score} (Exact score entry in TT)");
-                            return score;
-                        }
-                        TranspositionFlag::Upperbound => {
-                            beta = beta.min(score);
-                            diag!("beta := {beta} (upper bound)");
-                        }
-                        TranspositionFlag::Lowerbound => {
-                            alpha = alpha.max(score);
-                            diag!("alpha := {alpha} (lower bound)");
-                        }
-                    }
-
-                    // Caused a cutoff? Return immediately
-                    if alpha >= beta {
-                        self.stats.beta_cutoffs += 1;
-
+                let score = entry.get_score(ply_from_root);
+                match entry.flag {
+                    TranspositionFlag::Exact => {
                         if ROOT {
                             self.best_root_move = entry.best_move;
                         }
-                        diag!("=> {score} (TT entry caused cutoff)");
-
+                        diag!("=> {score} (Exact score entry in TT)");
                         return score;
                     }
+                    TranspositionFlag::Upperbound => {
+                        beta = beta.min(score);
+                        diag!("beta := {beta} (upper bound)");
+                    }
+                    TranspositionFlag::Lowerbound => {
+                        alpha = alpha.max(score);
+                        diag!("alpha := {alpha} (lower bound)");
+                    }
+                }
+
+                // Caused a cutoff? Return immediately
+                if alpha >= beta {
+                    self.stats.beta_cutoffs += 1;
+
+                    if ROOT {
+                        self.best_root_move = entry.best_move;
+                    }
+                    diag!("=> {score} (TT entry caused cutoff)");
+
+                    return score;
                 }
             }
-            None => (),
         }
         let mut tt_flag = TranspositionFlag::Upperbound;
 
@@ -148,7 +145,10 @@ impl<'a> SearchContext<'a> {
             self.board.push_move_unchecked(m);
 
             let extension = Self::extensions(in_check, extension_count);
-            diag!("apply extension={extension}");
+            if extension > 0 {
+                diag!("apply extension={extension}");
+            }
+
             let eval = -self.negamax::<false>(
                 depth - 1 + extension,
                 ply_from_root + 1,
@@ -176,26 +176,28 @@ impl<'a> SearchContext<'a> {
                 if ROOT {
                     self.best_root_move = Some(m);
                 }
+            }
 
-                if eval >= beta {
-                    tt_flag = TranspositionFlag::Lowerbound;
-                    self.stats.beta_cutoffs += 1;
-                    self.stats.move_ordering.record_beta_cutoff(move_idx);
+            if eval >= beta {
+                tt_flag = TranspositionFlag::Lowerbound;
+                self.stats.beta_cutoffs += 1;
+                self.stats.move_ordering.record_beta_cutoff(move_idx);
 
-                    // Update killer moves
+                // Update killer moves
+                if !m.is_capture() {
                     self.move_orderer.store_killer(ply_from_root, m);
-
-                    diag!("- caused beta cutoff! (beta={beta})");
-
-                    break;
                 }
 
-                if eval > alpha {
-                    diag!("- raised alpha (prev_alpha={alpha})");
+                diag!("- caused beta cutoff! (beta={beta})");
 
-                    tt_flag = TranspositionFlag::Exact;
-                    alpha = eval;
-                }
+                break;
+            }
+
+            if eval > alpha {
+                diag!("- raised alpha (prev_alpha={alpha})");
+
+                tt_flag = TranspositionFlag::Exact;
+                alpha = eval;
             }
         }
 

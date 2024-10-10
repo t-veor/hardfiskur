@@ -168,7 +168,7 @@ impl ChessBoardUI {
 
         let mut base_props = BaseBoardUI::props()
             .pieces(pieces)
-            .possible_moves(&possible_moves)
+            .possible_moves(possible_moves)
             .perspective(perspective)
             .drag_mask(if can_move {
                 board.get_bitboard_for_color(board.to_move())

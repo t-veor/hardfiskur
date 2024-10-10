@@ -25,7 +25,7 @@ pub fn token_and_len(input: &str) -> IResult<&str, (&str, usize)> {
     Ok((input, (result, total_len)))
 }
 
-pub fn token_tag<'a>(tag: &'a str) -> impl Fn(&str) -> IResult<&str, &str> + 'a {
+pub fn token_tag(tag: &str) -> impl Fn(&str) -> IResult<&str, &str> + '_ {
     move |input: &str| -> IResult<&str, &str> {
         let (rest, t) = token(input)?;
         if t == tag {
@@ -45,7 +45,7 @@ pub fn tokenize<'a, O>(
         // works...
         let (rest, parsed) = parser.parse(t)?;
 
-        if rest.len() == 0 {
+        if rest.is_empty() {
             Ok((input, parsed))
         } else {
             Err(nom::Err::Error(Error::from_error_kind(
@@ -71,7 +71,7 @@ pub fn take_tokens_until<'a, E: ParseError<&'a str>>(
         let mut curr_token_length = 0;
 
         while !input.is_empty() {
-            if let Ok(_) = recognizer.parse(input) {
+            if recognizer.parse(input).is_ok() {
                 return Ok((input, original_input[..curr_token_length].trim()));
             } else {
                 let (rest, (_, token_len)) = token_and_len(input)?;

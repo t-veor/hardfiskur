@@ -56,6 +56,6 @@ impl<'a> SearchContext<'a> {
             self.stats.move_ordering.record_best_move(i);
         }
 
-        return best_score;
+        best_score
     }
 }

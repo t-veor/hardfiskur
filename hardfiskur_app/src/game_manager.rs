@@ -326,9 +326,8 @@ impl GameManager {
                             });
                         }
                     }
-                    match row.black_move {
-                        Some(m) => selectable_cell(&mut r, m),
-                        None => (),
+                    if let Some(m) = row.black_move {
+                        selectable_cell(&mut r, m);
                     }
                 });
             });

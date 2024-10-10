@@ -170,14 +170,10 @@ impl<'a> Seer<'a> {
         // the exchange was good for us if the side_to_move wasn't the original
         // side.
 
-        loop {
-            // 2. Look for least valuable attacker
-            let (attacker_bb, attacker) =
-                match self.get_least_valuable_piece(attackers_and_defenders, side_to_move) {
-                    Some(x) => x,
-                    None => break,
-                };
-
+        // 2. Look for least valuable attacker
+        while let Some((attacker_bb, attacker)) =
+            self.get_least_valuable_piece(attackers_and_defenders, side_to_move)
+        {
             // 2. Special case: if the the least valuable attacker is the king,
             // then obviously the side_to_move can't make the capture if the
             // target square is still defended.

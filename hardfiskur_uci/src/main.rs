@@ -1,4 +1,4 @@
-use std::{io::stdin, str::FromStr, time::Duration, u64};
+use std::{io::stdin, str::FromStr, time::Duration};
 
 use hardfiskur_core::board::{Board, Color, UCIMove};
 use hardfiskur_engine::{search_limits::SearchLimits, search_result::SearchResult, Engine};

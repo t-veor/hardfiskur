@@ -81,6 +81,10 @@ impl<'a> SearchContext<'a> {
         for depth in 1..=(self.search_limits.depth.min(MAX_DEPTH)) {
             let score = self.negamax::<true>(depth, 0, -Score::INF, Score::INF, 0);
 
+            if self.should_exit_search() {
+                break;
+            }
+
             if let Some(m) = self.best_root_move.take() {
                 // If we did not even get a root move from a partial search then
                 // we can't accept its results.
@@ -147,10 +151,6 @@ impl<'a> SearchContext<'a> {
                         .map(|&x| x * 1000 / cut_nodes.max(1))
                         .collect::<Vec<_>>()
                 );
-            }
-
-            if self.should_exit_search() {
-                break;
             }
         }
 

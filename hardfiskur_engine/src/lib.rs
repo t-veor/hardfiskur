@@ -78,7 +78,13 @@ impl Engine {
     }
 
     pub fn debug_eval(&self, current_board: &Board) -> Score {
-        evaluate_for_white(&current_board)
+        evaluate_for_white(current_board)
+    }
+}
+
+impl Default for Engine {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

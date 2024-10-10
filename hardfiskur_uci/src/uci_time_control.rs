@@ -17,6 +17,7 @@ pub enum UCITimeControl {
 }
 
 impl UCITimeControl {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_raw(
         ponder: bool,
         white_time: Option<Duration>,

@@ -118,6 +118,12 @@ impl<'a> BaseBoardUIProps<'a> {
     }
 }
 
+impl<'a> Default for BaseBoardUIProps<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 pub struct BaseBoardUIResponse {
     pub egui_response: egui::Response,

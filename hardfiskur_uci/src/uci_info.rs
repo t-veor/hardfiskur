@@ -35,8 +35,8 @@ impl Display for UCIInfoScore {
 impl From<Score> for UCIInfoScore {
     fn from(score: Score) -> Self {
         Self {
-            cp: score.as_centipawns().map(|i| i as i32),
-            mate: score.as_mate_in().map(|i| i as i32),
+            cp: score.as_centipawns(),
+            mate: score.as_mate_in(),
             ..Default::default()
         }
     }

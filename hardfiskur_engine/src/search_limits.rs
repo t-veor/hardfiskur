@@ -1,4 +1,4 @@
-use std::{time::Duration, u64};
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct SearchLimits {

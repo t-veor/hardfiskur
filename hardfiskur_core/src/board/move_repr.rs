@@ -255,7 +255,7 @@ impl OptionalMove {
     }
 
     pub fn as_option_move(self) -> Option<Move> {
-        self.0.map(|value| Move(value))
+        self.0.map(Move)
     }
 }
 
