@@ -4,7 +4,11 @@ use std::{
 };
 
 use hardfiskur_core::board::{Board, Color, Move};
-use hardfiskur_engine::{search_limits::SearchLimits, Engine};
+use hardfiskur_engine::{
+    search_limits::SearchLimits,
+    search_result::{SearchInfo, SearchResult},
+    Engine, SearchReporter,
+};
 
 pub struct SearchThread {
     tx: Sender<(Option<Move>, u64)>,
@@ -13,6 +17,39 @@ pub struct SearchThread {
 
     outstanding_request: bool,
     search_gen: u64,
+}
+
+struct GUIReporter<F>
+where
+    F: Fn() + Send + Sync + 'static,
+{
+    tx: Sender<(Option<Move>, u64)>,
+    generation: u64,
+    to_move: Color,
+    waker: F,
+}
+
+impl<F: Fn() + Send + Sync + 'static> SearchReporter for GUIReporter<F> {
+    fn receive_search_info(&self, _info: SearchInfo) {}
+
+    fn search_complete(&self, result: SearchResult) {
+        let score = match self.to_move {
+            Color::White => result.info.score,
+            Color::Black => -result.info.score,
+        };
+
+        println!(
+            "score {score} depth {} seldepth {} nodes {} time {:?} tt_hits {}",
+            result.info.raw_stats.depth,
+            result.info.raw_stats.sel_depth,
+            result.info.raw_stats.nodes_searched,
+            result.info.elapsed,
+            result.info.raw_stats.tt_hits
+        );
+
+        self.tx.send((result.best_move, self.generation)).unwrap();
+        (self.waker)();
+    }
 }
 
 impl SearchThread {
@@ -33,7 +70,7 @@ impl SearchThread {
         self.outstanding_request
     }
 
-    pub fn send_search_request(&mut self, board: &Board, waker: impl Fn() + Send + 'static) {
+    pub fn send_search_request(&mut self, board: &Board, waker: impl Fn() + Send + Sync + 'static) {
         let tx = self.tx.clone();
 
         self.search_gen += 1;
@@ -47,23 +84,11 @@ impl SearchThread {
                 allocated_time: Duration::from_millis(500),
                 ..Default::default()
             },
-            move |result| {
-                let score = match to_move {
-                    Color::White => result.score,
-                    Color::Black => -result.score,
-                };
-
-                println!(
-                    "score {score} depth {} seldepth {} nodes {} time {:?} tt_hits {}",
-                    result.stats.depth,
-                    result.stats.sel_depth,
-                    result.stats.nodes_searched,
-                    result.elapsed,
-                    result.stats.tt_hits
-                );
-
-                tx.send((result.best_move, search_gen)).unwrap();
-                waker();
+            GUIReporter {
+                tx,
+                generation: search_gen,
+                to_move,
+                waker,
             },
         );
 

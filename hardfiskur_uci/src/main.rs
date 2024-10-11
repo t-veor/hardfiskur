@@ -1,8 +1,12 @@
 use std::{io::stdin, str::FromStr, time::Duration};
 
 use hardfiskur_core::board::{Board, Color, UCIMove};
-use hardfiskur_engine::{search_limits::SearchLimits, search_result::SearchResult, Engine};
-use hardfiskur_uci::{UCIInfo, UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
+use hardfiskur_engine::{
+    search_limits::SearchLimits,
+    search_result::{SearchInfo, SearchResult},
+    Engine, SearchReporter,
+};
+use hardfiskur_uci::{UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
 
 fn read_message() -> Option<UCIMessage> {
     let mut s = String::new();
@@ -41,6 +45,31 @@ fn simple_time_allocation(to_move: Color, time_control: Option<&UCITimeControl>)
 
     // Default 2s
     Duration::from_secs(2)
+}
+
+struct UCIReporter;
+impl SearchReporter for UCIReporter {
+    fn receive_search_info(&self, info: SearchInfo) {
+        println!("{}", UCIMessage::Info(info.into()));
+    }
+
+    fn search_complete(&self, result: SearchResult) {
+        let SearchResult {
+            best_move, info, ..
+        } = result;
+
+        println!("{}", UCIMessage::Info(info.into()));
+
+        let best_move = match best_move {
+            Some(x) => x,
+            None => {
+                eprintln!("Engine did not return a move!");
+                return;
+            }
+        };
+
+        println!("{}", UCIMessage::best_move(best_move.into()))
+    }
 }
 
 fn main() {
@@ -118,42 +147,7 @@ fn main() {
                         .unwrap_or(i16::MAX),
                 };
 
-                engine.start_search(&current_board, search_limits, |result| {
-                    let SearchResult {
-                        score,
-                        best_move,
-                        stats,
-                        elapsed,
-                        hash_full,
-                        ..
-                    } = result;
-
-                    let best_move = match best_move {
-                        Some(m) => m,
-                        None => {
-                            eprintln!("Search did not return a move!");
-                            return;
-                        }
-                    };
-
-                    let nps = 1000 * stats.nodes_searched / (elapsed.as_millis() as u64).max(1);
-
-                    println!(
-                        "{}",
-                        UCIMessage::Info(UCIInfo {
-                            depth: Some(stats.depth as _),
-                            sel_depth: Some(stats.sel_depth as _),
-                            time: Some(elapsed),
-                            nodes: Some(stats.nodes_searched),
-                            score: Some(score.into()),
-                            tb_hits: Some(stats.tt_hits),
-                            nps: Some(nps),
-                            hash_full: Some(hash_full as u32),
-                            ..Default::default()
-                        })
-                    );
-                    println!("{}", UCIMessage::best_move(best_move.into()))
-                });
+                engine.start_search(&current_board, search_limits, UCIReporter);
             }
 
             UCIMessage::Stop => engine.abort_search(),

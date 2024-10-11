@@ -6,10 +6,16 @@ use crate::{score::Score, search_stats::SearchStats};
 
 #[derive(Debug, Clone)]
 pub struct SearchResult {
-    pub score: Score,
     pub best_move: Option<Move>,
-    pub stats: SearchStats,
-    pub elapsed: Duration,
+    pub info: SearchInfo,
     pub aborted: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct SearchInfo {
+    pub score: Score,
+    pub raw_stats: SearchStats,
+    pub elapsed: Duration,
+    pub pv: Vec<Move>,
     pub hash_full: u64,
 }

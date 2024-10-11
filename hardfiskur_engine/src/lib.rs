@@ -8,7 +8,7 @@ use hardfiskur_core::board::{Board, Move};
 use score::Score;
 use search::SearchContext;
 use search_limits::SearchLimits;
-use search_result::SearchResult;
+use search_result::{SearchInfo, SearchResult};
 use transposition_table::{TranspositionEntry, TranspositionTable};
 
 pub mod evaluation;
@@ -40,7 +40,7 @@ impl Engine {
         &mut self,
         board: &Board,
         search_limits: SearchLimits,
-        callback: impl FnOnce(SearchResult) + Send + 'static,
+        reporter: impl SearchReporter,
     ) {
         let mut board = board.clone();
 
@@ -53,7 +53,11 @@ impl Engine {
             let mut tt = transposition_table.lock().unwrap();
             let ctx = SearchContext::new(&mut board, search_limits, &mut tt, &abort_flag);
 
-            callback(ctx.iterative_deepening_search());
+            let result = ctx.iterative_deepening_search(|info| {
+                reporter.receive_search_info(info);
+            });
+
+            reporter.search_complete(result);
         });
     }
 
@@ -92,4 +96,16 @@ impl Drop for Engine {
     fn drop(&mut self) {
         self.curr_abort_flag.store(true, AtomicOrdering::Relaxed);
     }
+}
+
+pub trait SearchReporter: Send + Sync + 'static {
+    fn receive_search_info(&self, info: SearchInfo);
+    fn search_complete(&self, result: SearchResult);
+}
+
+pub struct NullReporter;
+
+impl SearchReporter for NullReporter {
+    fn receive_search_info(&self, _info: SearchInfo) {}
+    fn search_complete(&self, _result: SearchResult) {}
 }

@@ -223,9 +223,9 @@ impl GameManager {
                         if scroll_magnitude >= SCROLL_OVERRIDE_MAGNITUDE
                             || self.last_scroll_event.elapsed() >= SOFT_SCROLL_DELAY
                         {
-                            if state.raw_scroll_delta.y > 0.0 {
+                            if state.raw_scroll_delta.y < 0.0 {
                                 self.scroll_forwards();
-                            } else if state.raw_scroll_delta.y < 0.0 {
+                            } else if state.raw_scroll_delta.y > 0.0 {
                                 self.scroll_backwards();
                             }
                             self.last_scroll_event = Instant::now();

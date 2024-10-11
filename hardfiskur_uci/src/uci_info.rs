@@ -1,7 +1,7 @@
 use std::{fmt::Display, time::Duration};
 
 use hardfiskur_core::board::UCIMove;
-use hardfiskur_engine::score::Score;
+use hardfiskur_engine::{score::Score, search_result::SearchInfo};
 
 use crate::format_utils::SpaceSepFormatter;
 
@@ -123,5 +123,21 @@ impl Display for UCIInfo {
         formatter.push_option("string", self.string.as_ref())?;
 
         Ok(())
+    }
+}
+
+impl From<SearchInfo> for UCIInfo {
+    fn from(value: SearchInfo) -> Self {
+        Self {
+            score: Some(value.score.into()),
+            depth: Some(value.raw_stats.depth.into()),
+            sel_depth: Some(value.raw_stats.sel_depth.into()),
+            nodes: Some(value.raw_stats.nodes_searched),
+            tb_hits: Some(value.raw_stats.tt_hits),
+            time: Some(value.elapsed),
+            pv: value.pv.iter().map(|m| UCIMove::from(*m)).collect(),
+            hash_full: Some(value.hash_full.try_into().unwrap_or(1000)),
+            ..Default::default()
+        }
     }
 }
