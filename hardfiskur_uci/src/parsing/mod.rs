@@ -199,6 +199,7 @@ pub fn uci_message(input: &str) -> IResult<&str, UCIMessage> {
         ),
         preceded(token_tag("getpv"), success(UCIMessage::GetPV)),
         preceded(token_tag("eval"), success(UCIMessage::Eval)),
+        preceded(token_tag("bench"), success(UCIMessage::Bench)),
     ));
 
     let command_parser = alt((

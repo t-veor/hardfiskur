@@ -73,8 +73,17 @@ impl SearchReporter for UCIReporter {
 }
 
 fn main() {
-    let mut current_board = Board::starting_position();
+    let args: Vec<_> = std::env::args().collect();
     let mut engine = Engine::new();
+
+    if args.len() == 2 && args[1] == "bench" {
+        let (nodes, time) = engine.bench();
+        let nps = nodes * 1000 / time.as_millis() as u64;
+        println!("nodes {nodes} time {} nps {nps}", time.as_millis());
+        return;
+    }
+
+    let mut current_board = Board::starting_position();
 
     'main_loop: loop {
         let command = match read_message() {
@@ -202,6 +211,17 @@ fn main() {
             }
 
             UCIMessage::Eval => println!("{}", engine.debug_eval(&current_board)),
+
+            UCIMessage::Bench => {
+                let (nodes, time) = engine.bench();
+
+                let nps = nodes * 1000 / time.as_millis() as u64;
+
+                println!(
+                    "info string nodes {nodes} time {} nps {nps}",
+                    time.as_millis()
+                );
+            }
 
             // ignore all other messages
             _ => (),

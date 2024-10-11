@@ -11,6 +11,7 @@ use search_limits::SearchLimits;
 use search_result::{SearchInfo, SearchResult};
 use transposition_table::{TranspositionEntry, TranspositionTable};
 
+pub mod bench;
 pub mod evaluation;
 pub mod move_ordering;
 pub mod parameters;

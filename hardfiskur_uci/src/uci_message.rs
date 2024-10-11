@@ -107,6 +107,11 @@ pub enum UCIMessage {
     /// Runs the evaluation function on this position and returns the result.
     /// Does not take into account quiescence, checkmates, draws etc.
     Eval,
+
+    /// `bench`
+    /// Runs benchmark searches to get a number that can be used a signature for
+    /// the search algorithm.
+    Bench,
 }
 
 impl UCIMessage {
@@ -249,6 +254,7 @@ impl Display for UCIMessage {
             UCIMessage::UndoMove => write!(f, "undomove"),
             UCIMessage::GetPV => write!(f, "getpv"),
             UCIMessage::Eval => write!(f, "eval"),
+            UCIMessage::Bench => write!(f, "bench"),
         }
     }
 }
