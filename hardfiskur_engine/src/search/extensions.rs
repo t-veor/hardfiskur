@@ -1,15 +1,7 @@
-use crate::parameters::MAX_EXTENSIONS;
-
 use super::SearchContext;
 
 impl<'a> SearchContext<'a> {
-    pub const fn extensions(in_check: bool, extension_count: i16) -> i16 {
-        let mut extensions = 0;
-
-        if extension_count < MAX_EXTENSIONS && in_check {
-            extensions = 1;
-        }
-
-        extensions
+    pub const fn extensions(_in_check: bool, _extension_count: i16) -> i16 {
+        return 0;
     }
 }

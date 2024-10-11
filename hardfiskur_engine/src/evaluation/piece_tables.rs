@@ -114,19 +114,7 @@ pub const fn material_score(piece_type: PieceType) -> i32 {
         PieceType::Bishop => 3300,
         PieceType::Rook => 5000,
         PieceType::Queen => 9000,
-        PieceType::King => 200_000,
-    }
-}
-
-pub const FULL_ENDGAME_PHASE: i32 = 24;
-
-pub const fn phase_modifier(piece_type: PieceType) -> i32 {
-    match piece_type {
-        PieceType::Knight => 1,
-        PieceType::Bishop => 1,
-        PieceType::Rook => 2,
-        PieceType::Queen => 4,
-        _ => 0,
+        PieceType::King => 0,
     }
 }
 

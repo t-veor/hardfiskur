@@ -8,6 +8,7 @@ use hardfiskur_core::{
 ///
 /// This implementation does not consider absolute pins when it plays its
 /// captures.
+#[allow(unused)]
 pub struct Seer<'a> {
     board: &'a Board,
     lookups: &'static Lookups,
@@ -17,6 +18,7 @@ pub struct Seer<'a> {
     orthogonal_attackers: Bitboard,
 }
 
+#[allow(unused)]
 impl<'a> Seer<'a> {
     // (unused), pawn, knight, bishop, rook, queen, (king)
     const SEE_VALUES: [i32; 7] = [0, 100, 400, 400, 650, 1200, 0];

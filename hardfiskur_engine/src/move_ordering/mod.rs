@@ -3,7 +3,6 @@ mod see;
 
 use hardfiskur_core::board::{Board, Move, Piece};
 use killer_table::KillerTable;
-use see::Seer;
 
 pub struct MoveOrderer {
     killers: KillerTable,
@@ -36,44 +35,27 @@ impl MoveOrderer {
     const WINNING_CAPTURE_BIAS: i32 = 8_000_000;
     const KILLER_BIAS: i32 = 4_000_000;
     const QUIET_BIAS: i32 = 0;
-    const LOSING_CAPTURE_BIAS: i32 = -2_000_000;
+    // const LOSING_CAPTURE_BIAS: i32 = -2_000_000;
 
     pub fn order_moves(
         &self,
-        board: &Board,
+        _board: &Board,
         ply_from_root: u16,
         tt_move: Option<Move>,
         moves: &mut [Move],
     ) {
-        let seer = Seer::new(board);
+        // let seer = Seer::new(board);
 
-        moves.sort_by_cached_key(|m| -self.score_move(ply_from_root, tt_move, &seer, *m));
+        moves.sort_by_cached_key(|m| -self.score_move(ply_from_root, tt_move, *m));
     }
 
-    pub fn score_move(
-        &self,
-        ply_from_root: u16,
-        tt_move: Option<Move>,
-        seer: &Seer,
-        m: Move,
-    ) -> i32 {
+    pub fn score_move(&self, ply_from_root: u16, tt_move: Option<Move>, m: Move) -> i32 {
         if Some(m) == tt_move {
             Self::HASH_MOVE_SCORE
         } else if let Some(victim) = m.captured_piece() {
             let aggressor = m.piece();
-            // Is the capture actually good?
-            // (Assume promotion-captures are always good)
-            let is_winning = m.promotion().is_some()
-                || seer.see(m.from_square(), aggressor, m.to_square(), victim, 0);
-
-            let bias = if is_winning {
-                Self::WINNING_CAPTURE_BIAS
-            } else {
-                Self::LOSING_CAPTURE_BIAS
-            };
-
             // Order by MVV-LVA next
-            bias + self.mvv_lva_score(victim, aggressor)
+            Self::WINNING_CAPTURE_BIAS + self.mvv_lva_score(victim, aggressor)
         } else if self.is_killer(ply_from_root, m) {
             Self::KILLER_BIAS
         } else {

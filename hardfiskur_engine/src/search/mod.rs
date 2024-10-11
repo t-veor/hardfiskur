@@ -50,6 +50,10 @@ impl<'a> SearchContext<'a> {
         }
     }
 
+    pub fn consistency_check(&self) {
+        self.board.consistency_check();
+    }
+
     pub fn should_exit_search(&mut self) -> bool {
         self.is_time_up() || self.over_node_budget()
     }
@@ -79,7 +83,7 @@ impl<'a> SearchContext<'a> {
         let mut best_move = None;
 
         for depth in 1..=(self.search_limits.depth.min(MAX_DEPTH)) {
-            let score = self.negamax::<true>(depth, 0, -Score::INF, Score::INF, 0);
+            let score = self.negamax::<true>(depth, 0, -Score::INF, Score::INF);
 
             if self.should_exit_search() {
                 break;
