@@ -44,6 +44,8 @@ impl<'a> SearchContext<'a> {
             self.board.zobrist_hash()
         );
 
+        self.board.consistency_check();
+
         self.stats.nodes_searched += 1;
         self.stats.sel_depth = self.stats.sel_depth.max(ply_from_root);
 

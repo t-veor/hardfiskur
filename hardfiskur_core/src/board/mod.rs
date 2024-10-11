@@ -773,6 +773,30 @@ impl Display for Board {
     }
 }
 
+#[allow(unused)]
+impl Board {
+    #[cfg(debug_assertions)]
+    pub fn consistency_check(&self) {
+        self.board.consistency_check();
+
+        let check = || {
+            let mut zobrist_hash = self.board.zobrist_hash();
+            zobrist_hash ^= Self::non_board_hash(self.to_move, self.castling, self.en_passant);
+
+            if zobrist_hash != self.zobrist_hash {
+                return false;
+            }
+
+            true
+        };
+
+        assert!(check(), "Board became inconsistent, {self:?}");
+    }
+
+    #[cfg(not(debug_assertions))]
+    pub fn consistency_check(&self) {}
+}
+
 #[cfg(test)]
 mod test {
     use crate::test_utils::assert_in_any_order;

@@ -6,6 +6,8 @@ use super::SearchContext;
 
 impl<'a> SearchContext<'a> {
     pub fn quiescence(&mut self, ply_from_root: u16, mut alpha: Score, beta: Score) -> Score {
+        self.board.consistency_check();
+
         self.stats.nodes_searched += 1;
         self.stats.quiescence_nodes += 1;
 

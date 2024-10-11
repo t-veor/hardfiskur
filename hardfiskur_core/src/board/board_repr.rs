@@ -350,63 +350,68 @@ impl Display for BoardRepr {
     }
 }
 
+#[allow(unused)]
+impl BoardRepr {
+    #[cfg(debug_assertions)]
+    pub fn consistency_check(&self) {
+        let check = || {
+            let mut white_pieces = Bitboard::EMPTY;
+
+            for (_, board) in self.boards_colored(Color::White) {
+                if (white_pieces & board).has_piece() {
+                    return false;
+                }
+
+                white_pieces |= board;
+            }
+
+            if white_pieces != self[Color::White] {
+                return false;
+            }
+
+            let mut black_pieces = Bitboard::EMPTY;
+
+            for (_, board) in self.boards_colored(Color::Black) {
+                if (black_pieces & board).has_piece() {
+                    return false;
+                }
+
+                black_pieces |= board;
+            }
+
+            if black_pieces != self[Color::Black] {
+                return false;
+            }
+
+            if !(white_pieces & black_pieces).is_empty() {
+                return false;
+            }
+
+            let mut zobrist_hash = ZobristHash::default();
+            for (piece, square) in self.pieces() {
+                zobrist_hash.toggle_piece(piece, square);
+            }
+
+            if zobrist_hash != self.zobrist_hash {
+                return false;
+            }
+
+            true
+        };
+
+        assert!(check(), "BoardRepr became inconsistent, {self:?}");
+    }
+
+    #[cfg(not(debug_assertions))]
+    pub fn consistency_check(&self) {}
+}
+
 #[cfg(test)]
 mod test {
     use pretty_assertions::assert_eq;
     use std::str::FromStr;
 
     use super::*;
-
-    impl BoardRepr {
-        fn consistency_check(&self) {
-            let check = || {
-                let mut white_pieces = Bitboard::EMPTY;
-
-                for (_, board) in self.boards_colored(Color::White) {
-                    if (white_pieces & board).has_piece() {
-                        return false;
-                    }
-
-                    white_pieces |= board;
-                }
-
-                if white_pieces != self[Color::White] {
-                    return false;
-                }
-
-                let mut black_pieces = Bitboard::EMPTY;
-
-                for (_, board) in self.boards_colored(Color::Black) {
-                    if (black_pieces & board).has_piece() {
-                        return false;
-                    }
-
-                    black_pieces |= board;
-                }
-
-                if black_pieces != self[Color::Black] {
-                    return false;
-                }
-
-                if !(white_pieces & black_pieces).is_empty() {
-                    return false;
-                }
-
-                let mut zobrist_hash = ZobristHash::default();
-                for (piece, square) in self.pieces() {
-                    zobrist_hash.toggle_piece(piece, square);
-                }
-
-                if zobrist_hash != self.zobrist_hash {
-                    return false;
-                }
-
-                true
-            };
-
-            assert!(check(), "BoardRepr became inconsistent, {self:?}");
-        }
-    }
 
     fn b(sq: &str) -> Bitboard {
         Bitboard::from_square(sq.parse().unwrap())
