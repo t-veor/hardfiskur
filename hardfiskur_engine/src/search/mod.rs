@@ -66,10 +66,12 @@ impl<'a> SearchContext<'a> {
             return true;
         }
 
+        // FIXME: put me back when the move ordering is better so we don't spend
+        // forever down in quiescence search
         // Avoid syscalls a bit
-        if self.stats.nodes_searched % 2048 != 0 {
-            return false;
-        }
+        // if self.stats.nodes_searched % 2048 != 0 {
+        //     return false;
+        // }
 
         self.time_up = self.start_time.elapsed() >= self.search_limits.allocated_time
             || self.abort_flag.load(AtomicOrdering::Relaxed);

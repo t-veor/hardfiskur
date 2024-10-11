@@ -1,6 +1,6 @@
 # Elo History
 
-## 39a7689 (Initial)
+## 5c9988b (Initial)
 
 -   Negamax search
 -   Alpha-beta pruning

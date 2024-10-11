@@ -1,4 +1,4 @@
-use crate::{evaluation::evaluate, score::Score};
+use crate::score::Score;
 
 use super::SearchContext;
 
@@ -40,7 +40,7 @@ impl<'a> SearchContext<'a> {
         }
 
         if depth <= 0 {
-            return evaluate(self.board);
+            return self.quiescence(ply_from_root, alpha, beta);
         }
 
         let mut best_score = -Score::INF;
