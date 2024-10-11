@@ -7,4 +7,4 @@
 -   Material evaluation and simple piece square tables
 -   Iterative Deepening (but no move ordering)
 
-Bench = 5773397
+Bench = 7972010
