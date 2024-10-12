@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use hardfiskur_core::board::Move;
 
 #[derive(Default)]

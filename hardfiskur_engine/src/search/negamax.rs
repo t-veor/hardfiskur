@@ -25,7 +25,7 @@ impl<'a> SearchContext<'a> {
             return Score(0);
         }
 
-        let (legal_moves, move_gen_result) = self.board.legal_moves_and_meta();
+        let (mut legal_moves, move_gen_result) = self.board.legal_moves_and_meta();
 
         // Handle checkmate/stalemate
         let in_check = move_gen_result.checker_count > 0;
@@ -42,6 +42,9 @@ impl<'a> SearchContext<'a> {
         if depth <= 0 {
             return self.quiescence(ply_from_root, alpha, beta);
         }
+
+        self.move_orderer
+            .order_moves(self.board, ply_from_root, None, &mut legal_moves);
 
         let mut best_score = -Score::INF;
 

@@ -224,7 +224,7 @@ impl<'board, 'moves> MoveGenerator<'board, 'moves> {
         // masks, which will make sure they deal with checks and pins correctly
         self.pseudo_legal_moves(&masks);
 
-        if checker_count == 0 {
+        if checker_count == 0 && self.flags.contains(MoveGenFlags::GEN_QUIET_MOVES) {
             // Castling may be possible
             self.castling_moves(king, king_danger_squares);
         }
