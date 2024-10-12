@@ -32,7 +32,7 @@ impl Engine {
         Self {
             curr_abort_flag: Arc::new(AtomicBool::new(false)),
             transposition_table: Arc::new(Mutex::new(TranspositionTable::new(
-                64.try_into().unwrap(),
+                32.try_into().unwrap(),
             ))),
         }
     }

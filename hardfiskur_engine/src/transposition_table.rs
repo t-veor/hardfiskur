@@ -87,7 +87,7 @@ impl TryFrom<TranspositionFlagInternal> for TranspositionFlag {
 
 #[derive(Debug, Clone, Copy, Default, FromZeroes)]
 struct TranspositionEntryInternal {
-    key: ZobristHash,
+    key: u32,
     flag: TranspositionFlagInternal,
     depth: i16,
     score: Score,
@@ -96,7 +96,6 @@ struct TranspositionEntryInternal {
 
 pub struct TranspositionTable {
     num_entries: usize,
-    hash_mask: usize,
     entries: Vec<TranspositionEntryInternal>,
 
     occupied: u64,
@@ -108,7 +107,6 @@ impl TranspositionTable {
 
         Self {
             num_entries,
-            hash_mask: num_entries - 1,
             entries: vec![FromZeroes::new_zeroed(); num_entries],
             occupied: 0,
         }
@@ -119,26 +117,27 @@ impl TranspositionTable {
         const BYTES_PER_MB: usize = 1024 * 1024;
 
         let entry_size = size_of::<TranspositionEntryInternal>();
-        let max_entries = max_size_in_mb * BYTES_PER_MB / entry_size;
-
-        let num_entries = 1 << (usize::BITS - max_entries.leading_zeros() - 1);
-
-        debug_assert!(
-            size_of::<TranspositionEntryInternal>() * num_entries <= max_size_in_mb * BYTES_PER_MB
-        );
+        let num_entries = max_size_in_mb
+            .checked_mul(BYTES_PER_MB)
+            .expect("overflow when determining TT size (size provided was likely too big)")
+            / entry_size;
 
         num_entries
     }
 
     fn index(&self, key: ZobristHash) -> usize {
-        key.0 as usize & self.hash_mask
+        // Derive the key only from the lower 32 bits of the hash.
+        let key = key.0 as u32;
+        // https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+        (((key as u64) * (self.entries.len() as u64)) >> 32) as usize
     }
 
     pub fn get(&self, key: ZobristHash) -> Option<TranspositionEntry> {
         let index = self.index(key);
+        let verification_key = Self::verification_key(key);
 
         let entry = self.entries[index];
-        if entry.key != key {
+        if entry.key != verification_key {
             return None;
         }
 
@@ -152,9 +151,10 @@ impl TranspositionTable {
 
     pub fn set(&mut self, key: ZobristHash, entry: TranspositionEntry) {
         let index = self.index(key);
+        let verification_key = Self::verification_key(key);
 
         let entry = TranspositionEntryInternal {
-            key,
+            key: verification_key,
             flag: entry.flag.into(),
             depth: entry.depth,
             score: entry.score,
@@ -170,7 +170,6 @@ impl TranspositionTable {
 
     pub fn resize(&mut self, max_size_in_mb: NonZeroUsize) {
         self.num_entries = Self::get_num_entries(max_size_in_mb);
-        self.hash_mask = self.num_entries - 1;
         self.clear();
     }
 
@@ -217,6 +216,10 @@ impl TranspositionTable {
 
         moves
     }
+
+    fn verification_key(key: ZobristHash) -> u32 {
+        (key.0 >> 32) as u32
+    }
 }
 
 #[cfg(test)]
@@ -228,6 +231,9 @@ mod test {
 
     const BYTES_IN_MB: usize = 1024 * 1024;
 
+    const TEST_HASH_1: ZobristHash = ZobristHash(0);
+    const TEST_HASH_2: ZobristHash = ZobristHash(0x1010_1010);
+
     #[test]
     fn gets_correct_number_of_entries() {
         for case_mb in [
@@ -237,11 +243,14 @@ mod test {
                 TranspositionTable::get_num_entries(NonZeroUsize::new(case_mb).unwrap());
 
             let target_bytes = case_mb * BYTES_IN_MB;
-            let minimum_bytes = target_bytes / 2;
+            let minimum_bytes = (case_mb - 1) * BYTES_IN_MB;
 
             let used_bytes = num_entries * size_of::<TranspositionEntryInternal>();
 
-            assert!(num_entries.is_power_of_two());
+            dbg!(case_mb);
+            dbg!(num_entries);
+            dbg!(used_bytes);
+            dbg!(minimum_bytes, target_bytes);
             assert!(used_bytes > minimum_bytes);
             assert!(used_bytes <= target_bytes);
         }
@@ -256,7 +265,6 @@ mod test {
 
         assert_eq!(tt.entries.len(), expected_entries);
         assert_eq!(tt.num_entries, expected_entries);
-        assert_eq!(tt.hash_mask, expected_entries - 1);
         assert_eq!(tt.occupancy(), 0);
     }
 
@@ -271,7 +279,6 @@ mod test {
 
         assert_eq!(tt.entries.len(), expected_entries);
         assert_eq!(tt.num_entries, expected_entries);
-        assert_eq!(tt.hash_mask, expected_entries - 1);
         assert_eq!(tt.occupancy(), 0);
     }
 
@@ -286,9 +293,9 @@ mod test {
             best_move: Some(MoveBuilder::new(Square::E2, Square::E4, Piece::WHITE_PAWN).build()),
         };
 
-        tt.set(ZobristHash(0), entry.clone());
+        tt.set(TEST_HASH_1, entry.clone());
 
-        assert_eq!(tt.get(ZobristHash(0)), Some(entry));
+        assert_eq!(tt.get(TEST_HASH_1), Some(entry));
         assert_eq!(tt.occupied, 1);
     }
 
@@ -303,9 +310,9 @@ mod test {
             best_move: Some(MoveBuilder::new(Square::E2, Square::E4, Piece::WHITE_PAWN).build()),
         };
 
-        tt.set(ZobristHash(0), entry.clone());
+        tt.set(TEST_HASH_1, entry.clone());
 
-        assert_eq!(tt.get(ZobristHash(1)), None);
+        assert_eq!(tt.get(TEST_HASH_2), None);
     }
 
     #[test]
@@ -319,7 +326,7 @@ mod test {
             best_move: Some(MoveBuilder::new(Square::E2, Square::E4, Piece::WHITE_PAWN).build()),
         };
 
-        tt.set(ZobristHash(0), entry.clone());
+        tt.set(TEST_HASH_1, entry.clone());
 
         assert_eq!(tt.get(ZobristHash(0x8000_0000_0000_0000)), None);
     }
@@ -341,11 +348,11 @@ mod test {
             best_move: Some(MoveBuilder::new(Square::G1, Square::F3, Piece::WHITE_KNIGHT).build()),
         };
 
-        tt.set(ZobristHash(0), entry1.clone());
+        tt.set(TEST_HASH_1, entry1.clone());
         // Replace!
         tt.set(ZobristHash(0x8000_0000_0000_0000), entry2.clone());
 
-        assert_eq!(tt.get(ZobristHash(0)), None);
+        assert_eq!(tt.get(TEST_HASH_1), None);
         assert_eq!(tt.get(ZobristHash(0x8000_0000_0000_0000)), Some(entry2));
         assert_eq!(tt.occupied, 1);
     }
@@ -367,11 +374,11 @@ mod test {
             best_move: Some(MoveBuilder::new(Square::G1, Square::F3, Piece::WHITE_KNIGHT).build()),
         };
 
-        tt.set(ZobristHash(0), entry1.clone());
-        tt.set(ZobristHash(1), entry2.clone());
+        tt.set(TEST_HASH_1, entry1.clone());
+        tt.set(TEST_HASH_2, entry2.clone());
 
-        assert_eq!(tt.get(ZobristHash(0)), Some(entry1));
-        assert_eq!(tt.get(ZobristHash(1)), Some(entry2));
+        assert_eq!(tt.get(TEST_HASH_1), Some(entry1));
+        assert_eq!(tt.get(TEST_HASH_2), Some(entry2));
         assert_eq!(tt.occupied, 2);
     }
 
@@ -392,15 +399,15 @@ mod test {
             best_move: Some(MoveBuilder::new(Square::G1, Square::F3, Piece::WHITE_KNIGHT).build()),
         };
 
-        tt.set(ZobristHash(0), entry1.clone());
-        tt.set(ZobristHash(1), entry2.clone());
+        tt.set(TEST_HASH_1, entry1.clone());
+        tt.set(TEST_HASH_2, entry2.clone());
 
         assert_eq!(tt.occupied, 2);
 
         tt.clear();
 
-        assert_eq!(tt.get(ZobristHash(0)), None);
-        assert_eq!(tt.get(ZobristHash(1)), None);
+        assert_eq!(tt.get(TEST_HASH_1), None);
+        assert_eq!(tt.get(TEST_HASH_2), None);
         assert_eq!(tt.occupied, 0);
     }
 
@@ -421,15 +428,15 @@ mod test {
             best_move: Some(MoveBuilder::new(Square::G1, Square::F3, Piece::WHITE_KNIGHT).build()),
         };
 
-        tt.set(ZobristHash(0), entry1.clone());
-        tt.set(ZobristHash(1), entry2.clone());
+        tt.set(TEST_HASH_1, entry1.clone());
+        tt.set(TEST_HASH_2, entry2.clone());
 
         assert_eq!(tt.occupied, 2);
 
         tt.resize(1.try_into().unwrap());
 
-        assert_eq!(tt.get(ZobristHash(0)), None);
-        assert_eq!(tt.get(ZobristHash(1)), None);
+        assert_eq!(tt.get(TEST_HASH_1), None);
+        assert_eq!(tt.get(TEST_HASH_2), None);
         assert_eq!(tt.occupied, 0);
     }
 
