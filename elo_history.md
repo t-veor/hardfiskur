@@ -48,3 +48,22 @@ Ptnml(0-2): [1, 5, 45, 54, 252], WL/DD Ratio: 8.00
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 6cd4518 (Transposition Table pt. 1)
+
+-   Add transposition table
+-   Use transposition table only for move ordering
+-   Bench depth raised to 5
+
+Bench = 5110741
+
+```
+--------------------------------------------------
+Results of HF-new-2957c8f vs HF-old-5ada119 (10+0.1, NULL, NULL, 8moves_v3.pgn):
+Elo: 149.96 +/- 24.60, nElo: 191.81 +/- 27.80
+LOS: 100.00 %, DrawRatio: 30.33 %, PairsRatio: 6.21
+Games: 600, Wins: 352, Losses: 108, Draws: 140, Points: 422.0 (70.33 %)
+Ptnml(0-2): [6, 23, 91, 81, 99], WL/DD Ratio: 4.06
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```

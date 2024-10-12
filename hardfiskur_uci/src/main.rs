@@ -8,6 +8,16 @@ use hardfiskur_engine::{
 };
 use hardfiskur_uci::{UCIMessage, UCIPosition, UCIPositionBase, UCITimeControl};
 
+// Ensures a panic from the background thread exits the engine, rather than just
+// leaving the stdin reading thread waiting forever for a response.
+fn install_panic_hook() {
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        original_hook(panic_info);
+        std::process::exit(1);
+    }));
+}
+
 fn read_message() -> Option<UCIMessage> {
     let mut s = String::new();
     stdin().read_line(&mut s).ok()?;
@@ -75,6 +85,8 @@ impl SearchReporter for UCIReporter {
 }
 
 fn main() {
+    install_panic_hook();
+
     let args: Vec<_> = std::env::args().collect();
     let mut engine = Engine::new();
 
