@@ -1,5 +1,6 @@
 mod extensions;
 mod negamax;
+mod node_types;
 mod quiescence;
 
 use std::{
@@ -8,6 +9,7 @@ use std::{
 };
 
 use hardfiskur_core::board::{Board, Move};
+use node_types::Root;
 
 use crate::{
     move_ordering::MoveOrderer,
@@ -99,7 +101,7 @@ impl<'a> SearchContext<'a> {
         let mut best_move = None;
 
         for depth in 1..=(self.search_limits.depth.min(MAX_DEPTH)) {
-            let score = self.negamax::<true>(depth, 0, -Score::INF, Score::INF);
+            let score = self.negamax::<Root>(depth, 0, -Score::INF, Score::INF);
 
             // Accept the found best move, even from a partial search.
             if let Some(m) = self.best_root_move.take() {
