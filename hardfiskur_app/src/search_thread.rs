@@ -39,9 +39,8 @@ impl<F: Fn() + Send + Sync + 'static> SearchReporter for GUIReporter<F> {
         };
 
         println!(
-            "score {score} depth {} seldepth {} nodes {} time {:?} tt_hits {}",
+            "score {score} depth {} nodes {} time {:?} tt_hits {}",
             result.info.raw_stats.depth,
-            result.info.raw_stats.sel_depth,
             result.info.raw_stats.nodes_searched,
             result.info.elapsed,
             result.info.raw_stats.tt_hits

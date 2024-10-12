@@ -45,7 +45,6 @@ impl<'a> SearchContext<'a> {
         // Increment stats (after quiescence search, so we don't count the same
         // node twice)
         self.stats.nodes_searched += 1;
-        self.stats.sel_depth = self.stats.sel_depth.max(ply_from_root);
 
         // Transposition table lookup, for now only fetch the best move from
         // this position

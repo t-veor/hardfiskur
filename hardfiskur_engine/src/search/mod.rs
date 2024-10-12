@@ -66,12 +66,10 @@ impl<'a> SearchContext<'a> {
             return true;
         }
 
-        // FIXME: put me back when the move ordering is better so we don't spend
-        // forever down in quiescence search
         // Avoid syscalls a bit
-        // if self.stats.nodes_searched % 2048 != 0 {
-        //     return false;
-        // }
+        if self.stats.nodes_searched % 2048 != 0 {
+            return false;
+        }
 
         self.time_up = self.start_time.elapsed() >= self.search_limits.allocated_time
             || self.abort_flag.load(AtomicOrdering::Relaxed);
@@ -103,16 +101,8 @@ impl<'a> SearchContext<'a> {
         for depth in 1..=(self.search_limits.depth.min(MAX_DEPTH)) {
             let score = self.negamax::<true>(depth, 0, -Score::INF, Score::INF);
 
-            // TODO: before we get the TT, break immediately out of this loop
-            // instead of considering the move that we might have gotten this
-            // iteration (since it's probably some random move prior to TT +
-            // move ordering)
-            if self.should_exit_search() {
-                break;
-            }
-
+            // Accept the found best move, even from a partial search.
             if let Some(m) = self.best_root_move.take() {
-                best_score = score;
                 best_move = Some(m);
 
                 // Already found a mate, don't need to look any further --
@@ -126,6 +116,12 @@ impl<'a> SearchContext<'a> {
             }
 
             self.stats.depth = depth as _;
+
+            if self.should_exit_search() {
+                break;
+            }
+
+            best_score = score;
 
             if depth > 1 && self.stats.nodes_searched > 4096 {
                 send_search_info(self.get_search_info(best_score));

@@ -1,7 +1,6 @@
 #[derive(Debug, Default, Clone)]
 pub struct SearchStats {
     pub depth: u16,
-    pub sel_depth: u16,
     pub nodes_searched: u64,
     pub quiescence_nodes: u64,
     pub beta_cutoffs: u64,
