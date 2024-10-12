@@ -117,7 +117,8 @@ impl<'a> SearchContext<'a> {
 
             self.stats.depth = depth as _;
 
-            if self.should_exit_search() {
+            // Must search to at least depth 1.
+            if depth > 1 && self.should_exit_search() {
                 break;
             }
 
@@ -126,6 +127,12 @@ impl<'a> SearchContext<'a> {
             if depth > 1 && self.stats.nodes_searched > 4096 {
                 send_search_info(self.get_search_info(best_score));
             }
+        }
+
+        // In the rare case that the engine doesn't return a move, just play the
+        // first one in this position
+        if best_move.is_none() {
+            best_move = self.board.legal_moves().first().copied();
         }
 
         SearchResult {
