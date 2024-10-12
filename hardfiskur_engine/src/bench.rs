@@ -59,7 +59,7 @@ pub const BENCH_POSITIONS: &[&str] = &[
 ];
 
 impl Engine {
-    pub const DEFAULT_BENCH_DEPTH: i16 = 4;
+    pub const DEFAULT_BENCH_DEPTH: i16 = 5;
 
     fn bench_position(&self, fen: &str, depth: i16) -> (u64, Duration) {
         let mut board = Board::try_parse_fen(fen).expect("Invalid FEN");

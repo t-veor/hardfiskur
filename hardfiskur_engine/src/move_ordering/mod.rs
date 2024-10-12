@@ -30,7 +30,7 @@ impl Default for MoveOrderer {
 }
 
 impl MoveOrderer {
-    // const HASH_MOVE_SCORE: i32 = 100_000_000;
+    const HASH_MOVE_SCORE: i32 = 100_000_000;
     const WINNING_CAPTURE_BIAS: i32 = 8_000_000;
     // const KILLER_BIAS: i32 = 4_000_000;
     const QUIET_BIAS: i32 = 0;
@@ -48,11 +48,10 @@ impl MoveOrderer {
         moves.sort_by_cached_key(|m| -self.score_move(ply_from_root, tt_move, *m));
     }
 
-    pub fn score_move(&self, _ply_from_root: u16, _tt_move: Option<Move>, m: Move) -> i32 {
-        // if Some(m) == tt_move {
-        //     Self::HASH_MOVE_SCORE
-        // } else
-        if let Some(victim) = m.captured_piece() {
+    pub fn score_move(&self, _ply_from_root: u16, tt_move: Option<Move>, m: Move) -> i32 {
+        if Some(m) == tt_move {
+            Self::HASH_MOVE_SCORE
+        } else if let Some(victim) = m.captured_piece() {
             let aggressor = m.piece();
             // Order by MVV-LVA
             Self::WINNING_CAPTURE_BIAS + self.mvv_lva_score(victim, aggressor)

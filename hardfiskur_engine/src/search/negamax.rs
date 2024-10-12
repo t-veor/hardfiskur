@@ -1,4 +1,7 @@
-use crate::score::Score;
+use crate::{
+    score::Score,
+    transposition_table::{TranspositionEntry, TranspositionFlag},
+};
 
 use super::SearchContext;
 
@@ -11,10 +14,6 @@ impl<'a> SearchContext<'a> {
         beta: Score,
     ) -> Score {
         self.consistency_check();
-
-        // Increment stats
-        self.stats.nodes_searched += 1;
-        self.stats.sel_depth = self.stats.sel_depth.max(ply_from_root);
 
         // Repetition & 50-move-rule handling
         if self
@@ -43,10 +42,24 @@ impl<'a> SearchContext<'a> {
             return self.quiescence(ply_from_root, alpha, beta);
         }
 
+        // Increment stats (after quiescence search, so we don't count the same
+        // node twice)
+        self.stats.nodes_searched += 1;
+        self.stats.sel_depth = self.stats.sel_depth.max(ply_from_root);
+
+        // Transposition table lookup, for now only fetch the best move from
+        // this position
+        let tt_move = self
+            .tt
+            .get(self.board.zobrist_hash())
+            .and_then(|entry| entry.best_move);
+
         self.move_orderer
-            .order_moves(self.board, ply_from_root, None, &mut legal_moves);
+            .order_moves(self.board, ply_from_root, tt_move, &mut legal_moves);
 
         let mut best_score = -Score::INF;
+        let mut best_move = None;
+        let original_alpha = alpha;
 
         for m in legal_moves {
             self.board.push_move_unchecked(m);
@@ -60,25 +73,47 @@ impl<'a> SearchContext<'a> {
                 return best_score;
             }
 
-            if eval > best_score {
-                best_score = eval;
+            best_score = best_score.max(eval);
+
+            if eval > alpha {
+                alpha = eval;
+                best_move = Some(m);
+
+                if ROOT {
+                    self.best_root_move = Some(m);
+                }
 
                 if eval >= beta {
                     // Beta cutoff!
-                    self.stats.beta_cutoffs += 1;
                     break;
-                }
-
-                if eval > alpha {
-                    alpha = eval;
-
-                    if ROOT {
-                        self.best_root_move = Some(m);
-                    }
                 }
             }
         }
 
+        let tt_flag = Self::determine_tt_flag(best_score, original_alpha, beta);
+        if tt_flag == TranspositionFlag::Lowerbound {
+            self.stats.beta_cutoffs += 1;
+        }
+
+        self.tt.set(
+            self.board.zobrist_hash(),
+            TranspositionEntry::new(tt_flag, depth, best_score, best_move, ply_from_root),
+        );
+
         best_score
+    }
+
+    fn determine_tt_flag(
+        best_score: Score,
+        original_alpha: Score,
+        beta: Score,
+    ) -> TranspositionFlag {
+        if best_score <= original_alpha {
+            TranspositionFlag::Upperbound
+        } else if best_score >= beta {
+            TranspositionFlag::Lowerbound
+        } else {
+            TranspositionFlag::Exact
+        }
     }
 }
