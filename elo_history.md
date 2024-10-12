@@ -49,7 +49,7 @@ LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
 
-## 6cd4518 (Transposition Table pt. 1)
+## 2957c8f (Transposition Table pt. 1)
 
 -   Add transposition table
 -   Use transposition table only for move ordering
@@ -65,5 +65,24 @@ LOS: 100.00 %, DrawRatio: 30.33 %, PairsRatio: 6.21
 Games: 600, Wins: 352, Losses: 108, Draws: 140, Points: 422.0 (70.33 %)
 Ptnml(0-2): [6, 23, 91, 81, 99], WL/DD Ratio: 4.06
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
+
+## 9c3e6bc (Partial Search Results)
+
+-   Accept partial search results if the at least one move has been searched, as
+    the TT and move ordering guarantee the move from the previous generation is
+    first to be searched
+
+Bench = 5110741 (no change to fixed-depth searches)
+
+```
+--------------------------------------------------
+Results of HF-new-9c3e6bc vs HF-old-2957c8f (10+0.1, NULL, NULL, 8moves_v3.pgn):
+Elo: 42.21 +/- 14.79, nElo: 49.29 +/- 17.09
+LOS: 100.00 %, DrawRatio: 36.90 %, PairsRatio: 1.58
+Games: 1588, Wins: 710, Losses: 518, Draws: 360, Points: 890.0 (56.05 %)
+Ptnml(0-2): [77, 117, 293, 151, 156], WL/DD Ratio: 5.37
+LLR: 2.97 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
