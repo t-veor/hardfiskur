@@ -26,3 +26,25 @@ Ptnml(0-2): [4, 4, 58, 51, 198]
 LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+This version appears to have a bug that causes fastchess to hang sometimes where
+if the time is too short, it doesn't report a best move. This is fixed in later
+versions.
+
+## 5ada119 (MVV-LVA)
+
+-   Sort captures first
+-   Use MVV-LVA for capture ordering
+
+Bench = 3197660
+
+```
+--------------------------------------------------
+Results of HF-new-5ada119 vs HF-old-ebdc236 (10+0.1, NULL, NULL, 8moves_v3.pgn):
+Elo: 355.96 +/- 35.36, nElo: 482.39 +/- 25.48
+LOS: 100.00 %, DrawRatio: 12.61 %, PairsRatio: 51.00
+Games: 714, Wins: 598, Losses: 47, Draws: 69, Points: 632.5 (88.59 %)
+Ptnml(0-2): [1, 5, 45, 54, 252], WL/DD Ratio: 8.00
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
