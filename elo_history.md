@@ -87,17 +87,19 @@ LLR: 2.97 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
 
-## 16d3421 (Transposition Table Cutoffs)
+## c16c8db (Transposition Table Cutoffs)
 
 -   Use transposition table entries to produce cutoffs
 
+Bench = 4671980
+
 ```
 --------------------------------------------------
-Results of HF-new-16d3421 vs HF-old-9c3e6bc (10+0.1, NULL, NULL, 8moves_v3.pgn):
-Elo: 10.04 +/- 6.45, nElo: 12.55 +/- 8.06
-LOS: 99.89 %, DrawRatio: 41.60 %, PairsRatio: 1.11
-Games: 7134, Wins: 2775, Losses: 2569, Draws: 1790, Points: 3670.0 (51.44 %)
-Ptnml(0-2): [368, 617, 1484, 637, 461], WL/DD Ratio: 4.54
-LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
+Results of HF-new-c16c8db vs HF-old-9c3e6bc (10+0.1, NULL, NULL, 8moves_v3.pgn):
+Elo: 56.86 +/- 15.93, nElo: 76.50 +/- 21.03
+LOS: 100.00 %, DrawRatio: 40.46 %, PairsRatio: 2.28
+Games: 1048, Wins: 458, Losses: 288, Draws: 302, Points: 609.0 (58.11 %)
+Ptnml(0-2): [28, 67, 212, 141, 76], WL/DD Ratio: 3.51
+LLR: 2.94 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
