@@ -46,12 +46,19 @@ impl<'a> SearchContext<'a> {
         // node twice)
         self.stats.nodes_searched += 1;
 
-        // Transposition table lookup, for now only fetch the best move from
-        // this position
-        let tt_move = self
-            .tt
-            .get(self.board.zobrist_hash())
-            .and_then(|entry| entry.best_move);
+        // Transposition table lookup
+        let tt_move = if let Some(entry) = self.tt.get(self.board.zobrist_hash()) {
+            // TODO: If this is a beta cutoff, it needs to do killer/history
+            // updates etc.
+            if Self::should_cutoff(&entry, depth, ply_from_root, alpha, beta) {
+                self.stats.tt_hits += 1;
+                return entry.get_score(ply_from_root);
+            }
+
+            entry.best_move
+        } else {
+            None
+        };
 
         self.move_orderer
             .order_moves(self.board, ply_from_root, tt_move, &mut legal_moves);
@@ -113,6 +120,21 @@ impl<'a> SearchContext<'a> {
             TranspositionFlag::Lowerbound
         } else {
             TranspositionFlag::Exact
+        }
+    }
+
+    fn should_cutoff(
+        entry: &TranspositionEntry,
+        depth: i16,
+        ply_from_root: u16,
+        alpha: Score,
+        beta: Score,
+    ) -> bool {
+        match entry.flag {
+            _ if depth > entry.depth => false,
+            TranspositionFlag::Exact => true,
+            TranspositionFlag::Lowerbound => entry.get_score(ply_from_root) >= beta,
+            TranspositionFlag::Upperbound => entry.get_score(ply_from_root) <= alpha,
         }
     }
 }

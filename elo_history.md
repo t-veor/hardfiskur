@@ -86,3 +86,18 @@ Ptnml(0-2): [77, 117, 293, 151, 156], WL/DD Ratio: 5.37
 LLR: 2.97 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 16d3421 (Transposition Table Cutoffs)
+
+-   Use transposition table entries to produce cutoffs
+
+```
+--------------------------------------------------
+Results of HF-new-16d3421 vs HF-old-9c3e6bc (10+0.1, NULL, NULL, 8moves_v3.pgn):
+Elo: 10.04 +/- 6.45, nElo: 12.55 +/- 8.06
+LOS: 99.89 %, DrawRatio: 41.60 %, PairsRatio: 1.11
+Games: 7134, Wins: 2775, Losses: 2569, Draws: 1790, Points: 3670.0 (51.44 %)
+Ptnml(0-2): [368, 617, 1484, 637, 461], WL/DD Ratio: 4.54
+LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
