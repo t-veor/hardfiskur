@@ -52,6 +52,16 @@ impl<'a> SearchContext<'a> {
             // updates etc.
             if Self::should_cutoff(&entry, depth, ply_from_root, alpha, beta) {
                 self.stats.tt_hits += 1;
+
+                // TODO: This is temporarily here to prevent the search from not
+                // returning a move when the root node finds an exact score.
+                // Once PVS is implemented, TT cutoffs should no longer happen
+                // on PV nodes (including the root), so this will be unnecessary
+                // and can be removed at that point.
+                if ROOT {
+                    self.best_root_move = entry.best_move;
+                }
+
                 return entry.get_score(ply_from_root);
             }
 

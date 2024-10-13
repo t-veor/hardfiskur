@@ -132,6 +132,7 @@ impl<'a> SearchContext<'a> {
         // In the rare case that the engine doesn't return a move, just play the
         // first one in this position
         if best_move.is_none() {
+            eprintln!("Search did not return root best move, engine is probably going to blunder!");
             best_move = self.board.legal_moves().first().copied();
         }
 
