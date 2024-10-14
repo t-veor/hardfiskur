@@ -3,10 +3,13 @@ use crate::{
     transposition_table::{TranspositionEntry, TranspositionFlag},
 };
 
-use super::SearchContext;
+use super::{
+    node_types::{NodeType, NonPV},
+    SearchContext,
+};
 
 impl<'a> SearchContext<'a> {
-    pub fn negamax<const ROOT: bool>(
+    pub fn negamax<NT: NodeType>(
         &mut self,
         depth: i16,
         ply_from_root: u16,
@@ -14,6 +17,7 @@ impl<'a> SearchContext<'a> {
         beta: Score,
     ) -> Score {
         self.consistency_check();
+        debug_assert!(NT::IS_PV || beta - alpha == Score(1));
 
         // Repetition & 50-move-rule handling
         if self
@@ -50,17 +54,11 @@ impl<'a> SearchContext<'a> {
         let tt_move = if let Some(entry) = self.tt.get(self.board.zobrist_hash()) {
             // TODO: If this is a beta cutoff, it needs to do killer/history
             // updates etc.
-            if Self::should_cutoff(&entry, depth, ply_from_root, alpha, beta) {
+            if !NT::IS_PV && Self::should_cutoff(&entry, depth, ply_from_root, alpha, beta) {
                 self.stats.tt_hits += 1;
 
-                // TODO: This is temporarily here to prevent the search from not
-                // returning a move when the root node finds an exact score.
-                // Once PVS is implemented, TT cutoffs should no longer happen
-                // on PV nodes (including the root), so this will be unnecessary
-                // and can be removed at that point.
-                if ROOT {
-                    self.best_root_move = entry.best_move;
-                }
+                // Sanity check
+                assert!(!NT::IS_ROOT);
 
                 return entry.get_score(ply_from_root);
             }
@@ -77,10 +75,14 @@ impl<'a> SearchContext<'a> {
         let mut best_move = None;
         let original_alpha = alpha;
 
-        for m in legal_moves {
+        for (move_idx, m) in legal_moves.into_iter().enumerate() {
             self.board.push_move_unchecked(m);
 
-            let eval = -self.negamax::<false>(depth - 1, ply_from_root + 1, -beta, -alpha);
+            let eval = if move_idx == 0 {
+                -self.negamax::<NT::Next>(depth - 1, ply_from_root + 1, -beta, -alpha)
+            } else {
+                self.principal_variation_search::<NT>(depth, ply_from_root, alpha, beta)
+            };
 
             self.board.pop_move();
 
@@ -95,7 +97,7 @@ impl<'a> SearchContext<'a> {
                 alpha = eval;
                 best_move = Some(m);
 
-                if ROOT {
+                if NT::IS_ROOT {
                     self.best_root_move = Some(m);
                 }
 
@@ -117,6 +119,28 @@ impl<'a> SearchContext<'a> {
         );
 
         best_score
+    }
+
+    fn principal_variation_search<NT: NodeType>(
+        &mut self,
+        depth: i16,
+        ply_from_root: u16,
+        alpha: Score,
+        beta: Score,
+    ) -> Score {
+        // Try a null-window search
+        let score = -self.negamax::<NonPV>(depth - 1, ply_from_root + 1, -alpha - 1, -alpha);
+
+        // If the search fails, we have to a full width search
+        if NT::IS_PV && alpha < score && score < beta {
+            // Note -- the null window search fails if the score is >= alpha.
+            // However, we can skip the research if it also happens that the
+            // score is >= beta, because we would cause a cutoff in the outer
+            // loop anyway.
+            -self.negamax::<NT::Next>(depth - 1, ply_from_root + 1, -beta, -alpha)
+        } else {
+            score
+        }
     }
 
     fn determine_tt_flag(
