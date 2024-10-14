@@ -10,7 +10,6 @@ use crate::score::Score;
 pub fn evaluate_for_white_ex(board: &Board) -> (Score, Phase) {
     let mut phase = Phase(0);
 
-    let mut material = 0;
     let mut midgame_eval = 0;
     let mut endgame_eval = 0;
 
@@ -22,24 +21,25 @@ pub fn evaluate_for_white_ex(board: &Board) -> (Score, Phase) {
             Color::Black => -1,
         };
 
-        material += sign * material_score(piece.piece_type());
+        let square = match piece.color() {
+            Color::White => square,
+            Color::Black => square.flip(),
+        };
 
         {
-            let corrected_square = match piece.color() {
-                Color::White => square,
-                Color::Black => square.flip(),
-            };
+            let (mg, eg) = material_score(piece.piece_type());
+            midgame_eval += sign * mg;
+            endgame_eval += sign * eg;
+        }
 
-            let (mg, eg) = piece_square_table(piece.piece_type(), corrected_square);
-
+        {
+            let (mg, eg) = piece_square_table(piece.piece_type(), square);
             midgame_eval += sign * mg;
             endgame_eval += sign * eg;
         }
     }
 
-    let tapered_eval = phase.taper(midgame_eval, endgame_eval);
-
-    (Score(material + tapered_eval), phase)
+    (Score(phase.taper(midgame_eval, endgame_eval)), phase)
 }
 
 pub fn evaluate_ex(board: &Board) -> (Score, Phase) {
