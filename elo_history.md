@@ -103,3 +103,20 @@ Ptnml(0-2): [28, 67, 212, 141, 76], WL/DD Ratio: 3.51
 LLR: 2.94 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 557a26e (Texel-tuned Eval)
+
+-   Added texel-tuned evaluation function (eval is still simple material + PSTs)
+
+Bench = 5975902
+
+```
+--------------------------------------------------
+Results of HF-new-557a26e vs HF-old-c16c8db (10+0.1, NULL, NULL, 8moves_v3.pgn):
+Elo: 184.54 +/- 27.93, nElo: 224.43 +/- 28.23
+LOS: 100.00 %, DrawRatio: 25.09 %, PairsRatio: 7.38
+Games: 582, Wins: 376, Losses: 93, Draws: 113, Points: 432.5 (74.31 %)
+Ptnml(0-2): [6, 20, 73, 69, 123], WL/DD Ratio: 5.08
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
