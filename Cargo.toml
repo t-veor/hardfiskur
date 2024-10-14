@@ -10,5 +10,6 @@ members = [
     "bitboard_attack_viewer",
     "perft",
     "perft_testsuite",
+    "pst_viewer",
 ]
 resolver = "2"
