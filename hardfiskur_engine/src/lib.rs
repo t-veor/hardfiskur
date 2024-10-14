@@ -85,6 +85,11 @@ impl Engine {
     pub fn debug_eval(&self, current_board: &Board) -> Score {
         evaluate_for_white(current_board)
     }
+
+    pub fn set_tt_size(&mut self, size_in_mb: usize) {
+        let mut tt = self.transposition_table.lock().unwrap();
+        tt.resize(size_in_mb.try_into().unwrap());
+    }
 }
 
 impl Default for Engine {
