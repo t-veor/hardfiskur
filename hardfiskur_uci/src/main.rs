@@ -18,6 +18,17 @@ fn install_panic_hook() {
     }));
 }
 
+fn version_string() -> String {
+    let rev = option_env!("VERGEN_GIT_DESCRIBE").unwrap_or("unknown");
+    let dirty = if option_env!("VERGEN_GIT_DIRTY") == Some("true") {
+        "-DIRTY"
+    } else {
+        ""
+    };
+
+    format!("rev {rev}{dirty}")
+}
+
 fn read_message() -> Option<UCIMessage> {
     let mut s = String::new();
     stdin().read_line(&mut s).ok()?;
@@ -114,7 +125,7 @@ fn main() {
             UCIMessage::UCI => {
                 println!(
                     "{}",
-                    UCIMessage::id_name(&format!("Harðfiskur (rev {})", env!("GIT_HASH_SHORT")))
+                    UCIMessage::id_name(&format!("Harðfiskur ({})", version_string()))
                 );
                 println!("{}", UCIMessage::id_author("Tyler Zhang"));
                 println!("{}", UCIMessage::UCIOk);

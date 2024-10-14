@@ -1,10 +1,7 @@
-use std::process::Command;
+use vergen_gitcl::{Emitter, GitclBuilder};
 
-fn main() {
-    let output = Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
-        .output()
-        .unwrap();
-    let git_hash = String::from_utf8(output.stdout).unwrap();
-    println!("cargo:rustc-env=GIT_HASH_SHORT={}", git_hash);
+fn main() -> anyhow::Result<()> {
+    let gitcl = GitclBuilder::all_git()?;
+
+    Emitter::default().add_instructions(&gitcl)?.emit()
 }
