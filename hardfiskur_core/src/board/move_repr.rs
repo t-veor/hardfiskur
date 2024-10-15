@@ -250,10 +250,12 @@ impl Debug for Move {
 pub struct OptionalMove(Option<NonZeroU32>);
 
 impl OptionalMove {
+    #[inline]
     pub fn from_option_move(value: Option<Move>) -> Self {
         Self(value.map(|value| value.0))
     }
 
+    #[inline]
     pub fn as_option_move(self) -> Option<Move> {
         self.0.map(Move)
     }
