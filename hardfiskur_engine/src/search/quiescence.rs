@@ -32,9 +32,13 @@ impl<'a> SearchContext<'a> {
             moves
         };
 
-        let move_iter =
-            self.move_orderer
-                .order_moves(self.board, ply_from_root, None, capturing_moves);
+        let move_iter = self.move_orderer.order_moves(
+            self.board,
+            ply_from_root,
+            None,
+            &self.history,
+            capturing_moves,
+        );
 
         for m in move_iter {
             if !m.is_capture() {

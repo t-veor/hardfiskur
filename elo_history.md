@@ -221,3 +221,20 @@ Ptnml(0-2): [13, 27, 78, 84, 108], WL/DD Ratio: 3.33
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 3412995 (History Heuristic)
+
+-   Added Butterfly History Heuristic, and used to order moves
+
+Bench = 1718300
+
+```
+--------------------------------------------------
+Results of HF-new-3412995 vs HF-old-698ac96 (10+0.1, 1t, 32MB, opening_book.epd):
+Elo: 62.10 +/- 17.43, nElo: 76.69 +/- 21.06
+LOS: 100.00 %, DrawRatio: 33.08 %, PairsRatio: 2.02
+Games: 1046, Wins: 460, Losses: 275, Draws: 311, Points: 615.5 (58.84 %)
+Ptnml(0-2): [31, 85, 173, 136, 98], WL/DD Ratio: 2.84
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```

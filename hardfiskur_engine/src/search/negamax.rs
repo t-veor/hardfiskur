@@ -1,3 +1,5 @@
+use hardfiskur_core::move_gen::MoveVec;
+
 use crate::{
     evaluation::evaluate,
     score::Score,
@@ -89,12 +91,14 @@ impl<'a> SearchContext<'a> {
             self.board,
             ply_from_root,
             tt_entry.and_then(|entry| entry.best_move),
+            &self.history,
             legal_moves,
         );
 
         let mut best_score = -Score::INF;
         let mut best_move = None;
         let original_alpha = alpha;
+        let mut previously_played_quiets = MoveVec::new();
 
         for (move_idx, m) in move_iter.enumerate() {
             self.board.push_move_unchecked(m);
@@ -127,6 +131,10 @@ impl<'a> SearchContext<'a> {
                     break;
                 }
             }
+
+            if !m.is_capture() {
+                previously_played_quiets.push(m);
+            }
         }
 
         let tt_flag = Self::determine_tt_flag(best_score, original_alpha, beta);
@@ -137,6 +145,15 @@ impl<'a> SearchContext<'a> {
             if let Some(best_move) = best_move {
                 self.move_orderer
                     .update_heuristics(depth, ply_from_root, best_move);
+
+                if !best_move.is_capture() {
+                    self.history.update_quiets(
+                        self.board.to_move(),
+                        depth,
+                        best_move,
+                        &previously_played_quiets,
+                    );
+                }
             } else {
                 #[cfg(debug_assertions)]
                 panic!("tt_flag was lowerbound but best_move is None?");
