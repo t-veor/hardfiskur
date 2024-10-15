@@ -137,3 +137,33 @@ Ptnml(0-2): [212, 310, 754, 380, 274], WL/DD Ratio: 5.08
 LLR: 2.98 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## a3c9a98 (Optimisation Pass #1)
+
+General optimization pass based on some profiling.
+
+-   Changed an `unreachable!()` to an `unreachable_unchecked` in
+    `Piece::piece_type` (this single change increased NPS from ~2.86 million/s
+    to ~3.34 million/s)
+-   Changed tapered eval to use packed middlegame and endgame scores
+-   General optimisation of evaluation function
+-   Changed move ordering to pick the top move each time (should save as in most
+    nodes cutoffs occur in the first few moves, so we expect O(kn) time rather
+    than O(n log n))
+
+The search algorithm should be the same, but due to the move ordering changes
+moves with the same score may be picked in a different order. This is the reason
+for the slightly different bench.
+
+Bench = 4349765
+
+```
+--------------------------------------------------
+Results of HF-new-a3c9a98 vs HF-old-8659c6e (10+0.1, 1t - NULL, 32MB - NULL, opening_book.epd):
+Elo: 65.57 +/- 18.06, nElo: 79.19 +/- 21.28
+LOS: 100.00 %, DrawRatio: 37.70 %, PairsRatio: 2.13
+Games: 1024, Wins: 486, Losses: 295, Draws: 243, Points: 607.5 (59.33 %)
+Ptnml(0-2): [35, 67, 193, 106, 111], WL/DD Ratio: 4.51
+LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
