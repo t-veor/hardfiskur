@@ -1,4 +1,5 @@
 use crate::{
+    evaluation::evaluate,
     score::Score,
     transposition_table::{TranspositionEntry, TranspositionFlag},
 };
@@ -51,7 +52,7 @@ impl<'a> SearchContext<'a> {
         self.stats.nodes_searched += 1;
 
         // Transposition table lookup
-        let tt_move = if let Some(entry) = self.tt.get(self.board.zobrist_hash()) {
+        let tt_entry = if let Some(entry) = self.tt.get(self.board.zobrist_hash()) {
             // TODO: If this is a beta cutoff, it needs to do killer/history
             // updates etc.
             if !NT::IS_PV && Self::should_cutoff(&entry, depth, ply_from_root, alpha, beta) {
@@ -63,14 +64,32 @@ impl<'a> SearchContext<'a> {
                 return entry.get_score(ply_from_root);
             }
 
-            entry.best_move
+            Some(entry)
         } else {
             None
         };
 
-        let move_iter =
-            self.move_orderer
-                .order_moves(self.board, ply_from_root, tt_move, legal_moves);
+        let static_eval = match tt_entry.as_ref() {
+            Some(entry) => entry.get_score(ply_from_root),
+            None if in_check => -Score::INF,
+            None => evaluate(self.board),
+        };
+
+        // Forward pruning
+        if !NT::IS_ROOT && !NT::IS_PV && !in_check {
+            if let Some(score) =
+                self.forward_pruning(depth, ply_from_root, static_eval, alpha, beta)
+            {
+                return score;
+            }
+        }
+
+        let move_iter = self.move_orderer.order_moves(
+            self.board,
+            ply_from_root,
+            tt_entry.and_then(|entry| entry.best_move),
+            legal_moves,
+        );
 
         let mut best_score = -Score::INF;
         let mut best_move = None;
