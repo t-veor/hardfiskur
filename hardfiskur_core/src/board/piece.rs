@@ -1,7 +1,5 @@
 use std::{
-    fmt::{Debug, Display, Write},
-    num::NonZeroU8,
-    str::FromStr,
+    fmt::{Debug, Display, Write},  num::NonZeroU8, str::FromStr
 };
 
 use num_derive::{FromPrimitive, ToPrimitive};
@@ -264,7 +262,18 @@ impl Piece {
             4 => PieceType::Rook,
             5 => PieceType::Queen,
             6 => PieceType::King,
-            _ => unreachable!(),
+            _ => {
+                // This one unreachable_unchecked raises NPS from 2.86m/s to
+                // 3.34 m/s. To not be too crazy, with debug_assertions turned
+                // on I replace this with a regular safe unreachable.
+                #[cfg(debug_assertions)]
+                { unreachable!() }
+                // Safety - self.0 should always be an OR of Color (0 or 8) and
+                // PieceType (1-6), so the xor with 7 should always extract a
+                // PieceType
+                #[cfg(not(debug_assertions))]
+                unsafe { std::hint::unreachable_unchecked() }
+            },
         }
     }
 
