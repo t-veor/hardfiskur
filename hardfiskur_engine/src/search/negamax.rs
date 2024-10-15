@@ -131,6 +131,15 @@ impl<'a> SearchContext<'a> {
         let tt_flag = Self::determine_tt_flag(best_score, original_alpha, beta);
         if tt_flag == TranspositionFlag::Lowerbound {
             self.stats.beta_cutoffs += 1;
+
+            // Getting a beta-cutoff should always mean we have a best move
+            if let Some(best_move) = best_move {
+                self.move_orderer
+                    .update_heuristics(depth, ply_from_root, best_move);
+            } else {
+                #[cfg(debug_assertions)]
+                panic!("tt_flag was lowerbound but best_move is None?");
+            }
         }
 
         self.tt.set(
