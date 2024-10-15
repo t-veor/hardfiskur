@@ -62,10 +62,11 @@ impl Engine {
     pub const DEFAULT_BENCH_DEPTH: i16 = 5;
 
     fn bench_position(&self, fen: &str, depth: i16) -> (u64, Duration) {
+        self.new_game();
+
         let mut board = Board::try_parse_fen(fen).expect("Invalid FEN");
 
-        let mut tt = self.transposition_table.lock().unwrap();
-        tt.clear();
+        let persistent = &mut *self.persistent.lock().unwrap();
 
         let abort_flag = AtomicBool::new(false);
 
@@ -75,7 +76,8 @@ impl Engine {
                 depth,
                 ..SearchLimits::infinite()
             },
-            &mut tt,
+            &mut persistent.tt,
+            &mut persistent.history,
             &abort_flag,
         );
 

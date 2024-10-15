@@ -13,6 +13,7 @@ use hardfiskur_core::board::{Board, Move};
 use node_types::Root;
 
 use crate::{
+    history_table::HistoryTable,
     move_ordering::MoveOrderer,
     parameters::MAX_DEPTH,
     score::Score,
@@ -30,6 +31,7 @@ pub struct SearchContext<'a> {
     pub time_up: bool,
 
     pub tt: &'a mut TranspositionTable,
+    pub history: &'a mut HistoryTable,
     pub move_orderer: MoveOrderer,
 
     pub abort_flag: &'a AtomicBool,
@@ -41,6 +43,7 @@ impl<'a> SearchContext<'a> {
         board: &'a mut Board,
         search_limits: SearchLimits,
         tt: &'a mut TranspositionTable,
+        history: &'a mut HistoryTable,
         abort_flag: &'a AtomicBool,
     ) -> Self {
         Self {
@@ -50,6 +53,7 @@ impl<'a> SearchContext<'a> {
             stats: SearchStats::default(),
             time_up: false,
             tt,
+            history,
             move_orderer: MoveOrderer::new(),
             abort_flag,
             best_root_move: None,

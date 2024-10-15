@@ -5,6 +5,7 @@ use std::sync::{
 
 use evaluation::evaluate_for_white;
 use hardfiskur_core::board::{Board, Move};
+use history_table::HistoryTable;
 use score::Score;
 use search::SearchContext;
 use search_limits::SearchLimits;
@@ -13,6 +14,7 @@ use transposition_table::{TranspositionEntry, TranspositionTable};
 
 pub mod bench;
 pub mod evaluation;
+pub mod history_table;
 pub mod move_ordering;
 pub mod parameters;
 pub mod score;
@@ -24,16 +26,17 @@ pub mod transposition_table;
 
 pub struct Engine {
     curr_abort_flag: Arc<AtomicBool>,
-    transposition_table: Arc<Mutex<TranspositionTable>>,
+    persistent: Arc<Mutex<Persistent>>,
 }
 
 impl Engine {
     pub fn new() -> Self {
         Self {
             curr_abort_flag: Arc::new(AtomicBool::new(false)),
-            transposition_table: Arc::new(Mutex::new(TranspositionTable::new(
-                32.try_into().unwrap(),
-            ))),
+            persistent: Arc::new(Mutex::new(Persistent {
+                tt: TranspositionTable::new(32.try_into().unwrap()),
+                history: HistoryTable::new(),
+            })),
         }
     }
 
@@ -48,11 +51,17 @@ impl Engine {
         self.curr_abort_flag = Arc::new(AtomicBool::new(false));
         let abort_flag = self.curr_abort_flag.clone();
 
-        let transposition_table = self.transposition_table.clone();
+        let persistent = self.persistent.clone();
 
         std::thread::spawn(move || {
-            let mut tt = transposition_table.lock().unwrap();
-            let ctx = SearchContext::new(&mut board, search_limits, &mut tt, &abort_flag);
+            let persistent = &mut *persistent.lock().unwrap();
+            let ctx = SearchContext::new(
+                &mut board,
+                search_limits,
+                &mut persistent.tt,
+                &mut persistent.history,
+                &abort_flag,
+            );
 
             let result = ctx.iterative_deepening_search(|info| {
                 reporter.receive_search_info(info);
@@ -68,18 +77,19 @@ impl Engine {
 
     pub fn new_game(&self) {
         self.abort_search();
-        let mut tt = self.transposition_table.lock().unwrap();
-        tt.clear();
+        let mut persistent = self.persistent.lock().unwrap();
+        persistent.tt.clear();
+        persistent.history.clear();
     }
 
     pub fn get_tt_entry(&self, current_board: &Board) -> Option<TranspositionEntry> {
-        let tt = self.transposition_table.lock().unwrap();
-        tt.get(current_board.zobrist_hash())
+        let persistent = self.persistent.lock().unwrap();
+        persistent.tt.get(current_board.zobrist_hash())
     }
 
     pub fn get_pv(&self, current_board: &Board) -> Vec<Move> {
-        let tt = self.transposition_table.lock().unwrap();
-        tt.extract_pv(&mut current_board.clone())
+        let persistent = self.persistent.lock().unwrap();
+        persistent.tt.extract_pv(&mut current_board.clone())
     }
 
     pub fn debug_eval(&self, current_board: &Board) -> Score {
@@ -87,8 +97,8 @@ impl Engine {
     }
 
     pub fn set_tt_size(&mut self, size_in_mb: usize) {
-        let mut tt = self.transposition_table.lock().unwrap();
-        tt.resize(size_in_mb.try_into().unwrap());
+        let mut persistent = self.persistent.lock().unwrap();
+        persistent.tt.resize(size_in_mb.try_into().unwrap());
     }
 }
 
@@ -102,6 +112,11 @@ impl Drop for Engine {
     fn drop(&mut self) {
         self.curr_abort_flag.store(true, AtomicOrdering::Relaxed);
     }
+}
+
+struct Persistent {
+    tt: TranspositionTable,
+    history: HistoryTable,
 }
 
 pub trait SearchReporter: Send + Sync + 'static {

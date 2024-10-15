@@ -2,10 +2,12 @@ mod killer_table;
 mod see;
 
 use hardfiskur_core::{
-    board::{Board, Move, Piece},
+    board::{Board, Color, Move, Piece},
     move_gen::MoveVec,
 };
 use killer_table::KillerTable;
+
+use crate::history_table::HistoryTable;
 
 pub struct MoveOrderer {
     killers: KillerTable,
@@ -44,21 +46,29 @@ impl MoveOrderer {
 
     pub fn order_moves(
         &self,
-        _board: &Board,
+        board: &Board,
         ply_from_root: u16,
         tt_move: Option<Move>,
+        history: &HistoryTable,
         moves: MoveVec,
     ) -> OrderedMoves {
         // let seer = Seer::new(board);
 
         let scores = moves
             .iter()
-            .map(|m| self.score_move(ply_from_root, tt_move, *m))
+            .map(|m| self.score_move(board.to_move(), ply_from_root, tt_move, history, *m))
             .collect();
         OrderedMoves { moves, scores }
     }
 
-    pub fn score_move(&self, ply_from_root: u16, tt_move: Option<Move>, m: Move) -> i32 {
+    pub fn score_move(
+        &self,
+        to_move: Color,
+        ply_from_root: u16,
+        tt_move: Option<Move>,
+        history: &HistoryTable,
+        m: Move,
+    ) -> i32 {
         if Some(m) == tt_move {
             Self::HASH_MOVE_SCORE
         } else if let Some(victim) = m.captured_piece() {
@@ -68,7 +78,7 @@ impl MoveOrderer {
         } else if self.is_killer(ply_from_root, m) {
             Self::KILLER_BIAS
         } else {
-            Self::QUIET_BIAS
+            Self::QUIET_BIAS + history.get_quiet_history(to_move, m)
         }
     }
 
