@@ -190,7 +190,7 @@ LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 
 ## 77d056d (Null Move Pruning)
 
-- Added Null Move Pruning when off-PV and not in check
+-   Added Null Move Pruning when off-PV and not in check
 
 Bench = 3313576
 
@@ -201,6 +201,23 @@ Elo: 43.96 +/- 14.79, nElo: 53.83 +/- 17.91
 LOS: 100.00 %, DrawRatio: 37.21 %, PairsRatio: 1.65
 Games: 1446, Wins: 618, Losses: 436, Draws: 392, Points: 814.0 (56.29 %)
 Ptnml(0-2): [56, 115, 269, 157, 126], WL/DD Ratio: 3.48
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
+
+## 698ac96 (Killer Move Heuristic)
+
+-   Add killer move table and order quiet moves by killer move
+
+Bench = 1912275
+
+```
+--------------------------------------------------
+Results of HF-new-698ac96 vs HF-old-77d056d (10+0.1, 1t, 32MB, opening_book.epd):
+Elo: 146.52 +/- 26.12, nElo: 172.71 +/- 27.35
+LOS: 100.00 %, DrawRatio: 25.16 %, PairsRatio: 4.80
+Games: 620, Wins: 360, Losses: 113, Draws: 147, Points: 433.5 (69.92 %)
+Ptnml(0-2): [13, 27, 78, 84, 108], WL/DD Ratio: 3.33
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
