@@ -1,4 +1,5 @@
 mod extensions;
+mod forward_pruning;
 mod negamax;
 mod node_types;
 mod quiescence;

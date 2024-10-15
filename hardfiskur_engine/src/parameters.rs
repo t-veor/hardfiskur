@@ -3,3 +3,6 @@
 // returns, for example.
 pub const MAX_DEPTH: i16 = 256;
 pub const MAX_EXTENSIONS: i16 = 16;
+
+pub const RFP_DEPTH: i16 = 7;
+pub const RFP_MARGIN: i32 = 800;
