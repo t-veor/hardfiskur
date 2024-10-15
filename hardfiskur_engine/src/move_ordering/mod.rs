@@ -6,6 +6,7 @@ use hardfiskur_core::{
     move_gen::MoveVec,
 };
 use killer_table::KillerTable;
+use see::Seer;
 
 use crate::history_table::HistoryTable;
 
@@ -42,7 +43,7 @@ impl MoveOrderer {
     const WINNING_CAPTURE_BIAS: i32 = 8_000_000;
     const KILLER_BIAS: i32 = 4_000_000;
     const QUIET_BIAS: i32 = 0;
-    // const LOSING_CAPTURE_BIAS: i32 = -2_000_000;
+    const LOSING_CAPTURE_BIAS: i32 = -2_000_000;
 
     pub fn order_moves(
         &self,
@@ -52,11 +53,11 @@ impl MoveOrderer {
         history: &HistoryTable,
         moves: MoveVec,
     ) -> OrderedMoves {
-        // let seer = Seer::new(board);
+        let seer = Seer::new(board);
 
         let scores = moves
             .iter()
-            .map(|m| self.score_move(board.to_move(), ply_from_root, tt_move, history, *m))
+            .map(|m| self.score_move(board.to_move(), ply_from_root, tt_move, &seer, history, *m))
             .collect();
         OrderedMoves { moves, scores }
     }
@@ -66,6 +67,7 @@ impl MoveOrderer {
         to_move: Color,
         ply_from_root: u16,
         tt_move: Option<Move>,
+        seer: &Seer,
         history: &HistoryTable,
         m: Move,
     ) -> i32 {
@@ -73,8 +75,18 @@ impl MoveOrderer {
             Self::HASH_MOVE_SCORE
         } else if let Some(victim) = m.captured_piece() {
             let aggressor = m.piece();
-            // Order by MVV-LVA
-            Self::WINNING_CAPTURE_BIAS + self.mvv_lva_score(victim, aggressor)
+
+            // Is the capture actually winning?
+            let bias = if m.promotion().is_some()
+                || seer.see(m.from_square(), aggressor, m.to_square(), victim, 0)
+            {
+                Self::WINNING_CAPTURE_BIAS
+            } else {
+                Self::LOSING_CAPTURE_BIAS
+            };
+
+            // Then, order by MVV-LVA
+            bias + self.mvv_lva_score(victim, aggressor)
         } else if self.is_killer(ply_from_root, m) {
             Self::KILLER_BIAS
         } else {
