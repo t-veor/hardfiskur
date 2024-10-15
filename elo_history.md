@@ -167,3 +167,23 @@ Ptnml(0-2): [35, 67, 193, 106, 111], WL/DD Ratio: 4.51
 LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## b3298ff (Reverse Futility Pruning)
+
+-   Added Reverse Futility Pruning when off-PV and not in check
+
+Bench = 3432514
+
+(Accidentally ran the SPRT test against d3b6fca instead of a3c9a98 but the only
+difference is the Elo history file.)
+
+```
+--------------------------------------------------
+Results of HF-new-b3298ff vs HF-old-d3b6fca (10+0.1, 1t, 32MB, opening_book.epd):
+Elo: 66.34 +/- 17.87, nElo: 82.53 +/- 21.69
+LOS: 100.00 %, DrawRatio: 35.70 %, PairsRatio: 2.27
+Games: 986, Wins: 459, Losses: 273, Draws: 254, Points: 586.0 (59.43 %)
+Ptnml(0-2): [31, 66, 176, 126, 94], WL/DD Ratio: 4.68
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
