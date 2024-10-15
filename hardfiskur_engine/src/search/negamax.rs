@@ -50,6 +50,7 @@ impl<'a> SearchContext<'a> {
         // Increment stats (after quiescence search, so we don't count the same
         // node twice)
         self.stats.nodes_searched += 1;
+        self.stats.sel_depth = self.stats.sel_depth.max(ply_from_root);
 
         // Transposition table lookup
         let tt_entry = if let Some(entry) = self.tt.get(self.board.zobrist_hash()) {

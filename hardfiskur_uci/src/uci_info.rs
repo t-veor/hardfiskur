@@ -131,6 +131,7 @@ impl From<SearchInfo> for UCIInfo {
         Self {
             score: Some(value.score.into()),
             depth: Some(value.raw_stats.depth.into()),
+            sel_depth: Some(value.raw_stats.sel_depth.into()),
             nodes: Some(value.raw_stats.nodes_searched),
             tb_hits: Some(value.raw_stats.tt_hits),
             time: Some(value.elapsed),

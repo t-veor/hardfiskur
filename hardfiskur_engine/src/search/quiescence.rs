@@ -11,6 +11,7 @@ impl<'a> SearchContext<'a> {
         // Increment stats
         self.stats.nodes_searched += 1;
         self.stats.quiescence_nodes += 1;
+        self.stats.sel_depth = self.stats.sel_depth.max(ply_from_root);
 
         // Score from standing pat.
         let mut best_score = evaluate(self.board);
