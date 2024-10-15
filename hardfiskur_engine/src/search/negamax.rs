@@ -1,8 +1,10 @@
+use hardfiskur_core::board::Move;
 use hardfiskur_core::move_gen::MoveVec;
 
 use crate::{
     evaluation::evaluate,
     move_ordering::MovePicker,
+    parameters::{LMR_BASE, LMR_DIVISOR, LMR_MIN_DEPTH, LMR_MIN_MOVES_PLAYED},
     score::Score,
     transposition_table::{TranspositionEntry, TranspositionFlag},
 };
@@ -106,7 +108,9 @@ impl<'a> SearchContext<'a> {
             let eval = if moves_played == 1 {
                 -self.negamax::<NT::Next>(depth - 1, ply_from_root + 1, -beta, -alpha)
             } else {
-                self.principal_variation_search::<NT>(depth, ply_from_root, alpha, beta)
+                let reduction =
+                    self.calculate_late_move_reduction(m, depth, moves_played, in_check);
+                self.principal_variation_search::<NT>(depth, ply_from_root, reduction, alpha, beta)
             };
 
             self.board.pop_move();
@@ -167,22 +171,30 @@ impl<'a> SearchContext<'a> {
         &mut self,
         depth: i16,
         ply_from_root: u16,
+        reduction: i16,
         alpha: Score,
         beta: Score,
     ) -> Score {
-        // Try a null-window search
-        let score = -self.negamax::<NonPV>(depth - 1, ply_from_root + 1, -alpha - 1, -alpha);
+        // Try a null-window search with late move reudction
+        let mut score =
+            -self.negamax::<NonPV>(depth - 1 - reduction, ply_from_root + 1, -alpha - 1, -alpha);
 
-        // If the search fails, we have to a full width search
+        // If the search fails (and there was a reduction), re-search with a
+        // null window but with full depth
+        if alpha < score && reduction > 0 {
+            score = -self.negamax::<NonPV>(depth - 1, ply_from_root + 1, -alpha - 1, -alpha);
+        }
+
+        // If the search fails again, we have to do a full width search
         if NT::IS_PV && alpha < score && score < beta {
             // Note -- the null window search fails if the score is >= alpha.
             // However, we can skip the research if it also happens that the
             // score is >= beta, because we would cause a cutoff in the outer
             // loop anyway.
-            -self.negamax::<NT::Next>(depth - 1, ply_from_root + 1, -beta, -alpha)
-        } else {
-            score
+            score = -self.negamax::<NT::Next>(depth - 1, ply_from_root + 1, -beta, -alpha)
         }
+
+        score
     }
 
     fn determine_tt_flag(
@@ -212,5 +224,25 @@ impl<'a> SearchContext<'a> {
             TranspositionFlag::Lowerbound => entry.get_score(ply_from_root) >= beta,
             TranspositionFlag::Upperbound => entry.get_score(ply_from_root) <= alpha,
         }
+    }
+
+    fn calculate_late_move_reduction(
+        &self,
+        m: Move,
+        depth: i16,
+        moves: usize,
+        in_check: bool,
+    ) -> i16 {
+        if m.is_capture() || moves < LMR_MIN_MOVES_PLAYED || depth < LMR_MIN_DEPTH {
+            return 0;
+        }
+
+        let mut reduction = LMR_BASE + (depth as f64).ln() * (moves as f64).ln() / LMR_DIVISOR;
+
+        if in_check {
+            reduction -= 1.0;
+        }
+
+        (reduction as i16).clamp(0, depth)
     }
 }

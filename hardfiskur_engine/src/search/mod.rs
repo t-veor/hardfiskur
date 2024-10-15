@@ -6,7 +6,7 @@ mod quiescence;
 
 use std::{
     sync::atomic::{AtomicBool, Ordering as AtomicOrdering},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use hardfiskur_core::board::{Board, Move};
@@ -131,7 +131,7 @@ impl<'a> SearchContext<'a> {
 
             best_score = score;
 
-            if depth > 1 && self.stats.nodes_searched > 4096 {
+            if self.start_time.elapsed() > Duration::from_millis(250) {
                 send_search_info(self.get_search_info(best_score));
             }
         }

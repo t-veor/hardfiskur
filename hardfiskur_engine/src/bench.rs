@@ -59,7 +59,7 @@ pub const BENCH_POSITIONS: &[&str] = &[
 ];
 
 impl Engine {
-    pub const DEFAULT_BENCH_DEPTH: i16 = 6;
+    pub const DEFAULT_BENCH_DEPTH: i16 = 9;
 
     fn bench_position(&self, fen: &str, depth: i16) -> (u64, Duration) {
         self.new_game();
@@ -86,12 +86,16 @@ impl Engine {
         (result.info.raw_stats.nodes_searched, result.info.elapsed)
     }
 
-    pub fn bench(&self) -> (u64, Duration) {
+    pub fn bench(&self, depth: Option<u32>) -> (u64, Duration) {
         let mut total_nodes = 0;
         let mut total_time = Duration::ZERO;
 
+        let depth = depth
+            .map(|x| x.try_into().unwrap_or(i16::MAX))
+            .unwrap_or(Self::DEFAULT_BENCH_DEPTH);
+
         for fen in BENCH_POSITIONS {
-            let (nodes, time) = self.bench_position(fen, Self::DEFAULT_BENCH_DEPTH);
+            let (nodes, time) = self.bench_position(fen, depth);
             total_nodes += nodes;
             total_time += time;
         }

@@ -265,8 +265,8 @@ pub fn main_loop(engine: &mut Engine) {
 
             UCIMessage::Eval => println!("{}", engine.debug_eval(&current_board)),
 
-            UCIMessage::Bench => {
-                let (nodes, time) = engine.bench();
+            UCIMessage::Bench { depth } => {
+                let (nodes, time) = engine.bench(depth);
 
                 let nps = nodes * 1000 / time.as_millis() as u64;
 

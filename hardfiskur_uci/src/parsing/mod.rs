@@ -151,6 +151,10 @@ fn protection_state(input: &str) -> IResult<&str, ProtectionState> {
     ))(input)
 }
 
+fn bench_body(input: &str) -> IResult<&str, Option<u32>> {
+    opt(preceded(token_tag("depth"), token_u32))(input)
+}
+
 pub fn uci_message(input: &str) -> IResult<&str, UCIMessage> {
     let gui_to_engine_commands = alt((
         preceded(token_tag("uci"), success(UCIMessage::UCI)),
@@ -199,7 +203,10 @@ pub fn uci_message(input: &str) -> IResult<&str, UCIMessage> {
         ),
         preceded(token_tag("getpv"), success(UCIMessage::GetPV)),
         preceded(token_tag("eval"), success(UCIMessage::Eval)),
-        preceded(token_tag("bench"), success(UCIMessage::Bench)),
+        preceded(
+            token_tag("bench"),
+            bench_body.map(|depth| UCIMessage::Bench { depth }),
+        ),
     ));
 
     let command_parser = alt((
