@@ -36,7 +36,7 @@ impl<'a> SearchContext<'a> {
             self.board,
             ply_from_root,
             None,
-            &self.history,
+            self.history,
             capturing_moves,
         );
 

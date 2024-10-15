@@ -91,7 +91,7 @@ impl<'a> SearchContext<'a> {
             self.board,
             ply_from_root,
             tt_entry.and_then(|entry| entry.best_move),
-            &self.history,
+            self.history,
             legal_moves,
         );
 
