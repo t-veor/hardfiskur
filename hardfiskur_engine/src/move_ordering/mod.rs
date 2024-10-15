@@ -1,7 +1,10 @@
 mod killer_table;
 mod see;
 
-use hardfiskur_core::board::{Board, Move, Piece};
+use hardfiskur_core::{
+    board::{Board, Move, Piece},
+    move_gen::MoveVec,
+};
 
 pub struct MoveOrderer {
     // killers: KillerTable,
@@ -41,11 +44,15 @@ impl MoveOrderer {
         _board: &Board,
         ply_from_root: u16,
         tt_move: Option<Move>,
-        moves: &mut [Move],
-    ) {
+        moves: MoveVec,
+    ) -> OrderedMoves {
         // let seer = Seer::new(board);
 
-        moves.sort_by_cached_key(|m| -self.score_move(ply_from_root, tt_move, *m));
+        let scores = moves
+            .iter()
+            .map(|m| self.score_move(ply_from_root, tt_move, *m))
+            .collect();
+        OrderedMoves { moves, scores }
     }
 
     pub fn score_move(&self, _ply_from_root: u16, tt_move: Option<Move>, m: Move) -> i32 {
@@ -68,5 +75,33 @@ impl MoveOrderer {
         (victim.piece_type() as i32) * 10
         // Least valuable aggressor
         - (aggressor.piece_type() as i32)
+    }
+}
+
+pub struct OrderedMoves {
+    moves: MoveVec,
+    scores: Vec<i32>,
+}
+
+impl Iterator for OrderedMoves {
+    type Item = Move;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.scores.is_empty() {
+            return None;
+        }
+
+        let mut max = self.scores[0];
+        let mut max_idx = 0;
+
+        for i in 1..self.scores.len() {
+            if self.scores[i] > max {
+                max = self.scores[i];
+                max_idx = i;
+            }
+        }
+
+        self.scores.swap_remove(max_idx);
+        Some(self.moves.swap_remove(max_idx))
     }
 }

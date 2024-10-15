@@ -23,7 +23,7 @@ impl<'a> SearchContext<'a> {
 
         alpha = alpha.max(best_score);
 
-        let mut capturing_moves = {
+        let capturing_moves = {
             let mut moves = MoveVec::new();
             self.board
                 .legal_moves_ex(MoveGenFlags::GEN_CAPTURES, &mut moves);
@@ -31,10 +31,11 @@ impl<'a> SearchContext<'a> {
             moves
         };
 
-        self.move_orderer
-            .order_moves(self.board, ply_from_root, None, &mut capturing_moves);
+        let move_iter =
+            self.move_orderer
+                .order_moves(self.board, ply_from_root, None, capturing_moves);
 
-        for m in capturing_moves {
+        for m in move_iter {
             if !m.is_capture() {
                 continue;
             }

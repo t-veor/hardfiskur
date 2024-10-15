@@ -28,7 +28,7 @@ impl<'a> SearchContext<'a> {
             return Score(0);
         }
 
-        let (mut legal_moves, move_gen_result) = self.board.legal_moves_and_meta();
+        let (legal_moves, move_gen_result) = self.board.legal_moves_and_meta();
 
         // Handle checkmate/stalemate
         let in_check = move_gen_result.checker_count > 0;
@@ -68,14 +68,15 @@ impl<'a> SearchContext<'a> {
             None
         };
 
-        self.move_orderer
-            .order_moves(self.board, ply_from_root, tt_move, &mut legal_moves);
+        let move_iter =
+            self.move_orderer
+                .order_moves(self.board, ply_from_root, tt_move, legal_moves);
 
         let mut best_score = -Score::INF;
         let mut best_move = None;
         let original_alpha = alpha;
 
-        for (move_idx, m) in legal_moves.into_iter().enumerate() {
+        for (move_idx, m) in move_iter.enumerate() {
             self.board.push_move_unchecked(m);
 
             let eval = if move_idx == 0 {
