@@ -187,3 +187,20 @@ Ptnml(0-2): [31, 66, 176, 126, 94], WL/DD Ratio: 4.68
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 77d056d (Null Move Pruning)
+
+- Added Null Move Pruning when off-PV and not in check
+
+Bench = 3313576
+
+```
+--------------------------------------------------
+Results of HF-new-77d056d vs HF-old-b3298ff (10+0.1, 1t, 32MB, opening_book.epd):
+Elo: 43.96 +/- 14.79, nElo: 53.83 +/- 17.91
+LOS: 100.00 %, DrawRatio: 37.21 %, PairsRatio: 1.65
+Games: 1446, Wins: 618, Losses: 436, Draws: 392, Points: 814.0 (56.29 %)
+Ptnml(0-2): [56, 115, 269, 157, 126], WL/DD Ratio: 3.48
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
