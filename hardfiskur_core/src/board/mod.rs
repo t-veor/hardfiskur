@@ -356,7 +356,12 @@ impl Board {
     /// Ensure that the move provided is legal, otherwise you will put the board
     /// into an invalid state.
     pub fn push_move_unchecked(&mut self, the_move: Move) {
-        let unmake = self.make_move_unchecked(the_move);
+        let unmake = self.make_move_unchecked(Some(the_move));
+        self.move_history.push(unmake);
+    }
+
+    pub fn push_null_move(&mut self) {
+        let unmake = self.make_move_unchecked(None);
         self.move_history.push(unmake);
     }
 
@@ -637,6 +642,20 @@ impl Board {
         false
     }
 
+    pub fn is_king_and_pawn_endgame(&self) -> bool {
+        for (piece, board) in self.board.boards() {
+            if piece.is_king() || piece.is_pawn() {
+                continue;
+            }
+
+            if board.has_piece() {
+                return false;
+            }
+        }
+
+        true
+    }
+
     fn non_board_hash(
         to_move: Color,
         castling: Castling,
@@ -678,34 +697,37 @@ impl Board {
         removed_rights
     }
 
-    fn make_move_unchecked(&mut self, the_move: Move) -> UnmakeData {
+    fn make_move_unchecked(&mut self, the_move: Option<Move>) -> UnmakeData {
         self.to_move = self.to_move.flip();
         if self.to_move.is_white() {
             self.fullmoves += 1;
         }
 
-        self.board.move_unchecked(the_move);
-
-        // Update if the move broke any castling rights
         let prev_castling = self.castling;
-        self.castling
-            .remove(Self::castling_rights_removed(the_move));
-
-        // Set the en passant square if applicable
         let prev_en_passant = self.en_passant.take();
-        if the_move.is_double_pawn_push() {
-            // Little trick -- due to our square representation, the square
-            // inbetween two squares vertically is simply the average of the
-            // start and end square
-            let en_passant_square = (the_move.from_square().get() + the_move.to_square().get()) / 2;
-            self.en_passant = Some(Square::from_u8_unchecked(en_passant_square));
+
+        if let Some(the_move) = the_move {
+            self.board.move_unchecked(the_move);
+
+            // Update if the move broke any castling rights
+            self.castling
+                .remove(Self::castling_rights_removed(the_move));
+
+            // Set the en passant square if applicable
+            if the_move.is_double_pawn_push() {
+                // Little trick -- due to our square representation, the square
+                // inbetween two squares vertically is simply the average of the
+                // start and end square
+                let en_passant_square =
+                    (the_move.from_square().get() + the_move.to_square().get()) / 2;
+                self.en_passant = Some(Square::from_u8_unchecked(en_passant_square));
+            }
         }
 
         let prev_halfmove_clock = self.halfmove_clock;
-        if the_move.is_capture() || the_move.is_move_of(PieceType::Pawn) {
-            self.halfmove_clock = 0;
-        } else {
-            self.halfmove_clock += 1;
+        match the_move {
+            Some(m) if m.is_capture() || m.is_move_of(PieceType::Pawn) => self.halfmove_clock = 0,
+            _ => self.halfmove_clock += 1,
         }
 
         let prev_zobrist_hash = self.zobrist_hash;
@@ -713,7 +735,7 @@ impl Board {
             ^ Self::non_board_hash(self.to_move, self.castling, self.en_passant);
 
         UnmakeData {
-            the_move: Some(the_move),
+            the_move,
             castling: prev_castling,
             en_passant: prev_en_passant,
             halfmove_clock: prev_halfmove_clock,
