@@ -59,7 +59,7 @@ pub const BENCH_POSITIONS: &[&str] = &[
 ];
 
 impl Engine {
-    pub const DEFAULT_BENCH_DEPTH: i16 = 5;
+    pub const DEFAULT_BENCH_DEPTH: i16 = 6;
 
     fn bench_position(&self, fen: &str, depth: i16) -> (u64, Duration) {
         self.new_game();
