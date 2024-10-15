@@ -1,5 +1,7 @@
 use hardfiskur_core::board::PieceType;
 
+use super::packed_score::PackedScore;
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Phase(pub i32);
 
@@ -23,5 +25,9 @@ impl Phase {
     pub fn taper(&self, midgame_eval: i32, endgame_eval: i32) -> i32 {
         (midgame_eval * self.0 + endgame_eval * (Self::FULL_ENDGAME_PHASE - self.0))
             / Self::FULL_ENDGAME_PHASE
+    }
+
+    pub fn taper_packed(&self, packed_score: PackedScore) -> i32 {
+        self.taper(packed_score.mg(), packed_score.eg())
     }
 }

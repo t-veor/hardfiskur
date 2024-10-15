@@ -1,7 +1,9 @@
+pub mod packed_score;
 pub mod phase;
 pub mod piece_tables;
 
 use hardfiskur_core::board::{Board, Color};
+use packed_score::PackedScore;
 use phase::Phase;
 use piece_tables::{material_score, piece_square_table};
 
@@ -9,37 +11,25 @@ use crate::score::Score;
 
 pub fn evaluate_for_white_ex(board: &Board) -> (Score, Phase) {
     let mut phase = Phase(0);
+    let mut packed_score = PackedScore::ZERO;
 
-    let mut midgame_eval = 0;
-    let mut endgame_eval = 0;
-
-    for (piece, square) in board.pieces() {
-        phase.apply_phase(piece);
-
-        let sign = match piece.color() {
-            Color::White => 1,
-            Color::Black => -1,
-        };
-
-        let square = match piece.color() {
-            Color::White => square,
-            Color::Black => square.flip(),
-        };
-
-        {
-            let (mg, eg) = material_score(piece.piece_type());
-            midgame_eval += sign * mg;
-            endgame_eval += sign * eg;
-        }
-
-        {
-            let (mg, eg) = piece_square_table(piece.piece_type(), square);
-            midgame_eval += sign * mg;
-            endgame_eval += sign * eg;
+    for (piece, bitboard) in board.repr().boards_colored(Color::White) {
+        for square in bitboard.squares() {
+            phase.apply_phase(piece);
+            packed_score += material_score(piece.piece_type());
+            packed_score += piece_square_table(piece.piece_type(), square);
         }
     }
 
-    (Score(phase.taper(midgame_eval, endgame_eval)), phase)
+    for (piece, bitboard) in board.repr().boards_colored(Color::Black) {
+        for square in bitboard.squares() {
+            phase.apply_phase(piece);
+            packed_score -= material_score(piece.piece_type());
+            packed_score -= piece_square_table(piece.piece_type(), square.flip());
+        }
+    }
+
+    (Score(phase.taper_packed(packed_score)), phase)
 }
 
 pub fn evaluate_ex(board: &Board) -> (Score, Phase) {

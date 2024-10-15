@@ -20,7 +20,8 @@ impl PSTViewerUI {
 }
 
 fn eval_for_square(piece: PieceType, phase: i32, square: Square) -> i32 {
-    let (mid, end) = piece_square_table(piece, square);
+    let s = piece_square_table(piece, square);
+    let (mid, end) = (s.mg(), s.eg());
     (mid * phase + end * (24 - phase)) / 24
 }
 
