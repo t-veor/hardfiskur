@@ -82,9 +82,9 @@ impl MulAssign<i32> for PackedScore {
 #[macro_export]
 macro_rules! s {
     (0) => {
-        crate::evaluation::packed_score::PackedScore::new(0, 0)
+        $crate::evaluation::packed_score::PackedScore::new(0, 0)
     };
     ($mg:literal, $eg:literal) => {
-        crate::evaluation::packed_score::PackedScore::new($mg, $eg)
+        $crate::evaluation::packed_score::PackedScore::new($mg, $eg)
     };
 }

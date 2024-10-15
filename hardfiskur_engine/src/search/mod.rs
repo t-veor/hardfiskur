@@ -89,7 +89,7 @@ impl<'a> SearchContext<'a> {
             score,
             raw_stats: self.stats.clone(),
             elapsed: self.start_time.elapsed(),
-            pv: self.tt.extract_pv(&mut self.board),
+            pv: self.tt.extract_pv(self.board),
             hash_full: self.tt.occupancy(),
         }
     }

@@ -117,12 +117,10 @@ impl TranspositionTable {
         const BYTES_PER_MB: usize = 1024 * 1024;
 
         let entry_size = size_of::<TranspositionEntryInternal>();
-        let num_entries = max_size_in_mb
+        max_size_in_mb
             .checked_mul(BYTES_PER_MB)
             .expect("overflow when determining TT size (size provided was likely too big)")
-            / entry_size;
-
-        num_entries
+            / entry_size
     }
 
     fn index(&self, key: ZobristHash) -> usize {

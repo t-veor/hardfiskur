@@ -110,24 +110,21 @@ fn uci_options() -> Vec<UCIOptionConfig> {
 }
 
 fn handle_option(engine: &mut Engine, option_name: &str, option_value: Option<&str>) {
-    match option_name {
-        "Hash" => {
-            let value = match option_value.and_then(|x| x.parse().ok()) {
-                Some(x) => x,
-                None => {
-                    eprintln!("Could not parse {option_value:?} as usize");
-                    return;
-                }
-            };
-
-            if !(1..=4096).contains(&value) {
-                eprintln!("Invalid value for Hash: {value} (min=1, max=4096)");
+    if option_name == "Hash" {
+        let value = match option_value.and_then(|x| x.parse().ok()) {
+            Some(x) => x,
+            None => {
+                eprintln!("Could not parse {option_value:?} as usize");
                 return;
             }
+        };
 
-            engine.set_tt_size(value);
+        if !(1..=4096).contains(&value) {
+            eprintln!("Invalid value for Hash: {value} (min=1, max=4096)");
+            return;
         }
-        _ => (),
+
+        engine.set_tt_size(value);
     }
 }
 
@@ -160,9 +157,7 @@ pub fn main_loop(engine: &mut Engine) {
                 println!("{}", UCIMessage::UCIOk);
             }
 
-            UCIMessage::SetOption { name, value } => {
-                handle_option(engine, &name, value.as_ref().map(|x| x.as_str()))
-            }
+            UCIMessage::SetOption { name, value } => handle_option(engine, &name, value.as_deref()),
 
             UCIMessage::UCINewGame => {
                 current_board = Board::starting_position();

@@ -99,7 +99,7 @@ impl eframe::App for HardfiskurApp {
                 }
             }
 
-            ui.label(&format!(
+            ui.label(format!(
                 "{:?}",
                 self.game_manager.current_board().zobrist_hash()
             ));
