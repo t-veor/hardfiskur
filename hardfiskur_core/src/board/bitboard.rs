@@ -434,6 +434,7 @@ struct BitIterator(u64);
 impl Iterator for BitIterator {
     type Item = u8;
 
+    // This one #[inline] results in about a 25% speedup (4.31 m/s -> 5.48 m/s)
     #[inline]
     fn next(&mut self) -> Option<u8> {
         if self.0 == 0 {
