@@ -35,7 +35,7 @@ impl<'a> SearchContext<'a> {
         let mut ordered_moves = MovePicker::new(capturing_moves, None);
 
         while let Some(m) =
-            ordered_moves.next_move(&self.board, ply_from_root, self.history, &self.move_orderer)
+            ordered_moves.next_move(&self.board, ply_from_root, &self.killers, self.history)
         {
             if !m.is_capture() {
                 continue;

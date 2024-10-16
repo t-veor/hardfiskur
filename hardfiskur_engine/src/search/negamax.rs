@@ -98,7 +98,7 @@ impl<'a> SearchContext<'a> {
 
         let mut moves_played = 0;
         while let Some(m) =
-            ordered_moves.next_move(self.board, ply_from_root, self.history, &self.move_orderer)
+            ordered_moves.next_move(self.board, ply_from_root, &self.killers, self.history)
         {
             self.board.push_move_unchecked(m);
             moves_played += 1;
@@ -143,17 +143,12 @@ impl<'a> SearchContext<'a> {
 
             // Getting a beta-cutoff should always mean we have a best move
             if let Some(best_move) = best_move {
-                self.move_orderer
-                    .update_heuristics(depth, ply_from_root, best_move);
-
-                if !best_move.is_capture() {
-                    self.history.update_quiets(
-                        self.board.to_move(),
-                        depth,
-                        best_move,
-                        &previously_played_quiets,
-                    );
-                }
+                self.update_beta_cutoff_heuristics(
+                    depth,
+                    ply_from_root,
+                    best_move,
+                    &previously_played_quiets,
+                );
             } else {
                 #[cfg(debug_assertions)]
                 panic!("tt_flag was lowerbound but best_move is None?");

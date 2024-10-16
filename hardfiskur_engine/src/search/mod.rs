@@ -14,7 +14,7 @@ use node_types::Root;
 
 use crate::{
     history_table::HistoryTable,
-    move_ordering::MoveOrderer,
+    move_ordering::KillerTable,
     parameters::MAX_DEPTH,
     score::Score,
     search_limits::SearchLimits,
@@ -32,7 +32,7 @@ pub struct SearchContext<'a> {
 
     pub tt: &'a mut TranspositionTable,
     pub history: &'a mut HistoryTable,
-    pub move_orderer: MoveOrderer,
+    pub killers: KillerTable,
 
     pub abort_flag: &'a AtomicBool,
     pub best_root_move: Option<Move>,
@@ -54,7 +54,7 @@ impl<'a> SearchContext<'a> {
             time_up: false,
             tt,
             history,
-            move_orderer: MoveOrderer::new(),
+            killers: KillerTable::default(),
             abort_flag,
             best_root_move: None,
         }
@@ -147,6 +147,20 @@ impl<'a> SearchContext<'a> {
             best_move,
             info: self.get_search_info(best_score),
             aborted: self.abort_flag.load(AtomicOrdering::Relaxed),
+        }
+    }
+
+    pub fn update_beta_cutoff_heuristics(
+        &mut self,
+        depth: i16,
+        ply_from_root: u16,
+        best_move: Move,
+        failed_quiets: &[Move],
+    ) {
+        if !best_move.is_capture() {
+            self.killers.store(ply_from_root, best_move);
+            self.history
+                .update_quiets(self.board.to_move(), depth, best_move, failed_quiets);
         }
     }
 }

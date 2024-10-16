@@ -5,38 +5,11 @@ use hardfiskur_core::{
     board::{Board, Color, Move, Piece},
     move_gen::MoveVec,
 };
-use killer_table::KillerTable;
-use see::Seer;
+
+pub use killer_table::KillerTable;
+pub use see::Seer;
 
 use crate::history_table::HistoryTable;
-
-pub struct MoveOrderer {
-    killers: KillerTable,
-}
-
-impl MoveOrderer {
-    pub fn new() -> Self {
-        Self {
-            killers: KillerTable::default(),
-        }
-    }
-
-    pub fn update_heuristics(&mut self, _depth: i16, ply_from_root: u16, best_move: Move) {
-        if !best_move.is_capture() {
-            self.killers.store(ply_from_root, best_move);
-        }
-    }
-
-    pub fn is_killer(&self, ply_from_root: u16, m: Move) -> bool {
-        self.killers.is_killer(ply_from_root, m)
-    }
-}
-
-impl Default for MoveOrderer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 pub struct MovePicker {
     moves: MoveVec,
@@ -62,8 +35,8 @@ impl MovePicker {
         &mut self,
         board: &Board,
         ply_from_root: u16,
+        killers: &KillerTable,
         history: &HistoryTable,
-        move_orderer: &MoveOrderer,
     ) -> Option<Move> {
         if let Some(tt_move) = self.tt_move.take() {
             if let Some(idx) = self.moves.iter().position(|&m| m == tt_move) {
@@ -76,7 +49,7 @@ impl MovePicker {
         }
 
         if self.scores.is_empty() {
-            self.fill_scores(board, ply_from_root, history, move_orderer);
+            self.fill_scores(board, ply_from_root, killers, history);
         }
 
         Some(self.next_highest_move())
@@ -86,20 +59,14 @@ impl MovePicker {
         &mut self,
         board: &Board,
         ply_from_root: u16,
+        killers: &KillerTable,
         history: &HistoryTable,
-        move_orderer: &MoveOrderer,
     ) {
         let seer = Seer::new(board);
         self.scores = vec![0; self.moves.len()];
         for (i, &m) in self.moves.iter().enumerate() {
-            self.scores[i] = Self::score_move(
-                board.to_move(),
-                ply_from_root,
-                &seer,
-                history,
-                move_orderer,
-                m,
-            );
+            self.scores[i] =
+                Self::score_move(board.to_move(), ply_from_root, &seer, killers, history, m);
         }
     }
 
@@ -123,8 +90,8 @@ impl MovePicker {
         to_move: Color,
         ply_from_root: u16,
         seer: &Seer,
+        killers: &KillerTable,
         history: &HistoryTable,
-        move_orderer: &MoveOrderer,
         m: Move,
     ) -> i32 {
         // Playing the TT move first already handled by Self::next_move.
@@ -142,7 +109,7 @@ impl MovePicker {
 
             // Then, order by MVV-LVA
             bias + Self::mvv_lva_score(victim, aggressor)
-        } else if move_orderer.is_killer(ply_from_root, m) {
+        } else if killers.is_killer(ply_from_root, m) {
             Self::KILLER_BIAS
         } else {
             Self::QUIET_BIAS + history.get_quiet_history(to_move, m)
