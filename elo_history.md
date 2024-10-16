@@ -275,3 +275,21 @@ Ptnml(0-2): [122, 252, 568, 331, 171], WL/DD Ratio: 2.97
 LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 8c9625d (Late Move Reductions)
+
+-   Added Late Move Reductions
+-   Raised default bench depth to 9
+
+Bench = 7905965
+
+```
+--------------------------------------------------
+Results of HF-new-8c9625d vs HF-old-b94707b (10+0.1, 1t, 32MB, 8moves_v3.pgn):
+Elo: 126.03 +/- 22.60, nElo: 165.20 +/- 27.13
+LOS: 100.00 %, DrawRatio: 29.52 %, PairsRatio: 5.00
+Games: 630, Wins: 326, Losses: 107, Draws: 197, Points: 424.5 (67.38 %)
+Ptnml(0-2): [9, 28, 93, 105, 80], WL/DD Ratio: 1.91
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
