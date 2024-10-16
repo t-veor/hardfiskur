@@ -256,3 +256,22 @@ Ptnml(0-2): [38, 108, 286, 176, 86], WL/DD Ratio: 2.04
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## b94707b (Optimisation Pass #2)
+
+-   Added `#[inline]` to `BitIterator` (about a 25% search speedup)
+-   Switch to using a move picker, which only calculates scores for moves if the
+    TT move was not sufficient
+
+Bench = 4392894
+
+```
+--------------------------------------------------
+Results of HF-new-b94707b vs HF-old-8f6fe0b (10+0.1, 1t, 32MB, 8moves_v3.pgn):
+Elo: 21.32 +/- 9.86, nElo: 27.49 +/- 12.67
+LOS: 100.00 %, DrawRatio: 39.34 %, PairsRatio: 1.34
+Games: 2888, Wins: 1098, Losses: 921, Draws: 869, Points: 1532.5 (53.06 %)
+Ptnml(0-2): [122, 252, 568, 331, 171], WL/DD Ratio: 2.97
+LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
