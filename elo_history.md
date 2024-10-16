@@ -238,3 +238,21 @@ Ptnml(0-2): [31, 85, 173, 136, 98], WL/DD Ratio: 2.84
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 8f6fe0b (Static Exchange Evaluation)
+
+-   Use Static Exchange Evaluation for ordering captures
+-   Bench depth raised to 6
+
+Bench = 4653857
+
+```
+--------------------------------------------------
+Results of HF-new-8f6fe0b vs HF-old-3412995 (10+0.1, 1t, 32MB, opening_book.epd):
+Elo: 41.24 +/- 13.55, nElo: 56.17 +/- 18.28
+LOS: 100.00 %, DrawRatio: 41.21 %, PairsRatio: 1.79
+Games: 1388, Wins: 540, Losses: 376, Draws: 472, Points: 776.0 (55.91 %)
+Ptnml(0-2): [38, 108, 286, 176, 86], WL/DD Ratio: 2.04
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
