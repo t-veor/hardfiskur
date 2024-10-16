@@ -434,6 +434,7 @@ struct BitIterator(u64);
 impl Iterator for BitIterator {
     type Item = u8;
 
+    #[inline]
     fn next(&mut self) -> Option<u8> {
         if self.0 == 0 {
             None
