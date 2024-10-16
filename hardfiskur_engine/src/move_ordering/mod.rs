@@ -38,13 +38,13 @@ impl Default for MoveOrderer {
     }
 }
 
-pub struct OrderedMoves {
+pub struct MovePicker {
     moves: MoveVec,
     tt_move: Option<Move>,
     scores: Vec<i32>,
 }
 
-impl OrderedMoves {
+impl MovePicker {
     pub fn new(moves: MoveVec, tt_move: Option<Move>) -> Self {
         Self {
             moves,
@@ -58,7 +58,6 @@ impl OrderedMoves {
     const QUIET_BIAS: i32 = 0;
     const LOSING_CAPTURE_BIAS: i32 = -2_000_000;
 
-    #[inline]
     pub fn next_move(
         &mut self,
         board: &Board,
@@ -68,8 +67,7 @@ impl OrderedMoves {
     ) -> Option<Move> {
         if let Some(tt_move) = self.tt_move.take() {
             if let Some(idx) = self.moves.iter().position(|&m| m == tt_move) {
-                self.moves.swap_remove(idx);
-                return Some(tt_move);
+                return Some(self.moves.swap_remove(idx));
             }
         }
 
@@ -78,23 +76,35 @@ impl OrderedMoves {
         }
 
         if self.scores.is_empty() {
-            let seer = Seer::new(board);
-            self.scores = self
-                .moves
-                .iter()
-                .map(|&m| {
-                    Self::score_move(
-                        board.to_move(),
-                        ply_from_root,
-                        &seer,
-                        history,
-                        move_orderer,
-                        m,
-                    )
-                })
-                .collect();
+            self.fill_scores(board, ply_from_root, history, move_orderer);
         }
 
+        Some(self.next_highest_move())
+    }
+
+    fn fill_scores(
+        &mut self,
+        board: &Board,
+        ply_from_root: u16,
+        history: &HistoryTable,
+        move_orderer: &MoveOrderer,
+    ) {
+        let seer = Seer::new(board);
+        self.scores = vec![0; self.moves.len()];
+        for (i, &m) in self.moves.iter().enumerate() {
+            self.scores[i] = Self::score_move(
+                board.to_move(),
+                ply_from_root,
+                &seer,
+                history,
+                move_orderer,
+                m,
+            );
+        }
+    }
+
+    fn next_highest_move(&mut self) -> Move {
+        // Assumes non-empty scores and moves
         let mut max_idx = 0;
         let mut max_score = self.scores[0];
 
@@ -106,7 +116,7 @@ impl OrderedMoves {
         }
 
         self.scores.swap_remove(max_idx);
-        Some(self.moves.swap_remove(max_idx))
+        self.moves.swap_remove(max_idx)
     }
 
     pub fn score_move(

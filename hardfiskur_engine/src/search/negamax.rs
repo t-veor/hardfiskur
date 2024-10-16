@@ -2,7 +2,7 @@ use hardfiskur_core::move_gen::MoveVec;
 
 use crate::{
     evaluation::evaluate,
-    move_ordering::OrderedMoves,
+    move_ordering::MovePicker,
     score::Score,
     transposition_table::{TranspositionEntry, TranspositionFlag},
 };
@@ -89,7 +89,7 @@ impl<'a> SearchContext<'a> {
         }
 
         let mut ordered_moves =
-            OrderedMoves::new(legal_moves, tt_entry.and_then(|entry| entry.best_move));
+            MovePicker::new(legal_moves, tt_entry.and_then(|entry| entry.best_move));
 
         let mut best_score = -Score::INF;
         let mut best_move = None;

@@ -77,9 +77,7 @@ impl Engine {
 
     pub fn new_game(&self) {
         self.abort_search();
-        let mut persistent = self.persistent.lock().unwrap();
-        persistent.tt.clear();
-        persistent.history.clear();
+        self.persistent.lock().unwrap().clear();
     }
 
     pub fn get_tt_entry(&self, current_board: &Board) -> Option<TranspositionEntry> {
@@ -117,6 +115,13 @@ impl Drop for Engine {
 struct Persistent {
     tt: TranspositionTable,
     history: HistoryTable,
+}
+
+impl Persistent {
+    fn clear(&mut self) {
+        self.tt.clear();
+        self.history.clear();
+    }
 }
 
 pub trait SearchReporter: Send + Sync + 'static {
