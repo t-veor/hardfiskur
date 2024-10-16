@@ -1,6 +1,6 @@
 use hardfiskur_core::move_gen::{MoveGenFlags, MoveVec};
 
-use crate::{evaluation::evaluate, score::Score};
+use crate::{evaluation::evaluate, move_ordering::OrderedMoves, score::Score};
 
 use super::SearchContext;
 
@@ -32,15 +32,11 @@ impl<'a> SearchContext<'a> {
             moves
         };
 
-        let move_iter = self.move_orderer.order_moves(
-            self.board,
-            ply_from_root,
-            None,
-            self.history,
-            capturing_moves,
-        );
+        let mut ordered_moves = OrderedMoves::new(capturing_moves, None);
 
-        for m in move_iter {
+        while let Some(m) =
+            ordered_moves.next_move(&self.board, ply_from_root, self.history, &self.move_orderer)
+        {
             if !m.is_capture() {
                 continue;
             }

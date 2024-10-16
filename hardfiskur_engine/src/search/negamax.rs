@@ -2,6 +2,7 @@ use hardfiskur_core::move_gen::MoveVec;
 
 use crate::{
     evaluation::evaluate,
+    move_ordering::OrderedMoves,
     score::Score,
     transposition_table::{TranspositionEntry, TranspositionFlag},
 };
@@ -87,23 +88,22 @@ impl<'a> SearchContext<'a> {
             }
         }
 
-        let move_iter = self.move_orderer.order_moves(
-            self.board,
-            ply_from_root,
-            tt_entry.and_then(|entry| entry.best_move),
-            self.history,
-            legal_moves,
-        );
+        let mut ordered_moves =
+            OrderedMoves::new(legal_moves, tt_entry.and_then(|entry| entry.best_move));
 
         let mut best_score = -Score::INF;
         let mut best_move = None;
         let original_alpha = alpha;
         let mut previously_played_quiets = MoveVec::new();
 
-        for (move_idx, m) in move_iter.enumerate() {
+        let mut moves_played = 0;
+        while let Some(m) =
+            ordered_moves.next_move(self.board, ply_from_root, self.history, &self.move_orderer)
+        {
             self.board.push_move_unchecked(m);
+            moves_played += 1;
 
-            let eval = if move_idx == 0 {
+            let eval = if moves_played == 1 {
                 -self.negamax::<NT::Next>(depth - 1, ply_from_root + 1, -beta, -alpha)
             } else {
                 self.principal_variation_search::<NT>(depth, ply_from_root, alpha, beta)

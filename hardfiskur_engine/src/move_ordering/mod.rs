@@ -38,42 +38,87 @@ impl Default for MoveOrderer {
     }
 }
 
-impl MoveOrderer {
-    const HASH_MOVE_SCORE: i32 = 100_000_000;
+pub struct OrderedMoves {
+    moves: MoveVec,
+    tt_move: Option<Move>,
+    scores: Vec<i32>,
+}
+
+impl OrderedMoves {
+    pub fn new(moves: MoveVec, tt_move: Option<Move>) -> Self {
+        Self {
+            moves,
+            tt_move,
+            scores: Vec::new(),
+        }
+    }
+
     const WINNING_CAPTURE_BIAS: i32 = 8_000_000;
     const KILLER_BIAS: i32 = 4_000_000;
     const QUIET_BIAS: i32 = 0;
     const LOSING_CAPTURE_BIAS: i32 = -2_000_000;
 
-    pub fn order_moves(
-        &self,
+    #[inline]
+    pub fn next_move(
+        &mut self,
         board: &Board,
         ply_from_root: u16,
-        tt_move: Option<Move>,
         history: &HistoryTable,
-        moves: MoveVec,
-    ) -> OrderedMoves {
-        let seer = Seer::new(board);
+        move_orderer: &MoveOrderer,
+    ) -> Option<Move> {
+        if let Some(tt_move) = self.tt_move.take() {
+            if let Some(idx) = self.moves.iter().position(|&m| m == tt_move) {
+                self.moves.swap_remove(idx);
+                return Some(tt_move);
+            }
+        }
 
-        let scores = moves
-            .iter()
-            .map(|m| self.score_move(board.to_move(), ply_from_root, tt_move, &seer, history, *m))
-            .collect();
-        OrderedMoves { moves, scores }
+        if self.moves.is_empty() {
+            return None;
+        }
+
+        if self.scores.is_empty() {
+            let seer = Seer::new(board);
+            self.scores = self
+                .moves
+                .iter()
+                .map(|&m| {
+                    Self::score_move(
+                        board.to_move(),
+                        ply_from_root,
+                        &seer,
+                        history,
+                        move_orderer,
+                        m,
+                    )
+                })
+                .collect();
+        }
+
+        let mut max_idx = 0;
+        let mut max_score = self.scores[0];
+
+        for i in 1..self.scores.len() {
+            if self.scores[i] > max_score {
+                max_idx = i;
+                max_score = self.scores[i];
+            }
+        }
+
+        self.scores.swap_remove(max_idx);
+        Some(self.moves.swap_remove(max_idx))
     }
 
     pub fn score_move(
-        &self,
         to_move: Color,
         ply_from_root: u16,
-        tt_move: Option<Move>,
         seer: &Seer,
         history: &HistoryTable,
+        move_orderer: &MoveOrderer,
         m: Move,
     ) -> i32 {
-        if Some(m) == tt_move {
-            Self::HASH_MOVE_SCORE
-        } else if let Some(victim) = m.captured_piece() {
+        // Playing the TT move first already handled by Self::next_move.
+        if let Some(victim) = m.captured_piece() {
             let aggressor = m.piece();
 
             // Is the capture actually winning?
@@ -86,47 +131,19 @@ impl MoveOrderer {
             };
 
             // Then, order by MVV-LVA
-            bias + self.mvv_lva_score(victim, aggressor)
-        } else if self.is_killer(ply_from_root, m) {
+            bias + Self::mvv_lva_score(victim, aggressor)
+        } else if move_orderer.is_killer(ply_from_root, m) {
             Self::KILLER_BIAS
         } else {
             Self::QUIET_BIAS + history.get_quiet_history(to_move, m)
         }
     }
 
-    fn mvv_lva_score(&self, victim: Piece, aggressor: Piece) -> i32 {
+    fn mvv_lva_score(victim: Piece, aggressor: Piece) -> i32 {
         // Most valuable victim (* 10 to make sure it's always considered above
         // the aggressor)
         (victim.piece_type() as i32) * 10
         // Least valuable aggressor
         - (aggressor.piece_type() as i32)
-    }
-}
-
-pub struct OrderedMoves {
-    moves: MoveVec,
-    scores: Vec<i32>,
-}
-
-impl Iterator for OrderedMoves {
-    type Item = Move;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.scores.is_empty() {
-            return None;
-        }
-
-        let mut max = self.scores[0];
-        let mut max_idx = 0;
-
-        for i in 1..self.scores.len() {
-            if self.scores[i] > max {
-                max = self.scores[i];
-                max_idx = i;
-            }
-        }
-
-        self.scores.swap_remove(max_idx);
-        Some(self.moves.swap_remove(max_idx))
     }
 }
