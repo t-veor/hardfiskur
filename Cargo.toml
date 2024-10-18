@@ -11,5 +11,6 @@ members = [
     "perft",
     "perft_testsuite",
     "pst_viewer",
+    "tuner-lib",
 ]
 resolver = "2"

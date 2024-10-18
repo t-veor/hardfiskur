@@ -3,7 +3,7 @@ use eframe::{
     epaint::Hsva,
 };
 use hardfiskur_core::board::{PieceType, Square};
-use hardfiskur_engine::evaluation::piece_tables::piece_square_table;
+use hardfiskur_engine::evaluation::parameters::PIECE_SQUARE_TABLES;
 
 struct PSTViewerUI {
     piece: PieceType,
@@ -20,7 +20,7 @@ impl PSTViewerUI {
 }
 
 fn eval_for_square(piece: PieceType, phase: i32, square: Square) -> i32 {
-    let s = piece_square_table(piece, square);
+    let s = PIECE_SQUARE_TABLES[piece.index()][square.index()];
     let (mid, end) = (s.mg(), s.eg());
     (mid * phase + end * (24 - phase)) / 24
 }

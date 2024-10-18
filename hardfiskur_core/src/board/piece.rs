@@ -1,5 +1,7 @@
 use std::{
-    fmt::{Debug, Display, Write},  num::NonZeroU8, str::FromStr
+    fmt::{Debug, Display, Write},
+    num::NonZeroU8,
+    str::FromStr,
 };
 
 use num_derive::{FromPrimitive, ToPrimitive};
@@ -74,6 +76,10 @@ impl PieceType {
     pub const fn is_slider(self) -> bool {
         matches!(self, PieceType::Bishop | PieceType::Rook | PieceType::Queen)
     }
+
+    pub const fn index(self) -> usize {
+        self as usize - 1
+    }
 }
 
 /// Convenience aliases.
@@ -124,6 +130,13 @@ impl Color {
         match self {
             Color::White => Color::Black,
             Color::Black => Color::White,
+        }
+    }
+
+    pub const fn eval_sign(self) -> i32 {
+        match self {
+            Color::White => 1,
+            Color::Black => -1,
         }
     }
 }
@@ -267,13 +280,17 @@ impl Piece {
                 // 3.34 m/s. To not be too crazy, with debug_assertions turned
                 // on I replace this with a regular safe unreachable.
                 #[cfg(debug_assertions)]
-                { unreachable!() }
+                {
+                    unreachable!()
+                }
                 // Safety - self.0 should always be an OR of Color (0 or 8) and
                 // PieceType (1-6), so the xor with 7 should always extract a
                 // PieceType
                 #[cfg(not(debug_assertions))]
-                unsafe { std::hint::unreachable_unchecked() }
-            },
+                unsafe {
+                    std::hint::unreachable_unchecked()
+                }
+            }
         }
     }
 
