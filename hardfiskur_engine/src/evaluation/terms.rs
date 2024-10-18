@@ -1,8 +1,14 @@
-use hardfiskur_core::board::{PieceType, Square};
+use hardfiskur_core::board::{Board, PieceType, Square};
+use zerocopy::FromZeros;
 
 use crate::evaluation::parameters::PIECE_SQUARE_TABLES;
 
-use super::{packed_score::S, parameters::MATERIAL, trace::Trace, EvalContext};
+use super::{
+    packed_score::S,
+    parameters::MATERIAL,
+    trace::{EvalTrace, Trace},
+    EvalContext,
+};
 
 trait BoolColorExt {
     fn coeff(self) -> i16;
@@ -47,14 +53,15 @@ impl<'a> EvalContext<'a> {
         let square = if IS_WHITE { square.flip() } else { square };
 
         trace.add(|t| {
-            let table = &mut match piece_type {
-                PieceType::Pawn => t.pawn_pst,
-                PieceType::Knight => t.knight_pst,
-                PieceType::Bishop => t.bishop_pst,
-                PieceType::Rook => t.rook_pst,
-                PieceType::Queen => t.queen_pst,
-                PieceType::King => t.king_pst,
+            let table = match piece_type {
+                PieceType::Pawn => &mut t.pawn_pst,
+                PieceType::Knight => &mut t.knight_pst,
+                PieceType::Bishop => &mut t.bishop_pst,
+                PieceType::Rook => &mut t.rook_pst,
+                PieceType::Queen => &mut t.queen_pst,
+                PieceType::King => &mut t.king_pst,
             };
+
             table[square.index()] += IS_WHITE.coeff();
         });
 

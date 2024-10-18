@@ -157,17 +157,17 @@ impl Default for EvalParameters {
 
 impl Display for EvalParameters {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let pad_size = Some(5);
+        let pad_size = None;
 
         Self::fmt_array(f, "MATERIAL", &self.material, None)?;
         writeln!(f)?;
 
-        Self::fmt_pst(f, "PAWN_PST", &self.pawn_pst, pad_size)?;
-        Self::fmt_pst(f, "KNIGHT_PST", &self.knight_pst, pad_size)?;
-        Self::fmt_pst(f, "BISHOP_PST", &self.bishop_pst, pad_size)?;
-        Self::fmt_pst(f, "ROOK_PST", &self.rook_pst, pad_size)?;
-        Self::fmt_pst(f, "QUEEN_PST", &self.queen_pst, pad_size)?;
-        Self::fmt_pst(f, "KING_PST", &self.king_pst, pad_size)?;
+        Self::fmt_array(f, "PAWN_PST", &self.pawn_pst, pad_size)?;
+        Self::fmt_array(f, "KNIGHT_PST", &self.knight_pst, pad_size)?;
+        Self::fmt_array(f, "BISHOP_PST", &self.bishop_pst, pad_size)?;
+        Self::fmt_array(f, "ROOK_PST", &self.rook_pst, pad_size)?;
+        Self::fmt_array(f, "QUEEN_PST", &self.queen_pst, pad_size)?;
+        Self::fmt_array(f, "KING_PST", &self.king_pst, pad_size)?;
         writeln!(f)?;
 
         writeln!(f, "pub const PIECE_SQUARE_TABLES: [[S; 64]; 6] = [")?;
