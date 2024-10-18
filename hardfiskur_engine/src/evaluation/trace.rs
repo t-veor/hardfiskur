@@ -22,17 +22,17 @@ impl Trace for NullTrace {
 #[derive(Debug, Clone, FromBytes, IntoBytes)]
 #[repr(C)]
 pub struct EvalTrace {
-    pub material: [i32; 6],
-    pub pawn_pst: [i32; 64],
-    pub knight_pst: [i32; 64],
-    pub bishop_pst: [i32; 64],
-    pub rook_pst: [i32; 64],
-    pub queen_pst: [i32; 64],
-    pub king_pst: [i32; 64],
+    pub material: [i16; 6],
+    pub pawn_pst: [i16; 64],
+    pub knight_pst: [i16; 64],
+    pub bishop_pst: [i16; 64],
+    pub rook_pst: [i16; 64],
+    pub queen_pst: [i16; 64],
+    pub king_pst: [i16; 64],
 }
 
 impl EvalTrace {
-    pub const LEN: usize = std::mem::size_of::<EvalTrace>() / std::mem::size_of::<i32>();
+    pub const LEN: usize = std::mem::size_of::<EvalTrace>() / std::mem::size_of::<i16>();
 }
 
 impl Default for EvalTrace {
@@ -41,7 +41,13 @@ impl Default for EvalTrace {
     }
 }
 
-pub type Parameter = [f32; 2];
+impl Trace for EvalTrace {
+    fn add(&mut self, f: impl Fn(&mut EvalTrace)) {
+        f(self)
+    }
+}
+
+pub type Parameter = [f64; 2];
 
 #[derive(Debug, Clone, FromBytes, IntoBytes, Immutable)]
 #[repr(C)]
@@ -177,7 +183,7 @@ impl Display for EvalParameters {
 
 impl From<PackedScore> for Parameter {
     fn from(value: PackedScore) -> Self {
-        [value.mg() as f32, value.eg() as f32]
+        [value.mg() as f64, value.eg() as f64]
     }
 }
 

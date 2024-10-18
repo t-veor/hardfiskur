@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+name = "tuner_lib"
 crate-type = ["staticlib"]
 
 [dependencies]
 zerocopy = "0.8"
+hardfiskur_core = { path = "../hardfiskur_core" }
 hardfiskur_engine = { path = "../hardfiskur_engine" }

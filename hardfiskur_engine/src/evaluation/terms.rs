@@ -4,11 +4,19 @@ use crate::evaluation::parameters::PIECE_SQUARE_TABLES;
 
 use super::{packed_score::S, parameters::MATERIAL, trace::Trace, EvalContext};
 
-trait SignExt {
+trait BoolColorExt {
+    fn coeff(self) -> i16;
     fn sign(self) -> i32;
 }
 
-impl SignExt for bool {
+impl BoolColorExt for bool {
+    fn coeff(self) -> i16 {
+        match self {
+            true => 1,
+            false => -1,
+        }
+    }
+
     fn sign(self) -> i32 {
         match self {
             true => 1,
@@ -24,7 +32,7 @@ impl<'a> EvalContext<'a> {
         piece_type: PieceType,
         trace: &mut impl Trace,
     ) -> S {
-        trace.add(|t| t.material[piece_type.index()] += IS_WHITE.sign());
+        trace.add(|t| t.material[piece_type.index()] += IS_WHITE.coeff());
 
         IS_WHITE.sign() * MATERIAL[piece_type.index()]
     }
@@ -47,7 +55,7 @@ impl<'a> EvalContext<'a> {
                 PieceType::Queen => t.queen_pst,
                 PieceType::King => t.king_pst,
             };
-            table[square.index()] += IS_WHITE.sign();
+            table[square.index()] += IS_WHITE.coeff();
         });
 
         IS_WHITE.sign() * PIECE_SQUARE_TABLES[piece_type.index()][square.index()]
