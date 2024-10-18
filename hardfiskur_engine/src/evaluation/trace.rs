@@ -88,6 +88,7 @@ impl EvalParameters {
         }
     }
 
+    #[allow(dead_code)]
     fn fmt_single(
         f: &mut std::fmt::Formatter<'_>,
         name: &str,
@@ -117,6 +118,7 @@ impl EvalParameters {
         writeln!(f, "];")
     }
 
+    #[allow(dead_code)]
     fn fmt_pst(
         f: &mut std::fmt::Formatter<'_>,
         name: &str,

@@ -1,14 +1,8 @@
-use hardfiskur_core::board::{Board, PieceType, Square};
-use zerocopy::FromZeros;
+use hardfiskur_core::board::{PieceType, Square};
 
 use crate::evaluation::parameters::PIECE_SQUARE_TABLES;
 
-use super::{
-    packed_score::S,
-    parameters::MATERIAL,
-    trace::{EvalTrace, Trace},
-    EvalContext,
-};
+use super::{packed_score::S, parameters::MATERIAL, trace::Trace, EvalContext};
 
 trait BoolColorExt {
     fn coeff(self) -> i16;

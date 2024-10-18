@@ -109,7 +109,12 @@ impl TranspositionTable {
 
         Self {
             num_entries,
-            entries: FromZeros::new_vec_zeroed(num_entries).unwrap(),
+            // It may be tempting to use FromZeros::new_vec_zeroed here, to us
+            // calloc(), which is very fast.
+            // Don't do it! It means that the OS may not actually allocate and
+            // zero memory for the full table and wait until there's a write.
+            // This increases the latency drastically during search!
+            entries: vec![FromZeros::new_zeroed(); num_entries],
             occupied: 0,
         }
     }
@@ -174,7 +179,7 @@ impl TranspositionTable {
     }
 
     pub fn clear(&mut self) {
-        self.entries = FromZeros::new_vec_zeroed(self.num_entries).unwrap();
+        self.entries = vec![FromZeros::new_zeroed(); self.num_entries];
         self.occupied = 0;
     }
 

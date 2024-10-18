@@ -6,7 +6,7 @@ use hardfiskur_engine::evaluation::{
     trace::{EvalParameters, EvalTrace, Parameter},
     EvalContext,
 };
-use zerocopy::{transmute_mut, transmute_ref, FromZeros};
+use zerocopy::{transmute_mut, transmute_ref};
 
 #[no_mangle]
 pub extern "C" fn hf_parameter_len() -> usize {
