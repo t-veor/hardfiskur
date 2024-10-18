@@ -1,7 +1,8 @@
 use std::{fmt::Display, num::NonZeroUsize};
 
 use hardfiskur_core::board::{Board, Move, OptionalMove, UCIMove, ZobristHash};
-use zerocopy::FromZeroes;
+use zerocopy::FromZeros;
+use zerocopy_derive::FromZeros;
 
 use crate::score::Score;
 
@@ -53,10 +54,11 @@ impl Display for TranspositionEntry {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, FromZeroes)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, FromZeros)]
+#[repr(u8)]
 enum TranspositionFlagInternal {
     #[default]
-    None,
+    None = 0,
     Exact,
     Lowerbound,
     Upperbound,
@@ -85,7 +87,7 @@ impl TryFrom<TranspositionFlagInternal> for TranspositionFlag {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, FromZeroes)]
+#[derive(Debug, Clone, Copy, Default, FromZeros)]
 struct TranspositionEntryInternal {
     key: u32,
     flag: TranspositionFlagInternal,
@@ -107,7 +109,7 @@ impl TranspositionTable {
 
         Self {
             num_entries,
-            entries: vec![FromZeroes::new_zeroed(); num_entries],
+            entries: FromZeros::new_vec_zeroed(num_entries).unwrap(),
             occupied: 0,
         }
     }
@@ -172,7 +174,7 @@ impl TranspositionTable {
     }
 
     pub fn clear(&mut self) {
-        self.entries = vec![FromZeroes::new_zeroed(); self.num_entries];
+        self.entries = FromZeros::new_vec_zeroed(self.num_entries).unwrap();
         self.occupied = 0;
     }
 

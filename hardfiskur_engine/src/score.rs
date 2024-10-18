@@ -3,9 +3,9 @@ use std::{
     ops::{Add, AddAssign, Neg, Sub, SubAssign},
 };
 
-use zerocopy::FromZeroes;
+use zerocopy_derive::FromZeros;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, FromZeroes)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, FromZeros)]
 pub struct Score(pub i32);
 
 impl Score {

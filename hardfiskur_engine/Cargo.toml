@@ -5,7 +5,8 @@ edition = "2021"
 
 [dependencies]
 hardfiskur_core = { path = "../hardfiskur_core" }
-zerocopy = "0.7"
+zerocopy = { version = "0.8", features = ["alloc"] }
+zerocopy-derive = "0.8"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

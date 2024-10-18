@@ -1,7 +1,7 @@
 use std::{fmt::Debug, num::NonZeroU32};
 
 use bitflags::bitflags;
-use zerocopy::FromZeroes;
+use zerocopy_derive::FromZeros;
 
 use super::{Piece, PieceType, Square};
 
@@ -244,8 +244,8 @@ impl Debug for Move {
     }
 }
 
-/// Workaround type for supporting zerocopy's [`FromZeroes`] trait.
-#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, FromZeroes)]
+/// Workaround type for supporting zerocopy's [`FromZeros`] trait.
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, FromZeros)]
 #[repr(transparent)]
 pub struct OptionalMove(Option<NonZeroU32>);
 
