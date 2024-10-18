@@ -6,7 +6,7 @@ pub const MAX_EXTENSIONS: i16 = 16;
 
 // Reverse Futility Pruning parameters
 pub const RFP_MAX_DEPTH: i16 = 6;
-pub const RFP_MARGIN: i32 = 800;
+pub const RFP_MARGIN: i32 = 80;
 
 // Null Move Pruning parameters
 pub const NMP_MIN_DEPTH: i16 = 4;

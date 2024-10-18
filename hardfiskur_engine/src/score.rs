@@ -51,7 +51,7 @@ impl Score {
         if self.0.abs() > Self::MATE_THRESHOLD {
             None
         } else {
-            Some(self.0 / 10)
+            Some(self.0)
         }
     }
 
@@ -160,8 +160,8 @@ impl Display for Score {
         } else if let Some(mate_score) = self.as_mate_in() {
             write!(f, "M{}", mate_score.abs())
         } else {
-            let pawn_advantage = val as f64 / 1000.0;
-            write!(f, "{pawn_advantage:.3}")
+            let pawn_advantage = val as f64 / 100.0;
+            write!(f, "{pawn_advantage:.2}")
         }
     }
 }
