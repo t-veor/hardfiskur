@@ -18,6 +18,7 @@ impl SignExt for bool {
 }
 
 impl<'a> EvalContext<'a> {
+    #[inline]
     pub fn material<const IS_WHITE: bool>(
         &self,
         piece_type: PieceType,
@@ -28,6 +29,7 @@ impl<'a> EvalContext<'a> {
         IS_WHITE.sign() * MATERIAL[piece_type.index()]
     }
 
+    #[inline]
     pub fn piece_square_table<const IS_WHITE: bool>(
         &self,
         piece_type: PieceType,
