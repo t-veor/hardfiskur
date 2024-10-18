@@ -36,7 +36,7 @@ impl<'a> EvalContext<'a> {
         square: Square,
         trace: &mut impl Trace,
     ) -> S {
-        let square = if IS_WHITE { square } else { square.flip() };
+        let square = if IS_WHITE { square.flip() } else { square };
 
         trace.add(|t| {
             let table = &mut match piece_type {

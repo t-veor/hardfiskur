@@ -112,6 +112,7 @@ impl EvalParameters {
         writeln!(f, "pub const {name}: [S; 64] = [")?;
 
         for rank in 0..8 {
+            // NOTE: rank is from black's perspective here!
             write!(f, "    ")?;
             for file in 0..8 {
                 let i = rank * 8 + file;
