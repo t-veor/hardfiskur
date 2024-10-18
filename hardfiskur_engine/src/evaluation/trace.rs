@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use zerocopy::FromZeros;
-use zerocopy_derive::{FromBytes, IntoBytes};
+use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
 
 use super::{
     packed_score::PackedScore,
@@ -41,8 +41,10 @@ impl Default for EvalTrace {
     }
 }
 
-pub type Parameter = (f32, f32);
+pub type Parameter = [f32; 2];
 
+#[derive(Debug, Clone, FromBytes, IntoBytes, Immutable)]
+#[repr(C)]
 pub struct EvalParameters {
     pub material: [Parameter; 6],
     pub pawn_pst: [Parameter; 64],
@@ -54,12 +56,18 @@ pub struct EvalParameters {
 }
 
 impl EvalParameters {
+    pub const LEN: usize = std::mem::size_of::<EvalParameters>() / std::mem::size_of::<Parameter>();
+}
+
+const _: () = assert!(EvalTrace::LEN == EvalParameters::LEN);
+
+impl EvalParameters {
     fn fmt_param(
         f: &mut std::fmt::Formatter<'_>,
         param: Parameter,
         pad_size: Option<usize>,
     ) -> std::fmt::Result {
-        let (mg, eg) = param;
+        let [mg, eg] = param;
         let (mg, eg) = (mg.round() as i32, eg.round() as i32);
 
         let (single_width, double_width) = match pad_size {
@@ -169,7 +177,7 @@ impl Display for EvalParameters {
 
 impl From<PackedScore> for Parameter {
     fn from(value: PackedScore) -> Self {
-        (value.mg() as f32, value.eg() as f32)
+        [value.mg() as f32, value.eg() as f32]
     }
 }
 
