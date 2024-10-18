@@ -118,6 +118,13 @@ impl Display for UCIInfo {
             }
         }
 
+        if !self.pv.is_empty() {
+            formatter.push_str("pv")?;
+            for m in self.pv.iter() {
+                formatter.push(m)?;
+            }
+        }
+
         formatter.push_option("currline", self.curr_line.as_ref())?;
 
         formatter.push_option("string", self.string.as_ref())?;

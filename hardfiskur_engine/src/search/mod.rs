@@ -1,3 +1,4 @@
+mod aspiration;
 mod extensions;
 mod forward_pruning;
 mod negamax;
@@ -7,7 +8,6 @@ mod quiescence;
 use std::sync::atomic::AtomicBool;
 
 use hardfiskur_core::board::{Board, Move};
-use node_types::Root;
 
 use crate::{
     effort_table::EffortTable,
@@ -105,7 +105,7 @@ impl<'a> SearchContext<'a> {
         let mut best_move = None;
 
         for depth in 1..=MAX_DEPTH {
-            let score = self.negamax::<Root>(depth, 0, -Score::INF, Score::INF);
+            let score = self.aspiration_search(best_score, depth);
 
             // Accept the found best move, even from a partial search.
             if let Some(m) = self.best_root_move.take() {
