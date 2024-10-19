@@ -55,7 +55,11 @@ impl eframe::App for PSTViewerUI {
                 let evals = Square::all()
                     .map(|i| eval_for_square(self.piece, self.endgame_phase, i))
                     .collect::<Vec<_>>();
-                let max_eval = evals.iter().map(|x| x.abs()).max().unwrap();
+                let max_eval = evals.iter().max().unwrap();
+                let min_eval = evals.iter().min().unwrap();
+
+                let half_range = (max_eval + min_eval) / 2;
+                let half_range_width = (max_eval - min_eval) / 2;
 
                 for (i, x) in evals.iter().enumerate() {
                     let square = Square::from_index(i).unwrap();
@@ -68,21 +72,12 @@ impl eframe::App for PSTViewerUI {
                         );
                     let square_rect = Rect::from_center_size(center, square_size * 0.9);
 
-                    let value = x.abs() as f32 / max_eval as f32;
-                    let color = if *x >= 0 {
-                        Hsva {
-                            h: 0.666,
-                            s: 1.0,
-                            v: value,
-                            a: 1.0,
-                        }
-                    } else {
-                        Hsva {
-                            h: 0.0,
-                            s: 1.0,
-                            v: value,
-                            a: 1.0,
-                        }
+                    let value = (x - half_range) as f32 / half_range_width as f32;
+                    let color = Hsva {
+                        h: if value >= 0.0 { 0.666 } else { 0.0 },
+                        s: 1.0,
+                        v: value.abs(),
+                        a: 1.0,
                     };
 
                     painter.rect_filled(square_rect, 0.0, color);
