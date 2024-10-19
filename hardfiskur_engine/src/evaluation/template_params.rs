@@ -1,8 +1,9 @@
-use hardfiskur_core::board::PieceType;
+use hardfiskur_core::board::{Color, PieceType};
 
 pub trait ColorParam: sealed::Sealed {
-    const IS_WHITE: bool;
-    const IS_BLACK: bool = !Self::IS_WHITE;
+    const COLOR: Color;
+    const IS_WHITE: bool = Self::COLOR.is_white();
+    const IS_BLACK: bool = Self::COLOR.is_black();
 
     const SIGN: i32 = if Self::IS_WHITE { 1 } else { -1 };
     const COEFF: i16 = Self::SIGN as i16;
@@ -12,11 +13,11 @@ pub struct White;
 pub struct Black;
 
 impl ColorParam for White {
-    const IS_WHITE: bool = true;
+    const COLOR: Color = Color::White;
 }
 
 impl ColorParam for Black {
-    const IS_WHITE: bool = false;
+    const COLOR: Color = Color::Black;
 }
 
 pub trait PieceTypeParam: sealed::Sealed {
