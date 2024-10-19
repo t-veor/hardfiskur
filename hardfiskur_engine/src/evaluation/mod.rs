@@ -1,12 +1,14 @@
 pub mod packed_score;
 pub mod parameters;
 pub mod phase;
+pub mod template_params;
 pub mod terms;
 pub mod trace;
 
 use hardfiskur_core::board::{Board, Color};
 use packed_score::PackedScore;
 use phase::Phase;
+use template_params::{Black, White};
 use trace::{NullTrace, Trace};
 
 use crate::score::Score;
@@ -35,10 +37,6 @@ pub fn evaluate(board: &Board) -> Score {
     evaluate_ex(board).0
 }
 
-// Templating parameters
-pub const WHITE: bool = true;
-pub const BLACK: bool = false;
-
 pub struct EvalContext<'a> {
     board: &'a Board,
 }
@@ -55,16 +53,16 @@ impl<'a> EvalContext<'a> {
         for (piece, bitboard) in self.board.repr().boards_colored(Color::White) {
             for square in bitboard.squares() {
                 phase.apply_phase(piece);
-                score += self.material::<WHITE>(piece.piece_type(), trace);
-                score += self.piece_square_table::<WHITE>(piece.piece_type(), square, trace);
+                score += self.material::<White>(piece.piece_type(), trace);
+                score += self.piece_square_table::<White>(piece.piece_type(), square, trace);
             }
         }
 
         for (piece, bitboard) in self.board.repr().boards_colored(Color::Black) {
             for square in bitboard.squares() {
                 phase.apply_phase(piece);
-                score += self.material::<BLACK>(piece.piece_type(), trace);
-                score += self.piece_square_table::<BLACK>(piece.piece_type(), square, trace);
+                score += self.material::<Black>(piece.piece_type(), trace);
+                score += self.piece_square_table::<Black>(piece.piece_type(), square, trace);
             }
         }
 

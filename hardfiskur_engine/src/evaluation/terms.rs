@@ -2,49 +2,30 @@ use hardfiskur_core::board::{PieceType, Square};
 
 use crate::evaluation::parameters::PIECE_SQUARE_TABLES;
 
-use super::{packed_score::S, parameters::MATERIAL, trace::Trace, EvalContext};
-
-trait BoolColorExt {
-    fn coeff(self) -> i16;
-    fn sign(self) -> i32;
-}
-
-impl BoolColorExt for bool {
-    fn coeff(self) -> i16 {
-        match self {
-            true => 1,
-            false => -1,
-        }
-    }
-
-    fn sign(self) -> i32 {
-        match self {
-            true => 1,
-            false => -1,
-        }
-    }
-}
+use super::{
+    packed_score::S, parameters::MATERIAL, template_params::ColorParam, trace::Trace, EvalContext,
+};
 
 impl<'a> EvalContext<'a> {
     #[inline]
-    pub fn material<const IS_WHITE: bool>(
-        &self,
-        piece_type: PieceType,
-        trace: &mut impl Trace,
-    ) -> S {
-        trace.add(|t| t.material[piece_type.index()] += IS_WHITE.coeff());
+    pub fn material<Color: ColorParam>(&self, piece_type: PieceType, trace: &mut impl Trace) -> S {
+        trace.add(|t| t.material[piece_type.index()] += Color::COEFF);
 
-        IS_WHITE.sign() * MATERIAL[piece_type.index()]
+        Color::SIGN * MATERIAL[piece_type.index()]
     }
 
     #[inline]
-    pub fn piece_square_table<const IS_WHITE: bool>(
+    pub fn piece_square_table<Color: ColorParam>(
         &self,
         piece_type: PieceType,
         square: Square,
         trace: &mut impl Trace,
     ) -> S {
-        let square = if IS_WHITE { square.flip() } else { square };
+        let square = if Color::IS_WHITE {
+            square.flip()
+        } else {
+            square
+        };
 
         trace.add(|t| {
             let table = match piece_type {
@@ -56,9 +37,9 @@ impl<'a> EvalContext<'a> {
                 PieceType::King => &mut t.king_pst,
             };
 
-            table[square.index()] += IS_WHITE.coeff();
+            table[square.index()] += Color::COEFF;
         });
 
-        IS_WHITE.sign() * PIECE_SQUARE_TABLES[piece_type.index()][square.index()]
+        Color::SIGN * PIECE_SQUARE_TABLES[piece_type.index()][square.index()]
     }
 }
