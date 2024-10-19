@@ -318,3 +318,21 @@ Ptnml(0-2): [261, 844, 1263, 897, 292], WL/DD Ratio: 0.83
 LLR: 2.95 (-2.94, 2.94) [-5.00, 0.00]
 --------------------------------------------------
 ```
+
+## 74fde33 (Mobility Evaluation)
+
+-   Added mobility evaluation terms for knight, bishop, rooks, and queens
+    (number of spaces that attacked by piece that are not attacked by pawns)
+
+Bench = 6533808
+
+```
+--------------------------------------------------
+Results of HF-new-74fde33 vs HF-old-0a8f348 (10+0.1, 1t, 32MB, 8moves_v3.pgn):
+Elo: 18.59 +/- 9.18, nElo: 23.60 +/- 11.64
+LOS: 100.00 %, DrawRatio: 34.64 %, PairsRatio: 1.29
+Games: 3424, Wins: 1184, Losses: 1001, Draws: 1239, Points: 1803.5 (52.67 %)
+Ptnml(0-2): [149, 340, 593, 439, 191], WL/DD Ratio: 1.58
+LLR: 2.97 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
