@@ -293,3 +293,28 @@ Ptnml(0-2): [9, 28, 93, 105, 80], WL/DD Ratio: 1.91
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 0a8f348 (Re-tune evaluation)
+
+This was me implementing a static library that can be used by [Gediminas
+Mesaitis's Texel Tuner](https://github.com/GediminasMasaitis/texel-tuner/) to
+tune the evaluation more easily. The evaluation terms have been scaled down also
+so a pawn is ~100 rather than ~1000.
+
+No improvements engine-side were expected so the SPRT is a regression test.
+
+-   Scaled down evaluation so a pawn is worth ~100 rather than ~1000
+-   Retuned evaluation
+
+Bench = 6282080
+
+```
+--------------------------------------------------
+Results of HF-new-0a8f348 vs HF-old-8c9625d (10+0.1, 1t, 32MB, 8moves_v3.pgn):
+Elo: 5.62 +/- 6.02, nElo: 7.54 +/- 8.07
+LOS: 96.64 %, DrawRatio: 35.51 %, PairsRatio: 1.08
+Games: 7114, Wins: 2053, Losses: 1938, Draws: 3123, Points: 3614.5 (50.81 %)
+Ptnml(0-2): [261, 844, 1263, 897, 292], WL/DD Ratio: 0.83
+LLR: 2.95 (-2.94, 2.94) [-5.00, 0.00]
+--------------------------------------------------
+```
