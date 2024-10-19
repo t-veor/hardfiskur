@@ -380,20 +380,24 @@ impl Board {
     }
 
     /// Returns the bitboard representing all pieces of the given color.
+    #[inline]
     pub fn get_bitboard_for_color(&self, color: Color) -> Bitboard {
         self.board[color]
     }
 
     /// Returns the bitboard representing all positions of the given piece.
+    #[inline]
     pub fn get_bitboard_for_piece(&self, piece: Piece) -> Bitboard {
         self.board[piece]
     }
 
+    #[inline]
     pub fn get_bitboard_for_piece_type(&self, piece_type: PieceType) -> Bitboard {
         self.board[piece_type.with_color(Color::White)]
             | self.board[piece_type.with_color(Color::Black)]
     }
 
+    #[inline]
     pub fn get_occupied_bitboard(&self) -> Bitboard {
         self.board[Color::White] | self.board[Color::Black]
     }

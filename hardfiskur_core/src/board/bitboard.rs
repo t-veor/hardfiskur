@@ -160,6 +160,7 @@ impl Bitboard {
     }
 
     /// Counts the number of bits set in this bitboard.
+    #[inline]
     pub const fn pop_count(self) -> u32 {
         self.0.count_ones()
     }

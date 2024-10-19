@@ -230,6 +230,7 @@ impl BoardRepr {
 impl Index<Piece> for BoardRepr {
     type Output = Bitboard;
 
+    #[inline]
     fn index(&self, index: Piece) -> &Self::Output {
         &self.boards[index.get() as usize]
     }
@@ -238,6 +239,7 @@ impl Index<Piece> for BoardRepr {
 impl Index<Color> for BoardRepr {
     type Output = Bitboard;
 
+    #[inline]
     fn index(&self, index: Color) -> &Self::Output {
         &self.boards[index as usize]
     }
@@ -246,6 +248,7 @@ impl Index<Color> for BoardRepr {
 impl IndexMut<Piece> for BoardRepr {
     /// Intended for internal use. Do not call this directly as you may break
     /// some internal invariants!
+    #[inline]
     fn index_mut(&mut self, index: Piece) -> &mut Self::Output {
         &mut self.boards[index.get() as usize]
     }
@@ -254,6 +257,7 @@ impl IndexMut<Piece> for BoardRepr {
 impl IndexMut<Color> for BoardRepr {
     /// Intended for internal use. Do not call this directly as you may break
     /// some internal invariants!
+    #[inline]
     fn index_mut(&mut self, index: Color) -> &mut Self::Output {
         &mut self.boards[index as usize]
     }

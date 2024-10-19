@@ -298,6 +298,7 @@ impl<'a> MagicTableEntry<'a> {
         }
     }
 
+    #[inline]
     fn get_attacks(&self, occupied: Bitboard) -> Bitboard {
         let occupied = occupied & self.mask;
         let magic_index = occupied.0.wrapping_mul(self.magic) >> self.shift;
@@ -394,10 +395,12 @@ impl MagicTables {
         }
     }
 
+    #[inline]
     pub fn bishop_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         self.bishop_table[square.index()].get_attacks(occupied)
     }
 
+    #[inline]
     pub fn rook_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         self.rook_table[square.index()].get_attacks(occupied)
     }

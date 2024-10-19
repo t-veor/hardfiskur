@@ -59,11 +59,13 @@ impl Lookups {
     }
 
     /// Gets all knight moves originating from the given square.
+    #[inline]
     pub fn get_knight_moves(&self, square: Square) -> Bitboard {
         self.knight_moves[square.index()]
     }
 
     /// Gets all king moves originating from the given square.
+    #[inline]
     pub fn get_king_moves(&self, square: Square) -> Bitboard {
         self.king_moves[square.index()]
     }
@@ -103,6 +105,7 @@ impl Lookups {
     ///     ".parse().unwrap(),
     /// );
     /// ```
+    #[inline]
     pub fn get_rook_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         self.magic.rook_attacks(occupied, square)
     }
@@ -142,6 +145,7 @@ impl Lookups {
     ///     ".parse().unwrap(),
     /// );
     /// ```
+    #[inline]
     pub fn get_bishop_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         self.magic.bishop_attacks(occupied, square)
     }
@@ -150,6 +154,7 @@ impl Lookups {
     ///
     /// This is simply the union of the result of [`Self::get_rook_attacks`] and
     /// [`Self::get_bishop_attacks`].
+    #[inline]
     pub fn get_queen_attacks(&self, occupied: Bitboard, square: Square) -> Bitboard {
         self.get_rook_attacks(occupied, square) | self.get_bishop_attacks(occupied, square)
     }
