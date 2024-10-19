@@ -29,3 +29,8 @@ pub const KING_PST: [S; 64] = [
 pub const PIECE_SQUARE_TABLES: [[S; 64]; 6] = [
     PAWN_PST, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST
 ];
+
+pub const KNIGHT_MOBILITY: [S; 9] = [s!(0); 9];
+pub const BISHOP_MOBILITY: [S; 14] = [s!(0); 14];
+pub const ROOK_MOBILITY: [S; 15] = [s!(0); 15];
+pub const QUEEN_MOBILITY: [S; 28] = [s!(0); 28];

@@ -3,10 +3,7 @@ use std::fmt::Display;
 use zerocopy::FromZeros;
 use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
 
-use super::{
-    packed_score::PackedScore,
-    parameters::{BISHOP_PST, KING_PST, KNIGHT_PST, MATERIAL, PAWN_PST, QUEEN_PST, ROOK_PST},
-};
+use super::{packed_score::PackedScore, parameters::*};
 
 pub trait Trace: Sized {
     fn add(&mut self, f: impl Fn(&mut EvalTrace));
@@ -23,12 +20,18 @@ impl Trace for NullTrace {
 #[repr(C)]
 pub struct EvalTrace {
     pub material: [i16; 6],
+
     pub pawn_pst: [i16; 64],
     pub knight_pst: [i16; 64],
     pub bishop_pst: [i16; 64],
     pub rook_pst: [i16; 64],
     pub queen_pst: [i16; 64],
     pub king_pst: [i16; 64],
+
+    pub knight_mobility: [i16; 9],
+    pub bishop_mobility: [i16; 14],
+    pub rook_mobility: [i16; 15],
+    pub queen_mobility: [i16; 28],
 }
 
 impl EvalTrace {
@@ -53,12 +56,18 @@ pub type Parameter = [f64; 2];
 #[repr(C)]
 pub struct EvalParameters {
     pub material: [Parameter; 6],
+
     pub pawn_pst: [Parameter; 64],
     pub knight_pst: [Parameter; 64],
     pub bishop_pst: [Parameter; 64],
     pub rook_pst: [Parameter; 64],
     pub queen_pst: [Parameter; 64],
     pub king_pst: [Parameter; 64],
+
+    pub knight_mobility: [Parameter; 9],
+    pub bishop_mobility: [Parameter; 14],
+    pub rook_mobility: [Parameter; 15],
+    pub queen_mobility: [Parameter; 28],
 }
 
 impl EvalParameters {
@@ -147,12 +156,18 @@ impl Default for EvalParameters {
     fn default() -> Self {
         Self {
             material: convert_packed_score_array(MATERIAL),
+
             pawn_pst: convert_packed_score_array(PAWN_PST),
             knight_pst: convert_packed_score_array(KNIGHT_PST),
             bishop_pst: convert_packed_score_array(BISHOP_PST),
             rook_pst: convert_packed_score_array(ROOK_PST),
             queen_pst: convert_packed_score_array(QUEEN_PST),
             king_pst: convert_packed_score_array(KING_PST),
+
+            knight_mobility: convert_packed_score_array(KNIGHT_MOBILITY),
+            bishop_mobility: convert_packed_score_array(BISHOP_MOBILITY),
+            rook_mobility: convert_packed_score_array(ROOK_MOBILITY),
+            queen_mobility: convert_packed_score_array(QUEEN_MOBILITY),
         }
     }
 }
@@ -178,6 +193,11 @@ impl Display for EvalParameters {
             "    PAWN_PST, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST"
         )?;
         writeln!(f, "];")?;
+
+        Self::fmt_array(f, "KNIGHT_MOBILITY", &self.knight_mobility, pad_size)?;
+        Self::fmt_array(f, "BISHOP_MOBILITY", &self.bishop_mobility, pad_size)?;
+        Self::fmt_array(f, "ROOK_MOBILITY", &self.rook_mobility, pad_size)?;
+        Self::fmt_array(f, "QUEEN_MOBILITY", &self.queen_mobility, pad_size)?;
 
         Ok(())
     }
