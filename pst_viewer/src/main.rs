@@ -64,7 +64,7 @@ impl eframe::App for PSTViewerUI {
                     let center = board_rect.left_top()
                         + Vec2::new(
                             (file as f32 + 0.5) * square_size.x,
-                            (8.0 - rank as f32 - 0.5) * square_size.y,
+                            (rank as f32 + 0.5) * square_size.y,
                         );
                     let square_rect = Rect::from_center_size(center, square_size * 0.9);
 
