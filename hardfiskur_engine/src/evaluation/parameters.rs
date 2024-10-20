@@ -99,5 +99,5 @@ pub const PASSED_PAWNS: [S; 64] = [
 pub const DOUBLED_PAWNS: S = s!(  -6, -24);
 pub const ISOLATED_PAWNS: S = s!( -22, -17);
 
-pub const PAWN_SHIELD_CLOSE: [S; 4] = [s!(0); 4];
-pub const PAWN_SHIELD_FAR: [S; 4] = [s!(0); 4];
+pub const PAWN_SHIELD_CLOSE: S = s!(0);
+pub const PAWN_SHIELD_FAR: S = s!(0);

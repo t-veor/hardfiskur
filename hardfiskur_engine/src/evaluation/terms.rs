@@ -156,15 +156,15 @@ impl<'a> EvalContext<'a> {
             let far_pawns =
                 self.pawns.pawns[C::INDEX] & PAWN_SHIELD_FAR_MASKS[C::INDEX][is_kingside];
 
-            let close_pawns_count = close_pawns.pop_count() as usize;
-            let far_pawns_count = far_pawns.pop_count() as usize;
+            let close_pawns_count = close_pawns.pop_count() as i32;
+            let far_pawns_count = far_pawns.pop_count() as i32;
 
             trace.add(|t| {
-                t.pawn_shield_close[close_pawns_count] += C::COEFF;
-                t.pawn_shield_far[far_pawns_count] += C::COEFF;
+                t.pawn_shield_close += C::COEFF * close_pawns_count as i16;
+                t.pawn_shield_far += C::COEFF * far_pawns_count as i16;
             });
 
-            C::SIGN * (PAWN_SHIELD_CLOSE[close_pawns_count] + PAWN_SHIELD_FAR[far_pawns_count])
+            C::SIGN * (PAWN_SHIELD_CLOSE * close_pawns_count + PAWN_SHIELD_FAR * far_pawns_count)
         } else {
             S::ZERO
         }
