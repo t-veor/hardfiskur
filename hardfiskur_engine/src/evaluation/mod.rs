@@ -8,7 +8,7 @@ pub mod terms;
 pub mod trace;
 
 use hardfiskur_core::{
-    board::{Bitboard, Board, Color},
+    board::{Bitboard, Board, Color, Square},
     move_gen::lookups::Lookups,
 };
 use packed_score::PackedScore;
@@ -50,6 +50,7 @@ pub struct EvalContext<'a> {
     occupied: Bitboard,
 
     pawns: PawnStructure,
+    kings: [Square; 2],
 }
 
 impl<'a> EvalContext<'a> {
@@ -58,6 +59,9 @@ impl<'a> EvalContext<'a> {
 
         let pawns = PawnStructure::new(board);
 
+        let white_king = board.get_king(Color::White);
+        let black_king = board.get_king(Color::Black);
+
         Self {
             board,
             lookups: Lookups::get_instance(),
@@ -65,6 +69,7 @@ impl<'a> EvalContext<'a> {
             occupied,
 
             pawns,
+            kings: [white_king, black_king],
         }
     }
 
@@ -110,6 +115,10 @@ impl<'a> EvalContext<'a> {
         // Isoalted pawns
         score += self.isolated_pawns::<White>(trace);
         score += self.isolated_pawns::<Black>(trace);
+
+        // Pawn shield
+        score += self.pawn_shield::<White>(trace);
+        score += self.pawn_shield::<Black>(trace);
 
         (Score(phase.taper_packed(score)), phase)
     }

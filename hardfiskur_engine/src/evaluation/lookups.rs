@@ -26,6 +26,72 @@ const fn passed_pawn_masks() -> [[Bitboard; 64]; 2] {
 // by color, then square
 pub const PASSED_PAWN_MASKS: [[Bitboard; 64]; 2] = passed_pawn_masks();
 
+// . . . . . . . .
+// . . . . . . . .
+// . . . . . . . .
+// . . . . . . . .
+// . . . . . . . .
+// . . . . . . . .
+// # # . . . . # #
+// # # # . # . # #
+pub const SENSIBLE_KING_MASKS: [Bitboard; 2] = [Bitboard(0xC3D7), Bitboard(0xC3D7).flip_vertical()];
+
+// by color, then by queenside (0) / kingside (1)
+pub const PAWN_SHIELD_CLOSE_MASKS: [[Bitboard; 2]; 2] = [
+    [
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // # # # . . . . .
+        // . . . . . . . .
+        Bitboard(0x700),
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . # # #
+        // . . . . . . . .
+        Bitboard(0xE000),
+    ],
+    [
+        Bitboard(0x700).flip_vertical(),
+        Bitboard(0xE000).flip_vertical(),
+    ],
+];
+
+// by color, then by queenside (0) / kingside (1)
+pub const PAWN_SHIELD_FAR_MASKS: [[Bitboard; 2]; 2] = [
+    [
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // # # # . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        Bitboard(0x70000),
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . . . .
+        // . . . . . # # #
+        // . . . . . . . .
+        // . . . . . . . .
+        Bitboard(0xE00000),
+    ],
+    [
+        Bitboard(0x70000).flip_vertical(),
+        Bitboard(0xE00000).flip_vertical(),
+    ],
+];
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -231,5 +297,40 @@ mod test {
                 Bitboard::EMPTY
             )
         }
+    }
+
+    #[test]
+    fn sensible_king_masks() {
+        assert_eq!(
+            SENSIBLE_KING_MASKS[0],
+            "
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                # # . . . . # #
+                # # # . # . # #
+            "
+            .parse()
+            .unwrap()
+        );
+
+        assert_eq!(
+            SENSIBLE_KING_MASKS[1],
+            "
+                # # # . # . # #
+                # # . . . . # #
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+            "
+            .parse()
+            .unwrap()
+        );
     }
 }

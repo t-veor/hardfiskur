@@ -36,6 +36,9 @@ pub struct EvalTrace {
     pub passed_pawns: [i16; 64],
     pub doubled_pawns: i16,
     pub isolated_pawns: i16,
+
+    pub pawn_shield_close: [i16; 4],
+    pub pawn_shield_far: [i16; 4],
 }
 
 impl EvalTrace {
@@ -76,6 +79,9 @@ pub struct EvalParameters {
     pub passed_pawns: [Parameter; 64],
     pub doubled_pawns: Parameter,
     pub isolated_pawns: Parameter,
+
+    pub pawn_shield_close: [Parameter; 4],
+    pub pawn_shield_far: [Parameter; 4],
 }
 
 impl EvalParameters {
@@ -203,6 +209,9 @@ impl Default for EvalParameters {
             passed_pawns: convert_packed_score_array(PASSED_PAWNS),
             doubled_pawns: DOUBLED_PAWNS.into(),
             isolated_pawns: ISOLATED_PAWNS.into(),
+
+            pawn_shield_close: convert_packed_score_array(PAWN_SHIELD_CLOSE),
+            pawn_shield_far: convert_packed_score_array(PAWN_SHIELD_FAR),
         }
     }
 }
@@ -247,6 +256,10 @@ impl Display for EvalParameters {
 
         Self::fmt_single(f, "DOUBLED_PAWNS", self.doubled_pawns, pad_size)?;
         Self::fmt_single(f, "ISOLATED_PAWNS", self.isolated_pawns, pad_size)?;
+        Self::writeln_if_pretty(f)?;
+
+        Self::fmt_array(f, "PAWN_SHIELD_CLOSE", &self.pawn_shield_close, None)?;
+        Self::fmt_array(f, "PAWN_SHIELD_FAR", &self.pawn_shield_far, None)?;
 
         Ok(())
     }

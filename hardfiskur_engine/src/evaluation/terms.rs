@@ -5,8 +5,11 @@ use crate::evaluation::parameters::{
 };
 
 use super::{
+    lookups::{PAWN_SHIELD_CLOSE_MASKS, PAWN_SHIELD_FAR_MASKS, SENSIBLE_KING_MASKS},
     packed_score::S,
-    parameters::{DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, PASSED_PAWNS},
+    parameters::{
+        DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, PASSED_PAWNS, PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR,
+    },
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
     EvalContext,
@@ -140,5 +143,30 @@ impl<'a> EvalContext<'a> {
         trace.add(|t| t.isolated_pawns += C::COEFF * isolated_count as i16);
 
         C::SIGN * isolated_count as i32 * ISOLATED_PAWNS
+    }
+
+    pub fn pawn_shield<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let sensible_king_mask = SENSIBLE_KING_MASKS[C::INDEX];
+        let king_square = self.kings[C::INDEX];
+
+        if sensible_king_mask.get(king_square) {
+            let is_kingside = usize::from(king_square.file() > 3);
+            let close_pawns =
+                self.pawns.pawns[C::INDEX] & PAWN_SHIELD_CLOSE_MASKS[C::INDEX][is_kingside];
+            let far_pawns =
+                self.pawns.pawns[C::INDEX] & PAWN_SHIELD_FAR_MASKS[C::INDEX][is_kingside];
+
+            let close_pawns_count = close_pawns.pop_count() as usize;
+            let far_pawns_count = far_pawns.pop_count() as usize;
+
+            trace.add(|t| {
+                t.pawn_shield_close[close_pawns_count] += C::COEFF;
+                t.pawn_shield_far[far_pawns_count] += C::COEFF;
+            });
+
+            C::SIGN * (PAWN_SHIELD_CLOSE[close_pawns_count] + PAWN_SHIELD_FAR[far_pawns_count])
+        } else {
+            S::ZERO
+        }
     }
 }
