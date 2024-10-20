@@ -34,6 +34,7 @@ pub struct EvalTrace {
     pub queen_mobility: [i16; 28],
 
     pub passed_pawns: [i16; 64],
+    pub doubled_pawns: i16,
 }
 
 impl EvalTrace {
@@ -72,6 +73,7 @@ pub struct EvalParameters {
     pub queen_mobility: [Parameter; 28],
 
     pub passed_pawns: [Parameter; 64],
+    pub doubled_pawns: Parameter,
 }
 
 impl EvalParameters {
@@ -81,6 +83,13 @@ impl EvalParameters {
 const _: () = assert!(EvalTrace::LEN == EvalParameters::LEN);
 
 impl EvalParameters {
+    fn writeln_if_pretty(f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if f.alternate() {
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+
     fn fmt_param(
         f: &mut std::fmt::Formatter<'_>,
         param: Parameter,
@@ -102,7 +111,6 @@ impl EvalParameters {
         }
     }
 
-    #[allow(dead_code)]
     fn fmt_single(
         f: &mut std::fmt::Formatter<'_>,
         name: &str,
@@ -113,9 +121,7 @@ impl EvalParameters {
         Self::fmt_param(f, param, pad_size)?;
         write!(f, ";")?;
 
-        if f.alternate() {
-            writeln!(f)?;
-        }
+        Self::writeln_if_pretty(f)?;
 
         Ok(())
     }
@@ -129,8 +135,8 @@ impl EvalParameters {
         let size = params.len();
         write!(f, "pub const {name}: [S; {size}] = [")?;
 
+        Self::writeln_if_pretty(f)?;
         if f.alternate() {
-            writeln!(f)?;
             write!(f, "    ")?;
         }
         for &param in params {
@@ -138,15 +144,11 @@ impl EvalParameters {
             write!(f, ", ")?;
         }
 
-        if f.alternate() {
-            writeln!(f)?;
-        }
+        Self::writeln_if_pretty(f)?;
 
         write!(f, "];")?;
 
-        if f.alternate() {
-            writeln!(f)?;
-        }
+        Self::writeln_if_pretty(f)?;
 
         Ok(())
     }
@@ -197,6 +199,7 @@ impl Default for EvalParameters {
             queen_mobility: convert_packed_score_array(QUEEN_MOBILITY),
 
             passed_pawns: convert_packed_score_array(PASSED_PAWNS),
+            doubled_pawns: DOUBLED_PAWNS.into(),
         }
     }
 }
@@ -206,9 +209,7 @@ impl Display for EvalParameters {
         let pad_size = Some(4);
 
         Self::fmt_array(f, "MATERIAL", &self.material, None)?;
-        if f.alternate() {
-            writeln!(f)?;
-        }
+        Self::writeln_if_pretty(f)?;
 
         Self::fmt_pst(f, "PAWN_PST", &self.pawn_pst, pad_size)?;
         Self::fmt_pst(f, "KNIGHT_PST", &self.knight_pst, pad_size)?;
@@ -216,38 +217,32 @@ impl Display for EvalParameters {
         Self::fmt_pst(f, "ROOK_PST", &self.rook_pst, pad_size)?;
         Self::fmt_pst(f, "QUEEN_PST", &self.queen_pst, pad_size)?;
         Self::fmt_pst(f, "KING_PST", &self.king_pst, pad_size)?;
-
-        if f.alternate() {
-            writeln!(f)?;
-        }
+        Self::writeln_if_pretty(f)?;
 
         write!(f, "pub const PIECE_SQUARE_TABLES: [[S; 64]; 6] = [")?;
+        Self::writeln_if_pretty(f)?;
         if f.alternate() {
-            writeln!(f)?;
+            write!(f, "    ")?;
         }
         write!(
             f,
-            "    PAWN_PST, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST"
+            "PAWN_PST, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST"
         )?;
-        if f.alternate() {
-            writeln!(f)?;
-        }
+        Self::writeln_if_pretty(f)?;
         write!(f, "];")?;
-        if f.alternate() {
-            writeln!(f)?;
-            writeln!(f)?;
-        }
+        Self::writeln_if_pretty(f)?;
+        Self::writeln_if_pretty(f)?;
 
         Self::fmt_array(f, "KNIGHT_MOBILITY", &self.knight_mobility, None)?;
         Self::fmt_array(f, "BISHOP_MOBILITY", &self.bishop_mobility, None)?;
         Self::fmt_array(f, "ROOK_MOBILITY", &self.rook_mobility, None)?;
         Self::fmt_array(f, "QUEEN_MOBILITY", &self.queen_mobility, None)?;
-
-        if f.alternate() {
-            writeln!(f)?;
-        }
+        Self::writeln_if_pretty(f)?;
 
         Self::fmt_pst(f, "PASSED_PAWNS", &self.passed_pawns, pad_size)?;
+        Self::writeln_if_pretty(f)?;
+
+        Self::fmt_single(f, "DOUBLED_PAWNS", self.doubled_pawns, pad_size)?;
 
         Ok(())
     }
