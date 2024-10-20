@@ -336,3 +336,25 @@ Ptnml(0-2): [149, 340, 593, 439, 191], WL/DD Ratio: 1.58
 LLR: 2.97 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 3f154ee (POPCNT Optimisations)
+
+Realised that rust wasn't emitting popcnt instructions for my bitboards, and
+that I had to explicitly specify `targetcpu=native` in the compiler flags.
+
+-   Use `popcnt` on platforms that support it
+-   Found a bunch more functions that were not being inlined that really should
+    be by looking at profiles
+
+Bench = 6533808
+
+```
+--------------------------------------------------
+Results of HF-new-3f154ee vs HF-old-74fde33 (10+0.1, 1t, 32MB, 8moves_v3.pgn):
+Elo: 28.58 +/- 11.19, nElo: 39.10 +/- 15.23
+LOS: 100.00 %, DrawRatio: 33.53 %, PairsRatio: 1.44
+Games: 1998, Wins: 643, Losses: 479, Draws: 876, Points: 1081.0 (54.10 %)
+Ptnml(0-2): [49, 223, 335, 299, 93], WL/DD Ratio: 0.89
+LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
