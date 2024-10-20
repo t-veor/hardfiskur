@@ -103,6 +103,10 @@ impl<'a> EvalContext<'a> {
         score += self.passed_pawns::<White>(trace);
         score += self.passed_pawns::<Black>(trace);
 
+        // Doubled pawns
+        score += self.doubled_pawns::<White>(trace);
+        score += self.doubled_pawns::<Black>(trace);
+
         (Score(phase.taper_packed(score)), phase)
     }
 }

@@ -13,8 +13,14 @@ pub extern "C" fn hf_parameter_len() -> usize {
     EvalParameters::LEN
 }
 
+/// # Safety
+/// `out_parameters` and `out_parameters_size` must refer to a valid
+/// contiguously allocated part of memory.
 #[no_mangle]
-pub extern "C" fn hf_initial_parameters(out_parameters: *mut [f64; 2], out_parameters_size: usize) {
+pub unsafe extern "C" fn hf_initial_parameters(
+    out_parameters: *mut [f64; 2],
+    out_parameters_size: usize,
+) {
     let out_parameters = if out_parameters.is_null() {
         &mut []
     } else {
@@ -32,8 +38,11 @@ fn fill_initial_parameters_internal(out_parameters: &mut [[f64; 2]]) {
     *out_parameters = EvalParameters::default();
 }
 
+/// # Safety
+/// `parameters` and `parameters_size` must refer to a valid contiguously
+/// allocated part of memory.
 #[no_mangle]
-pub extern "C" fn hf_print_parameters(parameters: *const [f64; 2], parameters_size: usize) {
+pub unsafe extern "C" fn hf_print_parameters(parameters: *const [f64; 2], parameters_size: usize) {
     let parameters = if parameters.is_null() {
         &[]
     } else {
@@ -51,8 +60,11 @@ fn print_parameters_internal(parameters: &[[f64; 2]]) {
     println!("{parameters}");
 }
 
+/// # Safety
+/// `out_coeffs` and `out_coeffs_size` must refer to a valid contiguously
+/// allocated part of memory.
 #[no_mangle]
-pub extern "C" fn hf_get_fen_eval_result(
+pub unsafe extern "C" fn hf_get_fen_eval_result(
     fen: *const c_char,
     out_coeffs: *mut i16,
     out_coeffs_size: usize,

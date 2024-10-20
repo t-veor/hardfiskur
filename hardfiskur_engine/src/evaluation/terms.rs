@@ -1,4 +1,4 @@
-use hardfiskur_core::board::{Color, Piece, PieceType, Square};
+use hardfiskur_core::board::{Bitboard, Color, Piece, PieceType, Square};
 
 use crate::evaluation::parameters::{
     BISHOP_MOBILITY, KNIGHT_MOBILITY, PIECE_SQUARE_TABLES, QUEEN_MOBILITY, ROOK_MOBILITY,
@@ -6,7 +6,7 @@ use crate::evaluation::parameters::{
 
 use super::{
     packed_score::S,
-    parameters::{MATERIAL, PASSED_PAWNS},
+    parameters::{DOUBLED_PAWNS, MATERIAL, PASSED_PAWNS},
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
     EvalContext,
@@ -108,6 +108,24 @@ impl<'a> EvalContext<'a> {
             trace.add(|t| t.passed_pawns[square.index()] += C::COEFF);
 
             total += C::SIGN * PASSED_PAWNS[square.index()];
+        }
+
+        total
+    }
+
+    #[inline]
+    pub fn doubled_pawns<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let mut total = S::ZERO;
+        let pawns = self.pawns.pawns[C::INDEX];
+
+        for file in 0..8 {
+            let mask = Bitboard::file_mask(file);
+            let pawns_on_file: u32 = (pawns & mask).pop_count();
+            let doubled_pawn_count = pawns_on_file.saturating_sub(1);
+
+            trace.add(|t| t.doubled_pawns += C::COEFF * doubled_pawn_count as i16);
+
+            total += C::SIGN * DOUBLED_PAWNS * doubled_pawn_count as i32;
         }
 
         total
