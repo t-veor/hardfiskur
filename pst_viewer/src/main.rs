@@ -2,41 +2,77 @@ use eframe::{
     egui::{self, Align2, Color32, Rect, Sense, Vec2},
     epaint::Hsva,
 };
-use hardfiskur_core::board::{PieceType, Square};
-use hardfiskur_engine::evaluation::parameters::PIECE_SQUARE_TABLES;
+use hardfiskur_core::board::Square;
+use hardfiskur_engine::evaluation::{
+    parameters::{BISHOP_PST, KING_PST, KNIGHT_PST, PASSED_PAWNS, PAWN_PST, QUEEN_PST, ROOK_PST},
+    phase::Phase,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TableType {
+    PawnPST,
+    KnightPST,
+    BishopPST,
+    RookPST,
+    QueenPST,
+    KingPST,
+    PassedPawns,
+}
+
+impl TableType {
+    const ALL: &[Self] = &[
+        Self::PawnPST,
+        Self::KnightPST,
+        Self::BishopPST,
+        Self::RookPST,
+        Self::QueenPST,
+        Self::KingPST,
+        Self::PassedPawns,
+    ];
+}
 
 struct PSTViewerUI {
-    piece: PieceType,
+    table_type: TableType,
     endgame_phase: i32,
 }
 
 impl PSTViewerUI {
     pub fn new(_cc: &eframe::CreationContext) -> Self {
         Self {
-            piece: PieceType::Pawn,
+            table_type: TableType::PawnPST,
             endgame_phase: 24,
         }
     }
 }
 
-fn eval_for_square(piece: PieceType, phase: i32, square: Square) -> i32 {
-    let s = PIECE_SQUARE_TABLES[piece.index()][square.index()];
-    let (mid, end) = (s.mg(), s.eg());
-    (mid * phase + end * (24 - phase)) / 24
+fn table_value(table_type: TableType, phase: i32, square: Square) -> i32 {
+    let table = match table_type {
+        TableType::PawnPST => &PAWN_PST,
+        TableType::KnightPST => &KNIGHT_PST,
+        TableType::BishopPST => &BISHOP_PST,
+        TableType::RookPST => &ROOK_PST,
+        TableType::QueenPST => &QUEEN_PST,
+        TableType::KingPST => &KING_PST,
+        TableType::PassedPawns => &PASSED_PAWNS,
+    };
+
+    let phase = Phase(phase);
+    phase.taper_packed(table[square.index()])
 }
 
 impl eframe::App for PSTViewerUI {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::Window::new("Options").show(ctx, |ui| {
-            egui::ComboBox::from_label("Piece Type")
-                .selected_text(format!("{:?}", self.piece))
+            egui::ComboBox::from_label("Table")
+                .selected_text(format!("{:?}", self.table_type))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.piece, PieceType::Pawn, "Pawn");
-                    ui.selectable_value(&mut self.piece, PieceType::Knight, "Knight");
-                    ui.selectable_value(&mut self.piece, PieceType::Bishop, "Bishop");
-                    ui.selectable_value(&mut self.piece, PieceType::Rook, "Rook");
-                    ui.selectable_value(&mut self.piece, PieceType::Queen, "Queen");
-                    ui.selectable_value(&mut self.piece, PieceType::King, "King");
+                    for &table_type in TableType::ALL {
+                        ui.selectable_value(
+                            &mut self.table_type,
+                            table_type,
+                            format!("{table_type:?}"),
+                        );
+                    }
                 });
 
             ui.label("Endgame Phase");
@@ -53,13 +89,17 @@ impl eframe::App for PSTViewerUI {
                 let board_rect = Rect::from_center_size(response.rect.center(), board_size);
 
                 let evals = Square::all()
-                    .map(|i| eval_for_square(self.piece, self.endgame_phase, i))
+                    .map(|i| table_value(self.table_type, self.endgame_phase, i))
                     .collect::<Vec<_>>();
-                let max_eval = evals.iter().max().unwrap();
-                let min_eval = evals.iter().min().unwrap();
+                let avg = evals.iter().sum::<i32>() as f32 / evals.len() as f32;
+                let max_eval = *evals.iter().max().unwrap();
+                let min_eval = *evals.iter().min().unwrap();
 
-                let half_range = (max_eval + min_eval) / 2;
-                let half_range_width = (max_eval - min_eval) / 2;
+                let scale_factor = (avg - max_eval as f32)
+                    .abs()
+                    .max(avg - min_eval as f32)
+                    .abs()
+                    .max(1.0);
 
                 for (i, x) in evals.iter().enumerate() {
                     let square = Square::from_index(i).unwrap();
@@ -72,7 +112,7 @@ impl eframe::App for PSTViewerUI {
                         );
                     let square_rect = Rect::from_center_size(center, square_size * 0.9);
 
-                    let value = (x - half_range) as f32 / half_range_width as f32;
+                    let value = (*x as f32 - avg) / scale_factor;
                     let color = Hsva {
                         h: if value >= 0.0 { 0.666 } else { 0.0 },
                         s: 1.0,
