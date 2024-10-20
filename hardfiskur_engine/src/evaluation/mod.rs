@@ -1,5 +1,7 @@
+pub mod lookups;
 pub mod packed_score;
 pub mod parameters;
+pub mod pawn_structure;
 pub mod phase;
 pub mod template_params;
 pub mod terms;
