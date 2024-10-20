@@ -90,14 +90,15 @@ impl EvalParameters {
         let (mg, eg) = (mg.round() as i32, eg.round() as i32);
 
         let (single_width, double_width) = match pad_size {
-            Some(single_width) => (single_width, single_width * 2 + 2),
+            _ if !f.alternate() => (0, 0),
+            Some(single_width) => (single_width, single_width * 2 + 1),
             None => (0, 0),
         };
 
         if mg == 0 && eg == 0 {
             write!(f, "s!({mg:>width$})", width = double_width)
         } else {
-            write!(f, "s!({mg:>width$}, {eg:>width$})", width = single_width)
+            write!(f, "s!({mg:>width$},{eg:>width$})", width = single_width)
         }
     }
 
@@ -110,7 +111,13 @@ impl EvalParameters {
     ) -> std::fmt::Result {
         write!(f, "pub const {name}: S = ")?;
         Self::fmt_param(f, param, pad_size)?;
-        writeln!(f, ";")
+        write!(f, ";")?;
+
+        if f.alternate() {
+            writeln!(f)?;
+        }
+
+        Ok(())
     }
 
     fn fmt_array(
@@ -120,24 +127,40 @@ impl EvalParameters {
         pad_size: Option<usize>,
     ) -> std::fmt::Result {
         let size = params.len();
-        writeln!(f, "pub const {name}: [S; {size}] = [")?;
-        write!(f, "    ")?;
+        write!(f, "pub const {name}: [S; {size}] = [")?;
+
+        if f.alternate() {
+            writeln!(f)?;
+            write!(f, "    ")?;
+        }
         for &param in params {
             Self::fmt_param(f, param, pad_size)?;
             write!(f, ", ")?;
         }
 
-        writeln!(f)?;
-        writeln!(f, "];")
+        if f.alternate() {
+            writeln!(f)?;
+        }
+
+        write!(f, "];")?;
+
+        if f.alternate() {
+            writeln!(f)?;
+        }
+
+        Ok(())
     }
 
-    #[allow(dead_code)]
     fn fmt_pst(
         f: &mut std::fmt::Formatter<'_>,
         name: &str,
         params: &[Parameter; 64],
         pad_size: Option<usize>,
     ) -> std::fmt::Result {
+        if !f.alternate() {
+            return Self::fmt_array(f, name, params, pad_size);
+        }
+
         writeln!(f, "pub const {name}: [S; 64] = [")?;
 
         for rank in 0..8 {
@@ -180,36 +203,51 @@ impl Default for EvalParameters {
 
 impl Display for EvalParameters {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let pad_size = None;
+        let pad_size = Some(4);
 
         Self::fmt_array(f, "MATERIAL", &self.material, None)?;
-        writeln!(f)?;
+        if f.alternate() {
+            writeln!(f)?;
+        }
 
-        Self::fmt_array(f, "PAWN_PST", &self.pawn_pst, pad_size)?;
-        Self::fmt_array(f, "KNIGHT_PST", &self.knight_pst, pad_size)?;
-        Self::fmt_array(f, "BISHOP_PST", &self.bishop_pst, pad_size)?;
-        Self::fmt_array(f, "ROOK_PST", &self.rook_pst, pad_size)?;
-        Self::fmt_array(f, "QUEEN_PST", &self.queen_pst, pad_size)?;
-        Self::fmt_array(f, "KING_PST", &self.king_pst, pad_size)?;
-        writeln!(f)?;
+        Self::fmt_pst(f, "PAWN_PST", &self.pawn_pst, pad_size)?;
+        Self::fmt_pst(f, "KNIGHT_PST", &self.knight_pst, pad_size)?;
+        Self::fmt_pst(f, "BISHOP_PST", &self.bishop_pst, pad_size)?;
+        Self::fmt_pst(f, "ROOK_PST", &self.rook_pst, pad_size)?;
+        Self::fmt_pst(f, "QUEEN_PST", &self.queen_pst, pad_size)?;
+        Self::fmt_pst(f, "KING_PST", &self.king_pst, pad_size)?;
 
-        writeln!(f, "pub const PIECE_SQUARE_TABLES: [[S; 64]; 6] = [")?;
-        writeln!(
+        if f.alternate() {
+            writeln!(f)?;
+        }
+
+        write!(f, "pub const PIECE_SQUARE_TABLES: [[S; 64]; 6] = [")?;
+        if f.alternate() {
+            writeln!(f)?;
+        }
+        write!(
             f,
             "    PAWN_PST, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST"
         )?;
-        writeln!(f, "];")?;
+        if f.alternate() {
+            writeln!(f)?;
+        }
+        write!(f, "];")?;
+        if f.alternate() {
+            writeln!(f)?;
+            writeln!(f)?;
+        }
 
-        writeln!(f)?;
+        Self::fmt_array(f, "KNIGHT_MOBILITY", &self.knight_mobility, None)?;
+        Self::fmt_array(f, "BISHOP_MOBILITY", &self.bishop_mobility, None)?;
+        Self::fmt_array(f, "ROOK_MOBILITY", &self.rook_mobility, None)?;
+        Self::fmt_array(f, "QUEEN_MOBILITY", &self.queen_mobility, None)?;
 
-        Self::fmt_array(f, "KNIGHT_MOBILITY", &self.knight_mobility, pad_size)?;
-        Self::fmt_array(f, "BISHOP_MOBILITY", &self.bishop_mobility, pad_size)?;
-        Self::fmt_array(f, "ROOK_MOBILITY", &self.rook_mobility, pad_size)?;
-        Self::fmt_array(f, "QUEEN_MOBILITY", &self.queen_mobility, pad_size)?;
+        if f.alternate() {
+            writeln!(f)?;
+        }
 
-        writeln!(f)?;
-
-        Self::fmt_array(f, "PASSED_PAWNS", &self.passed_pawns, pad_size)?;
+        Self::fmt_pst(f, "PASSED_PAWNS", &self.passed_pawns, pad_size)?;
 
         Ok(())
     }
