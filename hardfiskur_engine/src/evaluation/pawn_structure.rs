@@ -3,6 +3,8 @@ use hardfiskur_core::{
     move_gen,
 };
 
+use super::lookups::PASSED_PAWN_MASKS;
+
 #[derive(Debug, Clone)]
 pub struct PawnStructure {
     pub pawns: [Bitboard; 2],
@@ -18,6 +20,20 @@ impl PawnStructure {
         let white_pawn_attacks = move_gen::white_pawn_attacks(white_pawns);
         let black_pawn_attacks = move_gen::white_pawn_attacks(black_pawns);
 
-        todo!()
+        let white_passed_pawns = white_pawns
+            .squares()
+            .filter(|sq| (PASSED_PAWN_MASKS[0][sq.index()] & black_pawns).is_empty())
+            .collect();
+
+        let black_passed_pawns = black_pawns
+            .squares()
+            .filter(|sq| (PASSED_PAWN_MASKS[1][sq.index()] & white_pawns).is_empty())
+            .collect();
+
+        Self {
+            pawns: [white_pawns, black_pawns],
+            pawn_attacks: [white_pawn_attacks, black_pawn_attacks],
+            passed_pawns: [white_passed_pawns, black_passed_pawns],
+        }
     }
 }

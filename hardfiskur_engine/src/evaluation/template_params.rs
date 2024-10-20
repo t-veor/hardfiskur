@@ -2,6 +2,7 @@ use hardfiskur_core::board::{Color, PieceType};
 
 pub trait ColorParam: sealed::Sealed {
     const COLOR: Color;
+    const INDEX: usize = Self::COLOR.index();
     const IS_WHITE: bool = Self::COLOR.is_white();
     const IS_BLACK: bool = Self::COLOR.is_black();
 

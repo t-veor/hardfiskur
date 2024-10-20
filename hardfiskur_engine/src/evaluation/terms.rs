@@ -1,4 +1,4 @@
-use hardfiskur_core::board::{Piece, PieceType, Square};
+use hardfiskur_core::board::{Color, Piece, PieceType, Square};
 
 use crate::evaluation::parameters::{
     BISHOP_MOBILITY, KNIGHT_MOBILITY, PIECE_SQUARE_TABLES, QUEEN_MOBILITY, ROOK_MOBILITY,
@@ -6,7 +6,7 @@ use crate::evaluation::parameters::{
 
 use super::{
     packed_score::S,
-    parameters::MATERIAL,
+    parameters::{MATERIAL, PASSED_PAWNS},
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
     EvalContext,
@@ -57,9 +57,9 @@ impl<'a> EvalContext<'a> {
         let mut total = S::ZERO;
 
         let mobility_squares = if C::IS_WHITE {
-            !self.black_pawn_attacks
+            !self.pawns.pawn_attacks[Color::Black.index()]
         } else {
-            !self.white_pawn_attacks
+            !self.pawns.pawn_attacks[Color::White.index()]
         } & !self.board.get_bitboard_for_color(C::COLOR);
 
         let piece_bb = self
@@ -93,6 +93,21 @@ impl<'a> EvalContext<'a> {
                     PieceType::Queen => QUEEN_MOBILITY[mobility_count],
                     PieceType::Pawn | PieceType::King => unreachable!(),
                 };
+        }
+
+        total
+    }
+
+    #[inline]
+    pub fn passed_pawns<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let mut total = S::ZERO;
+
+        for square in self.pawns.passed_pawns[C::INDEX].squares() {
+            let square = if C::IS_WHITE { square.flip() } else { square };
+
+            trace.add(|t| t.passed_pawns[square.index()] += C::COEFF);
+
+            total += C::SIGN * PASSED_PAWNS[square.index()];
         }
 
         total

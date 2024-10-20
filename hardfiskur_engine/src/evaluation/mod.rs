@@ -8,10 +8,11 @@ pub mod terms;
 pub mod trace;
 
 use hardfiskur_core::{
-    board::{Bitboard, Board, Color, Piece},
-    move_gen::{self, lookups::Lookups},
+    board::{Bitboard, Board, Color},
+    move_gen::lookups::Lookups,
 };
 use packed_score::PackedScore;
+use pawn_structure::PawnStructure;
 use phase::Phase;
 use template_params::{Bishop, Black, Knight, Queen, Rook, White};
 use trace::{NullTrace, Trace};
@@ -48,19 +49,14 @@ pub struct EvalContext<'a> {
 
     occupied: Bitboard,
 
-    white_pawn_attacks: Bitboard,
-    black_pawn_attacks: Bitboard,
+    pawns: PawnStructure,
 }
 
 impl<'a> EvalContext<'a> {
     pub fn new(board: &'a Board) -> Self {
         let occupied = board.get_occupied_bitboard();
 
-        let white_pawns = board.repr()[Piece::WHITE_PAWN];
-        let black_pawns = board.repr()[Piece::BLACK_PAWN];
-
-        let white_pawn_attacks = move_gen::white_pawn_attacks(white_pawns);
-        let black_pawn_attacks = move_gen::white_pawn_attacks(black_pawns);
+        let pawns = PawnStructure::new(board);
 
         Self {
             board,
@@ -68,8 +64,7 @@ impl<'a> EvalContext<'a> {
 
             occupied,
 
-            white_pawn_attacks,
-            black_pawn_attacks,
+            pawns,
         }
     }
 
@@ -103,6 +98,10 @@ impl<'a> EvalContext<'a> {
         score += self.mobility::<Black, Bishop>(trace);
         score += self.mobility::<Black, Rook>(trace);
         score += self.mobility::<Black, Queen>(trace);
+
+        // Passed pawns
+        score += self.passed_pawns::<White>(trace);
+        score += self.passed_pawns::<Black>(trace);
 
         (Score(phase.taper_packed(score)), phase)
     }

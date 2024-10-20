@@ -133,10 +133,10 @@ impl Color {
         }
     }
 
-    pub const fn eval_sign(self) -> i32 {
+    pub const fn index(self) -> usize {
         match self {
-            Color::White => 1,
-            Color::Black => -1,
+            Color::White => 0,
+            Color::Black => 1,
         }
     }
 }

@@ -32,6 +32,8 @@ pub struct EvalTrace {
     pub bishop_mobility: [i16; 14],
     pub rook_mobility: [i16; 15],
     pub queen_mobility: [i16; 28],
+
+    pub passed_pawns: [i16; 64],
 }
 
 impl EvalTrace {
@@ -68,6 +70,8 @@ pub struct EvalParameters {
     pub bishop_mobility: [Parameter; 14],
     pub rook_mobility: [Parameter; 15],
     pub queen_mobility: [Parameter; 28],
+
+    pub passed_pawns: [Parameter; 64],
 }
 
 impl EvalParameters {
@@ -168,6 +172,8 @@ impl Default for EvalParameters {
             bishop_mobility: convert_packed_score_array(BISHOP_MOBILITY),
             rook_mobility: convert_packed_score_array(ROOK_MOBILITY),
             queen_mobility: convert_packed_score_array(QUEEN_MOBILITY),
+
+            passed_pawns: convert_packed_score_array(PASSED_PAWNS),
         }
     }
 }
@@ -194,10 +200,16 @@ impl Display for EvalParameters {
         )?;
         writeln!(f, "];")?;
 
+        writeln!(f)?;
+
         Self::fmt_array(f, "KNIGHT_MOBILITY", &self.knight_mobility, pad_size)?;
         Self::fmt_array(f, "BISHOP_MOBILITY", &self.bishop_mobility, pad_size)?;
         Self::fmt_array(f, "ROOK_MOBILITY", &self.rook_mobility, pad_size)?;
         Self::fmt_array(f, "QUEEN_MOBILITY", &self.queen_mobility, pad_size)?;
+
+        writeln!(f)?;
+
+        Self::fmt_array(f, "PASSED_PAWNS", &self.passed_pawns, pad_size)?;
 
         Ok(())
     }

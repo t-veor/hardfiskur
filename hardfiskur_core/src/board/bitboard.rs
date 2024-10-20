@@ -430,6 +430,13 @@ impl std::ops::ShrAssign<u8> for Bitboard {
     }
 }
 
+impl FromIterator<Square> for Bitboard {
+    fn from_iter<T: IntoIterator<Item = Square>>(iter: T) -> Self {
+        iter.into_iter()
+            .fold(Self::EMPTY, |acc, square| acc | Self::from_square(square))
+    }
+}
+
 struct BitIterator(u64);
 
 impl Iterator for BitIterator {
