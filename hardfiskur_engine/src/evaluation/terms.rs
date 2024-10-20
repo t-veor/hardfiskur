@@ -113,7 +113,9 @@ impl<'a> EvalContext<'a> {
         total
     }
 
-    #[inline]
+    // Weirdly, setting #[inline(never)] here compiles the method into a
+    // vectorized version which... is faster??
+    #[inline(never)]
     pub fn doubled_pawns<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
         let mut total = S::ZERO;
         let pawns = self.pawns.pawns[C::INDEX];
