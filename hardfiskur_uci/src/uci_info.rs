@@ -94,13 +94,6 @@ impl Display for UCIInfo {
         formatter.push_option("time", self.time.map(|d| d.as_millis()))?;
         formatter.push_option("nodes", self.nodes)?;
 
-        if !self.pv.is_empty() {
-            formatter.push_str("pv")?;
-            for m in self.pv.iter() {
-                formatter.push(m)?;
-            }
-        }
-
         formatter.push_option("multipv", self.multi_pv)?;
         formatter.push_option("score", self.score.as_ref())?;
         formatter.push_option("currmove", self.curr_move)?;
@@ -110,6 +103,13 @@ impl Display for UCIInfo {
         formatter.push_option("tbhits", self.tb_hits)?;
         formatter.push_option("sbhits", self.sb_hits)?;
         formatter.push_option("cpuload", self.cpu_load)?;
+
+        if !self.pv.is_empty() {
+            formatter.push_str("pv")?;
+            for m in self.pv.iter() {
+                formatter.push(m)?;
+            }
+        }
 
         if !self.refutation.is_empty() {
             formatter.push_str("refutation")?;
