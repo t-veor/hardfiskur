@@ -35,6 +35,7 @@ pub struct EvalTrace {
 
     pub passed_pawns: [i16; 64],
     pub doubled_pawns: i16,
+    pub isolated_pawns: i16,
 }
 
 impl EvalTrace {
@@ -74,6 +75,7 @@ pub struct EvalParameters {
 
     pub passed_pawns: [Parameter; 64],
     pub doubled_pawns: Parameter,
+    pub isolated_pawns: Parameter,
 }
 
 impl EvalParameters {
@@ -200,6 +202,7 @@ impl Default for EvalParameters {
 
             passed_pawns: convert_packed_score_array(PASSED_PAWNS),
             doubled_pawns: DOUBLED_PAWNS.into(),
+            isolated_pawns: ISOLATED_PAWNS.into(),
         }
     }
 }
@@ -243,6 +246,7 @@ impl Display for EvalParameters {
         Self::writeln_if_pretty(f)?;
 
         Self::fmt_single(f, "DOUBLED_PAWNS", self.doubled_pawns, pad_size)?;
+        Self::fmt_single(f, "ISOLATED_PAWNS", self.isolated_pawns, pad_size)?;
 
         Ok(())
     }

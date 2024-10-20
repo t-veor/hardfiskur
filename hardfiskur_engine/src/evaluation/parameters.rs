@@ -97,3 +97,4 @@ pub const PASSED_PAWNS: [S; 64] = [
 ];
 
 pub const DOUBLED_PAWNS: S = s!( -22, -47);
+pub const ISOLATED_PAWNS: S = s!(0);

@@ -6,7 +6,7 @@ use crate::evaluation::parameters::{
 
 use super::{
     packed_score::S,
-    parameters::{DOUBLED_PAWNS, MATERIAL, PASSED_PAWNS},
+    parameters::{DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, PASSED_PAWNS},
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
     EvalContext,
@@ -131,5 +131,20 @@ impl<'a> EvalContext<'a> {
         }
 
         total
+    }
+
+    pub fn isolated_pawns<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let pawns = self.pawns.pawns[C::INDEX];
+        let semi_open_files = self.pawns.semi_open_files[C::INDEX];
+
+        let isolated = pawns
+            & (semi_open_files.step_west() | Bitboard::H_FILE)
+            & (semi_open_files.step_east() | Bitboard::A_FILE);
+
+        let isolated_count = isolated.pop_count();
+
+        trace.add(|t| t.isolated_pawns += C::COEFF * isolated_count as i16);
+
+        C::SIGN * isolated_count as i32 * ISOLATED_PAWNS
     }
 }
