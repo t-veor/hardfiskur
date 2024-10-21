@@ -28,5 +28,5 @@ pub const LMP_MARGIN: i32 = 3;
 
 // Futility Pruning parameters
 pub const FP_MAX_DEPTH: i16 = 5;
-pub const FP_MARGIN: i32 = 150;
-pub const FP_MARGIN_BASE: i32 = 50;
+pub const FP_MARGIN: i32 = 100;
+pub const FP_MARGIN_BASE: i32 = 100;
