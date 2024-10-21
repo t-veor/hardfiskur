@@ -2,7 +2,8 @@ use hardfiskur_core::board::Move;
 
 use crate::{
     parameters::{
-        LMP_MARGIN, LMP_MAX_DEPTH, NMP_MIN_DEPTH, NMP_REDUCTION, RFP_MARGIN, RFP_MAX_DEPTH,
+        FP_MARGIN, FP_MARGIN_BASE, FP_MAX_DEPTH, LMP_MARGIN, LMP_MAX_DEPTH, NMP_MIN_DEPTH,
+        NMP_REDUCTION, RFP_MARGIN, RFP_MAX_DEPTH,
     },
     score::Score,
 };
@@ -84,8 +85,23 @@ impl<'a> SearchContext<'a> {
         &self,
         m: Move,
         depth: i16,
+        in_check: bool,
+        static_eval: Score,
+        alpha: Score,
         quiets_played: usize,
     ) -> MovePruning {
+        // Futility Pruning. If the score is far enough below alpha, later moves
+        // in the move ordering are unlikely to recover a score in very few
+        // moves.
+        if !NT::IS_PV
+            && !in_check
+            && !m.is_capture()
+            && depth <= FP_MAX_DEPTH
+            && static_eval + FP_MARGIN * (depth as i32) + FP_MARGIN_BASE < alpha
+        {
+            return MovePruning::Stop;
+        }
+
         // Late Move Pruning. Stop searching further moves after trying enough
         // quiet moves without a cutoff.
         if !m.is_capture()

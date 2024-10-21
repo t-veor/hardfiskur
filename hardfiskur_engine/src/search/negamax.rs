@@ -77,8 +77,8 @@ impl<'a> SearchContext<'a> {
         };
 
         let static_eval = match tt_entry.as_ref() {
-            Some(entry) => entry.get_score(ply_from_root),
             None if in_check => -Score::INF,
+            Some(entry) => entry.get_score(ply_from_root),
             None => evaluate(self.board),
         };
 
@@ -106,7 +106,14 @@ impl<'a> SearchContext<'a> {
             // Move forward pruning. Don't perform if we're in the root, not
             // played any moves yet, or possibly losing to a mating attack
             if !NT::IS_ROOT && moves_played > 0 && !best_score.is_mate_for_them() {
-                match self.move_forward_pruning::<NT>(m, depth, previously_played_quiets.len()) {
+                match self.move_forward_pruning::<NT>(
+                    m,
+                    depth,
+                    in_check,
+                    static_eval,
+                    alpha,
+                    previously_played_quiets.len(),
+                ) {
                     MovePruning::None => (),
                     MovePruning::SkipMove => continue 'move_loop,
                     MovePruning::Stop => break 'move_loop,

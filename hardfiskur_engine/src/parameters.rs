@@ -25,3 +25,8 @@ pub const LMP_MAX_DEPTH: i16 = 4;
 // Depth:           1   2   3   4
 // Quiets to check: 3   5   7  11
 pub const LMP_MARGIN: i32 = 3;
+
+// Futility Pruning parameters
+pub const FP_MAX_DEPTH: i16 = 5;
+pub const FP_MARGIN: i32 = 150;
+pub const FP_MARGIN_BASE: i32 = 50;
