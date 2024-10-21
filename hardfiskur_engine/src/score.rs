@@ -27,8 +27,12 @@ impl Score {
         self.0.abs() > Self::MATE_THRESHOLD
     }
 
-    pub fn is_mate_for_us(&self) -> bool {
+    pub const fn is_mate_for_us(&self) -> bool {
         self.0 > Self::MATE_THRESHOLD
+    }
+
+    pub const fn is_mate_for_them(&self) -> bool {
+        self.0 < -Self::MATE_THRESHOLD
     }
 
     pub const fn as_mate_in(self) -> Option<i32> {

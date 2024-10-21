@@ -1,9 +1,31 @@
+use hardfiskur_core::board::Move;
+
 use crate::{
-    parameters::{NMP_MIN_DEPTH, NMP_REDUCTION, RFP_MARGIN, RFP_MAX_DEPTH},
+    parameters::{
+        LMP_MARGIN, LMP_MAX_DEPTH, NMP_MIN_DEPTH, NMP_REDUCTION, RFP_MARGIN, RFP_MAX_DEPTH,
+    },
     score::Score,
 };
 
-use super::{node_types::NonPV, SearchContext};
+use super::{
+    node_types::{NodeType, NonPV},
+    SearchContext,
+};
+
+/// Enum used for move pruning within the move loop. Represents whether the move
+/// be searched, skipped, or if we should stop trying moves for this node
+/// entirely.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MovePruning {
+    /// Continue with searching this move.
+    None,
+
+    /// Skip this move, but continue searching later moves.
+    SkipMove,
+
+    /// Stop searching moves entirely for this node.
+    Stop,
+}
 
 impl<'a> SearchContext<'a> {
     pub fn forward_pruning(
@@ -56,5 +78,23 @@ impl<'a> SearchContext<'a> {
         }
 
         None
+    }
+
+    pub fn move_forward_pruning<NT: NodeType>(
+        &self,
+        m: Move,
+        depth: i16,
+        quiets_played: usize,
+    ) -> MovePruning {
+        // Late Move Pruning. Stop searching further moves after trying enough
+        // quiet moves without a cutoff.
+        if !m.is_capture()
+            && depth <= LMP_MAX_DEPTH
+            && quiets_played as i32 > LMP_MARGIN + (depth as i32).pow(2) / 2
+        {
+            return MovePruning::Stop;
+        }
+
+        MovePruning::None
     }
 }

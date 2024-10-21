@@ -6,6 +6,7 @@ use crate::{
     move_ordering::MovePicker,
     parameters::{LMR_BASE, LMR_DIVISOR, LMR_MIN_DEPTH, LMR_MIN_MOVES_PLAYED},
     score::Score,
+    search::forward_pruning::MovePruning,
     transposition_table::{TranspositionEntry, TranspositionFlag},
 };
 
@@ -99,9 +100,19 @@ impl<'a> SearchContext<'a> {
         let mut previously_played_quiets = MoveVec::new();
 
         let mut moves_played = 0;
-        while let Some(m) =
+        'move_loop: while let Some(m) =
             ordered_moves.next_move(self.board, ply_from_root, &self.killers, self.history)
         {
+            // Move forward pruning. Don't perform if we're in the root, not
+            // played any moves yet, or possibly losing to a mating attack
+            if !NT::IS_ROOT && moves_played > 0 && !best_score.is_mate_for_them() {
+                match self.move_forward_pruning::<NT>(m, depth, previously_played_quiets.len()) {
+                    MovePruning::None => (),
+                    MovePruning::SkipMove => continue 'move_loop,
+                    MovePruning::Stop => break 'move_loop,
+                }
+            }
+
             self.board.push_move_unchecked(m);
             moves_played += 1;
 

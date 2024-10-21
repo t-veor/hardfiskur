@@ -17,3 +17,11 @@ pub const LMR_MIN_MOVES_PLAYED: usize = 3;
 pub const LMR_MIN_DEPTH: i16 = 3;
 pub const LMR_BASE: f64 = 0.77;
 pub const LMR_DIVISOR: f64 = 2.36;
+
+// Late Move Pruning parameters
+pub const LMP_MAX_DEPTH: i16 = 4;
+// A value of 3 here results in the following no. of quiets checked before
+// giving up:
+// Depth:           1   2   3   4
+// Quiets to check: 3   5   7  11
+pub const LMP_MARGIN: i32 = 3;
