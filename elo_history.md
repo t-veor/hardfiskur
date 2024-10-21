@@ -409,3 +409,20 @@ Ptnml(0-2): [364, 1095, 1628, 1192, 419], WL/DD Ratio: 1.22
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 2faf458 (Pawn Shield Evaluation)
+
+-   Added evaluation terms for pawn shield in front of king
+
+Bench = 6624664
+
+```
+--------------------------------------------------
+Results of HF-new-2faf458 vs HF-old-6930496 (10+0.1, 1t, 32MB, 8moves_v3.pgn):
+Elo: 19.29 +/- 9.23, nElo: 25.30 +/- 12.09
+LOS: 100.00 %, DrawRatio: 36.67 %, PairsRatio: 1.27
+Games: 3174, Wins: 1043, Losses: 867, Draws: 1264, Points: 1675.0 (52.77 %)
+Ptnml(0-2): [114, 329, 582, 391, 171], WL/DD Ratio: 1.14
+LLR: 2.97 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
