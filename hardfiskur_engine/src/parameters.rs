@@ -30,3 +30,6 @@ pub const LMP_MARGIN: i32 = 3;
 pub const FP_MAX_DEPTH: i16 = 5;
 pub const FP_MARGIN: i32 = 100;
 pub const FP_MARGIN_BASE: i32 = 100;
+
+// Internal Iterative Reduction
+pub const IIR_MIN_DEPTH: i16 = 4;

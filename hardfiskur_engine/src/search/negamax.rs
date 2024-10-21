@@ -4,7 +4,7 @@ use hardfiskur_core::move_gen::MoveVec;
 use crate::{
     evaluation::evaluate,
     move_ordering::MovePicker,
-    parameters::{LMR_BASE, LMR_DIVISOR, LMR_MIN_DEPTH, LMR_MIN_MOVES_PLAYED},
+    parameters::{IIR_MIN_DEPTH, LMR_BASE, LMR_DIVISOR, LMR_MIN_DEPTH, LMR_MIN_MOVES_PLAYED},
     score::Score,
     search::forward_pruning::MovePruning,
     transposition_table::{TranspositionEntry, TranspositionFlag},
@@ -18,7 +18,7 @@ use super::{
 impl<'a> SearchContext<'a> {
     pub fn negamax<NT: NodeType>(
         &mut self,
-        depth: i16,
+        mut depth: i16,
         ply_from_root: u16,
         mut alpha: Score,
         beta: Score,
@@ -75,6 +75,15 @@ impl<'a> SearchContext<'a> {
         } else {
             None
         };
+
+        // Internal Iterative Reductions
+        if depth >= IIR_MIN_DEPTH
+            && tt_entry
+                .as_ref()
+                .map_or(true, |entry| entry.depth + 4 <= depth)
+        {
+            depth -= 1;
+        }
 
         let static_eval = match tt_entry.as_ref() {
             None if in_check => -Score::INF,
