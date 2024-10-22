@@ -4,10 +4,7 @@ mod negamax;
 mod node_types;
 mod quiescence;
 
-use std::{
-    sync::atomic::{AtomicBool, Ordering as AtomicOrdering},
-    time::Instant,
-};
+use std::sync::atomic::AtomicBool;
 
 use hardfiskur_core::board::{Board, Move};
 use node_types::Root;
@@ -20,21 +17,21 @@ use crate::{
     search_limits::SearchLimits,
     search_result::{SearchInfo, SearchResult},
     search_stats::SearchStats,
+    time_manager::TimeManager,
     transposition_table::TranspositionTable,
 };
 
 pub struct SearchContext<'a> {
     pub board: &'a mut Board,
-    pub search_limits: SearchLimits,
-    pub start_time: Instant,
     pub stats: SearchStats,
-    pub time_up: bool,
+
+    pub time_manager: TimeManager<'a>,
+    pub search_cancelled: bool,
 
     pub tt: &'a mut TranspositionTable,
     pub history: &'a mut HistoryTable,
     pub killers: KillerTable,
 
-    pub abort_flag: &'a AtomicBool,
     pub best_root_move: Option<Move>,
 }
 
@@ -48,14 +45,15 @@ impl<'a> SearchContext<'a> {
     ) -> Self {
         Self {
             board,
-            search_limits,
-            start_time: Instant::now(),
             stats: SearchStats::default(),
-            time_up: false,
+
+            time_manager: TimeManager::new(search_limits, abort_flag),
+            search_cancelled: false,
+
             tt,
             history,
             killers: KillerTable::default(),
-            abort_flag,
+
             best_root_move: None,
         }
     }
@@ -65,34 +63,32 @@ impl<'a> SearchContext<'a> {
     }
 
     pub fn should_exit_search(&mut self) -> bool {
-        self.is_time_up() || self.over_node_budget()
-    }
-
-    pub fn is_time_up(&mut self) -> bool {
-        if self.time_up {
+        if self.search_cancelled {
             return true;
         }
 
-        // Avoid syscalls a bit
-        if self.stats.nodes_searched % 2048 != 0 {
-            return false;
-        }
-
-        self.time_up = self.start_time.elapsed() >= self.search_limits.allocated_time
-            || self.abort_flag.load(AtomicOrdering::Relaxed);
-
-        self.time_up
+        self.search_cancelled |= self
+            .time_manager
+            .check_hard_bound(self.stats.nodes_searched);
+        self.search_cancelled
     }
 
-    pub fn over_node_budget(&self) -> bool {
-        self.stats.nodes_searched >= self.search_limits.node_budget
+    pub fn check_soft_bound(&mut self, depth: i16) -> bool {
+        if self.search_cancelled {
+            return true;
+        }
+
+        self.search_cancelled |= self
+            .time_manager
+            .check_soft_bound(depth, self.stats.nodes_searched);
+        self.search_cancelled
     }
 
     pub fn get_search_info(&mut self, score: Score) -> SearchInfo {
         SearchInfo {
             score,
             raw_stats: self.stats.clone(),
-            elapsed: self.start_time.elapsed(),
+            elapsed: self.time_manager.start_time().elapsed(),
             pv: self.tt.extract_pv(self.board),
             hash_full: self.tt.occupancy(),
         }
@@ -105,7 +101,7 @@ impl<'a> SearchContext<'a> {
         let mut best_score = Score(0);
         let mut best_move = None;
 
-        for depth in 1..=(self.search_limits.depth.min(MAX_DEPTH)) {
+        for depth in 1..=MAX_DEPTH {
             let score = self.negamax::<Root>(depth, 0, -Score::INF, Score::INF);
 
             // Accept the found best move, even from a partial search.
@@ -125,7 +121,7 @@ impl<'a> SearchContext<'a> {
             self.stats.depth = depth as _;
 
             // Must search to at least depth 1.
-            if depth > 1 && self.should_exit_search() {
+            if depth > 1 && self.check_soft_bound(depth) {
                 break;
             }
 
@@ -144,7 +140,6 @@ impl<'a> SearchContext<'a> {
         SearchResult {
             best_move,
             info: self.get_search_info(best_score),
-            aborted: self.abort_flag.load(AtomicOrdering::Relaxed),
         }
     }
 

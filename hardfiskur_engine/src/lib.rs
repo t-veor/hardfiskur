@@ -22,6 +22,7 @@ pub mod search;
 pub mod search_limits;
 pub mod search_result;
 pub mod search_stats;
+pub mod time_manager;
 pub mod transposition_table;
 
 pub struct Engine {

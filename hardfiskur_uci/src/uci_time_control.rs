@@ -1,5 +1,8 @@
 use std::{fmt::Display, time::Duration};
 
+use hardfiskur_core::board::Color;
+use hardfiskur_engine::search_limits::TimeControls;
+
 use crate::format_utils::SpaceSepFormatter;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +52,41 @@ impl UCITimeControl {
             Some(UCITimeControl::Ponder)
         } else {
             None
+        }
+    }
+
+    pub fn as_time_controls(self, to_move: Color) -> TimeControls {
+        match self {
+            UCITimeControl::Infinite => TimeControls::Infinite,
+            UCITimeControl::MoveTime(duration) => TimeControls::FixedMoveTime(duration),
+            UCITimeControl::TimeLeft {
+                white_time,
+                black_time,
+                white_increment,
+                black_increment,
+                moves_to_go,
+            } => {
+                let (remaining, increment) = match to_move {
+                    Color::White => (white_time, white_increment),
+                    Color::Black => (black_time, black_increment),
+                };
+
+                let remaining = remaining.unwrap_or(Duration::ZERO);
+                let increment = increment.unwrap_or(Duration::ZERO);
+
+                match moves_to_go {
+                    Some(moves_to_go) => TimeControls::Cyclic {
+                        remaining,
+                        increment,
+                        moves_to_go,
+                    },
+                    None => TimeControls::FischerTime {
+                        remaining,
+                        increment,
+                    },
+                }
+            }
+            UCITimeControl::Ponder => TimeControls::Infinite,
         }
     }
 }

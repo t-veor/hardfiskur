@@ -1,8 +1,8 @@
-use std::{io::stdin, str::FromStr, time::Duration};
+use std::{io::stdin, str::FromStr};
 
-use hardfiskur_core::board::{Board, Color, UCIMove};
+use hardfiskur_core::board::{Board, UCIMove};
 use hardfiskur_engine::{
-    search_limits::SearchLimits,
+    search_limits::{SearchLimits, TimeControls},
     search_result::{SearchInfo, SearchResult},
     Engine, SearchReporter,
 };
@@ -31,40 +31,6 @@ fn read_message() -> Option<UCIMessage> {
             panic!("Error reading from stdin: {e}")
         }
     }
-}
-
-fn simple_time_allocation(to_move: Color, time_control: Option<&UCITimeControl>) -> Duration {
-    match time_control {
-        Some(UCITimeControl::MoveTime(duration)) => {
-            // Use move time minus 25ms
-            return duration.saturating_sub(Duration::from_millis(25));
-        }
-        Some(UCITimeControl::TimeLeft {
-            white_time,
-            black_time,
-            white_increment,
-            black_increment,
-            ..
-        }) => {
-            let (time_remaining, increment) = match to_move {
-                Color::White => (white_time, white_increment),
-                Color::Black => (black_time, black_increment),
-            };
-
-            if let Some(time_remaining) = time_remaining {
-                let increment = increment.unwrap_or(Duration::ZERO);
-
-                return *time_remaining / 20 + increment / 2;
-            }
-        }
-
-        Some(UCITimeControl::Infinite) => return Duration::MAX,
-
-        _ => (),
-    }
-
-    // Default 2s
-    Duration::from_secs(2)
 }
 
 struct UCIReporter;
@@ -193,11 +159,12 @@ pub fn main_loop(engine: &mut Engine) {
                 time_control,
                 search_control,
             } => {
-                let allocated_time =
-                    simple_time_allocation(current_board.to_move(), time_control.as_ref());
+                let time_controls = time_control
+                    .map(|time_control| time_control.as_time_controls(current_board.to_move()))
+                    .unwrap_or(TimeControls::Infinite);
 
                 let search_limits = SearchLimits {
-                    allocated_time,
+                    time_controls,
                     node_budget: search_control
                         .as_ref()
                         .and_then(|s| s.nodes)

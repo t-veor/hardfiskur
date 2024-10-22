@@ -5,7 +5,7 @@ use std::{
 
 use hardfiskur_core::board::{Board, Color, Move};
 use hardfiskur_engine::{
-    search_limits::SearchLimits,
+    search_limits::{SearchLimits, TimeControls},
     search_result::{SearchInfo, SearchResult},
     Engine, SearchReporter,
 };
@@ -80,8 +80,8 @@ impl SearchThread {
         self.engine.start_search(
             board,
             SearchLimits {
-                allocated_time: Duration::from_millis(500),
-                ..Default::default()
+                time_controls: TimeControls::FixedMoveTime(Duration::from_millis(1000)),
+                ..SearchLimits::infinite()
             },
             GUIReporter {
                 tx,

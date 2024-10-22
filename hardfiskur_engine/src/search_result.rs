@@ -8,7 +8,6 @@ use crate::{score::Score, search_stats::SearchStats};
 pub struct SearchResult {
     pub best_move: Option<Move>,
     pub info: SearchInfo,
-    pub aborted: bool,
 }
 
 #[derive(Debug, Clone)]
