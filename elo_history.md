@@ -460,3 +460,20 @@ Ptnml(0-2): [221, 842, 1403, 973, 247], WL/DD Ratio: 0.71
 LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 2a77ebc (Internal Iterative Reduction)
+
+-   Added internal iterative reduction
+
+Bench = 2028673
+
+```
+--------------------------------------------------
+Results of HF-new-2a77ebc vs HF-old-79e2a14 (10+0.1, 1t, 32MB, UHO_Lichess_4852_v1.epd):
+Elo: 15.41 +/- 7.93, nElo: 21.59 +/- 11.09
+LOS: 99.99 %, DrawRatio: 38.59 %, PairsRatio: 1.26
+Games: 3768, Wins: 1181, Losses: 1014, Draws: 1573, Points: 1967.5 (52.22 %)
+Ptnml(0-2): [111, 402, 727, 497, 147], WL/DD Ratio: 1.16
+LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
