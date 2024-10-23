@@ -477,3 +477,20 @@ Ptnml(0-2): [111, 402, 727, 497, 147], WL/DD Ratio: 1.16
 LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 869a8f7 (Hard and Soft Bounds)
+
+-   Add simple hard and soft bounds for time management
+
+Bench = 2028673 (unchanged)
+
+```
+--------------------------------------------------
+Results of HF-new-869a8f7 vs HF-old-2a77ebc (10+0.1, 1t, 32MB, UHO_Lichess_4852_v1.epd):
+Elo: 68.52 +/- 17.30, nElo: 92.11 +/- 22.65
+LOS: 100.00 %, DrawRatio: 37.39 %, PairsRatio: 2.58
+Games: 904, Wins: 371, Losses: 195, Draws: 338, Points: 540.0 (59.73 %)
+Ptnml(0-2): [20, 59, 169, 133, 71], WL/DD Ratio: 1.32
+LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
