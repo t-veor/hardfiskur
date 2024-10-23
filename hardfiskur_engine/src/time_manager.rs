@@ -71,13 +71,12 @@ impl<'a> TimeManager<'a> {
                 remaining,
                 increment,
             } => {
-                // TODO: this will lose on time, the increment must be taken into account before applying the soft/hard multipliers
                 let increment = increment.mul_f64(INCREMENT_MULTIPLIER);
 
-                let soft = remaining.mul_f64(SOFT_MULTIPLIER) + increment;
-                let hard = remaining.mul_f64(HARD_MULTIPLIER) + increment;
+                let soft = (remaining + increment).mul_f64(SOFT_MULTIPLIER) + increment;
+                let hard = (remaining + increment).mul_f64(HARD_MULTIPLIER) + increment;
 
-                (soft, hard)
+                (soft.min(remaining), hard.min(remaining))
             }
             TimeControls::Cyclic {
                 remaining,
@@ -86,15 +85,13 @@ impl<'a> TimeManager<'a> {
             } => {
                 // Plan to use an even amount of time for each move in
                 // moves_to_go
-
-                // TODO: this will lose on time, the increment must be taken into account before applying the soft/hard multipliers
                 let move_alloc = remaining / moves_to_go;
                 let increment = increment.mul_f64(INCREMENT_MULTIPLIER);
 
-                let soft = move_alloc.mul_f64(CYCLIC_SOFT_MULTIPLIER).min(remaining);
-                let hard = move_alloc.mul_f64(CYCLIC_HARD_MULTIPLIER).min(remaining);
+                let soft = (move_alloc + increment).mul_f64(CYCLIC_SOFT_MULTIPLIER);
+                let hard = (move_alloc + increment).mul_f64(CYCLIC_HARD_MULTIPLIER);
 
-                (soft, hard)
+                (soft.min(remaining), hard.min(remaining))
             }
             _ => return (Duration::MAX, Duration::MAX),
         };

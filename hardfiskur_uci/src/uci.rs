@@ -6,7 +6,7 @@ use hardfiskur_engine::{
     search_result::{SearchInfo, SearchResult},
     Engine, SearchReporter,
 };
-use hardfiskur_uci::{UCIMessage, UCIOptionConfig, UCIPosition, UCIPositionBase, UCITimeControl};
+use hardfiskur_uci::{UCIMessage, UCIOptionConfig, UCIPosition, UCIPositionBase};
 
 fn version_string() -> String {
     let rev = option_env!("VERGEN_GIT_DESCRIBE").unwrap_or("unknown");
