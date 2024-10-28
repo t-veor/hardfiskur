@@ -75,16 +75,23 @@ pub struct ChessBoardResponse {
 pub struct ChessBoardUI {
     base_board: BaseBoardUI,
 
-    holding: Option<Square>,
+    selected: Option<Square>,
 
     promotion_progress: Option<((Square, Square), Color)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum HandleMoveResult {
+    None,
+    PromotionBuffered,
+    FoundMove(Move),
 }
 
 impl ChessBoardUI {
     pub fn new(id: Id) -> Self {
         Self {
             base_board: BaseBoardUI::new(id),
-            holding: None,
+            selected: None,
             promotion_progress: None,
         }
     }
@@ -94,15 +101,17 @@ impl ChessBoardUI {
     }
 
     pub fn ui(&mut self, ui: &mut Ui, props: ChessBoardUIProps<'_>) -> ChessBoardResponse {
+        let board = props.board;
+        let can_move = props.can_move;
         let pieces = self.get_pieces(props.board);
         let (moves, move_gen_res) = props.board.legal_moves_and_meta();
         let in_check = move_gen_res.checker_count > 0;
 
         let mut possible_moves = Vec::new();
 
-        if let Some(holding) = self.holding {
+        if let Some(selected) = self.selected {
             for m in moves.iter() {
-                if m.from_square() == holding {
+                if m.from_square() == selected {
                     possible_moves.push((m.from_square(), m.to_square()));
 
                     // Also display that the king can "capture" the rook for a
@@ -119,7 +128,7 @@ impl ChessBoardUI {
 
         let base_board_response = self.base_board.ui(ui, base_board_data);
 
-        self.handle_baseboard_response(base_board_response, &moves)
+        self.handle_baseboard_response(base_board_response, board, can_move, &moves)
     }
 
     fn get_pieces(&self, board: &Board) -> [Option<Piece>; 64] {
@@ -195,40 +204,95 @@ impl ChessBoardUI {
 
     fn handle_baseboard_response(
         &mut self,
-        response: BaseBoardUIResponse,
+        base_response: BaseBoardUIResponse,
+        board: &Board,
+        can_move: bool,
         moves: &[Move],
     ) -> ChessBoardResponse {
-        self.holding = response.holding;
+        let mut response = ChessBoardResponse {
+            egui_response: base_response.egui_response,
+            input_move: None,
+        };
 
-        let mut input_move = self.handle_possible_move(response.dropped, moves);
-        input_move = input_move.or(self.handle_promotion(response.promotion_result, moves));
-
-        ChessBoardResponse {
-            egui_response: response.egui_response,
-            input_move,
+        if !can_move {
+            self.selected = None;
+            return response;
         }
+
+        // Handle promotions
+        if let Some(m) = self.handle_promotion(base_response.promotion_result, moves) {
+            response.input_move = Some(m);
+            return response;
+        }
+
+        // Handle clicks
+        match (self.selected, base_response.clicked_square) {
+            // Same square clicked again.
+            (Some(from), Some(to)) if from == to => self.selected = None,
+
+            (Some(from), Some(to)) => match self.handle_possible_move(Some((from, to)), moves) {
+                HandleMoveResult::PromotionBuffered => {
+                    return response;
+                }
+                HandleMoveResult::FoundMove(m) => {
+                    response.input_move = Some(m);
+                    return response;
+                }
+                HandleMoveResult::None => {
+                    self.selected = match board.get_piece(to) {
+                        Some(piece) if piece.color() == board.to_move() => Some(to),
+                        _ => None,
+                    }
+                }
+            },
+            (None, Some(clicked)) => self.selected = Some(clicked),
+
+            _ => (),
+        }
+
+        // Handle drags
+        match self.handle_possible_move(base_response.dropped, moves) {
+            HandleMoveResult::FoundMove(m) => {
+                response.input_move = Some(m);
+                return response;
+            }
+            HandleMoveResult::PromotionBuffered => return response,
+            HandleMoveResult::None => (),
+        };
+        self.selected = base_response.holding.or(self.selected);
+
+        response
     }
 
     fn handle_possible_move(
         &mut self,
         dropped: Option<(Square, Square)>,
         moves: &[Move],
-    ) -> Option<Move> {
-        let (start, end) = dropped?;
-        let found_move = *moves.iter().find(|m| {
+    ) -> HandleMoveResult {
+        let (start, end) = match dropped {
+            Some(x) => x,
+            None => return HandleMoveResult::None,
+        };
+        let found_move = match moves.iter().find(|m| {
             m.from_square() == start
                 && (m.to_square() == end
                     // Allow "capturing" the rook for a castling move.
                     || m.is_castle() && m.castling_rook_squares().0 == end)
-        })?;
+        }) {
+            Some(m) => *m,
+            None => return HandleMoveResult::None,
+        };
+
+        // Clear the selection since we're making a valid move
+        self.selected = None;
 
         // Check if the move is a promotion. If it is, buffer the promotion and
         // don't finish until the user is finished with selecting the promotion
         if found_move.promotion().is_some() {
             self.promotion_progress = Some(((start, end), found_move.piece().color()));
-            None
+            HandleMoveResult::PromotionBuffered
         } else {
-            Some(found_move)
+            HandleMoveResult::FoundMove(found_move)
         }
     }
 
