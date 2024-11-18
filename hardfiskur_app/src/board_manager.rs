@@ -16,7 +16,7 @@ struct MoveHistoryItem {
 }
 
 #[derive(Debug, Clone)]
-struct GameManagerState {
+struct BoardManagerState {
     current_board: Board,
 
     starting_fullmoves: u32,
@@ -27,7 +27,7 @@ struct GameManagerState {
     move_history: Vec<MoveHistoryItem>,
 }
 
-impl GameManagerState {
+impl BoardManagerState {
     fn new(board: Board) -> Self {
         let white_first_move = board.to_move().is_white();
         let starting_fullmoves = board.fullmoves();
@@ -152,17 +152,17 @@ struct MoveHistoryRow<'a> {
     black_move: Option<(usize, &'a str)>,
 }
 
-pub struct GameManager {
-    state: GameManagerState,
+pub struct BoardManager {
+    state: BoardManagerState,
     chess_ui: ChessBoardUI,
 
     last_scroll_event: Instant,
 }
 
-impl GameManager {
+impl BoardManager {
     pub fn new() -> Self {
         Self {
-            state: GameManagerState::new(Board::starting_position()),
+            state: BoardManagerState::new(Board::starting_position()),
             chess_ui: ChessBoardUI::new(Id::new("hardfiskur_ui_board")),
 
             last_scroll_event: Instant::now(),
@@ -269,7 +269,7 @@ impl GameManager {
     }
 
     pub fn reset_to(&mut self, board: Board) {
-        self.state = GameManagerState::new(board);
+        self.state = BoardManagerState::new(board);
     }
 
     pub fn current_board(&self) -> &Board {
