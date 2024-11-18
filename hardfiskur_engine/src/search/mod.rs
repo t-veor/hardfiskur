@@ -10,6 +10,7 @@ use hardfiskur_core::board::{Board, Move};
 use node_types::Root;
 
 use crate::{
+    effort_table::EffortTable,
     history_table::HistoryTable,
     move_ordering::KillerTable,
     parameters::MAX_DEPTH,
@@ -31,6 +32,7 @@ pub struct SearchContext<'a> {
     pub tt: &'a mut TranspositionTable,
     pub history: &'a mut HistoryTable,
     pub killers: KillerTable,
+    pub effort: EffortTable,
 
     pub best_root_move: Option<Move>,
 }
@@ -53,6 +55,7 @@ impl<'a> SearchContext<'a> {
             tt,
             history,
             killers: KillerTable::default(),
+            effort: EffortTable::default(),
 
             best_root_move: None,
         }
@@ -119,6 +122,15 @@ impl<'a> SearchContext<'a> {
             }
 
             self.stats.depth = depth as _;
+
+            // Update soft bound parameters on the time manager
+            self.time_manager.on_iteration_end(
+                depth,
+                match best_move {
+                    Some(m) => self.effort.get_effort(m, self.stats.nodes_searched),
+                    None => 0.0,
+                },
+            );
 
             // Must search to at least depth 1.
             if depth > 1 && self.check_soft_bound(depth) {

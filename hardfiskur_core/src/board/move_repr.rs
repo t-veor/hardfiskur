@@ -1,4 +1,7 @@
-use std::{fmt::Debug, num::NonZeroU32};
+use std::{
+    fmt::{Debug, Write},
+    num::NonZeroU32,
+};
 
 use bitflags::bitflags;
 use zerocopy_derive::FromZeros;
@@ -232,15 +235,43 @@ impl Move {
 }
 
 impl Debug for Move {
+    // Modified long algbraic notation
+    // <Piece FEN char> <from square> ('-' | 'x') [captured piece FEN char]
+    // <to square> ['=' <promoted to FEN char>]
+    // [';' <flags: 'c' (castle) | 'd' (double pawn push) | 'e' (en passant)>]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Move")
-            .field("from", &self.from_square())
-            .field("to", &self.to_square())
-            .field("piece", &self.piece())
-            .field("captured_piece", &self.captured_piece())
-            .field("promotion", &self.promotion())
-            .field("flags", &self.flags())
-            .finish()
+        f.write_char(self.piece().as_fen_char())?;
+        write!(f, "{}", self.from_square())?;
+
+        if let Some(captured_piece) = self.captured_piece() {
+            f.write_char('x')?;
+            f.write_char(captured_piece.as_fen_char())?;
+        } else {
+            f.write_char('-')?;
+        }
+
+        write!(f, "{}", self.to_square())?;
+
+        if let Some(promotion) = self.promotion() {
+            write!(f, "={}", promotion.as_fen_char())?;
+        }
+
+        let flags = self.flags();
+        if !flags.is_empty() {
+            f.write_char(';')?;
+
+            if flags.contains(MoveFlags::CASTLE) {
+                f.write_char('c')?;
+            }
+            if flags.contains(MoveFlags::DOUBLE_PAWN_PUSH) {
+                f.write_char('d')?;
+            }
+            if flags.contains(MoveFlags::EN_PASSANT) {
+                f.write_char('e')?;
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -129,6 +129,8 @@ impl<'a> SearchContext<'a> {
                 }
             }
 
+            let prev_total_nodes = self.stats.nodes_searched;
+
             self.board.push_move_unchecked(m);
             moves_played += 1;
 
@@ -141,6 +143,11 @@ impl<'a> SearchContext<'a> {
             };
 
             self.board.pop_move();
+
+            if NT::IS_ROOT {
+                let subtree_nodes = self.stats.nodes_searched - prev_total_nodes;
+                self.effort.log_effort(m, subtree_nodes);
+            }
 
             // Out of time, stop searching!
             if depth > 1 && self.should_exit_search() {

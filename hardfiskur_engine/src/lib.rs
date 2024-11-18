@@ -13,6 +13,7 @@ use search_result::{SearchInfo, SearchResult};
 use transposition_table::{TranspositionEntry, TranspositionTable};
 
 pub mod bench;
+pub mod effort_table;
 pub mod evaluation;
 pub mod history_table;
 pub mod move_ordering;

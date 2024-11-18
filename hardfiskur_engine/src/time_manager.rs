@@ -14,13 +14,22 @@ pub const INCREMENT_MULTIPLIER: f64 = 0.75;
 pub const CYCLIC_SOFT_MULTIPLIER: f64 = 0.8;
 pub const CYCLIC_HARD_MULTIPLIER: f64 = 4.0;
 
+pub const SOFT_BOUND_ADJUSTMENT_MIN_DEPTH: i16 = 10;
+
+pub const NODE_ADJUSTMENT_BIAS: f64 = 2.0;
+pub const NODE_ADJUSTMENT_WEIGHT: f64 = -1.5;
+
 #[derive(Debug, Clone)]
 pub struct TimeManager<'a> {
     start_time: Instant,
     soft_bound: Duration,
     hard_bound: Duration,
+
     max_depth: i16,
     max_nodes: u64,
+
+    best_move_effort: f64,
+
     abort_flag: &'a AtomicBool,
 }
 
@@ -34,8 +43,24 @@ impl<'a> TimeManager<'a> {
             hard_bound,
             max_depth: limits.depth,
             max_nodes: limits.node_budget,
+
+            best_move_effort: 1.0,
+
             abort_flag,
         }
+    }
+
+    pub fn on_iteration_end(&mut self, depth: i16, best_move_effort: f64) {
+        // Results from first few iterations are not very stable
+        if depth < SOFT_BOUND_ADJUSTMENT_MIN_DEPTH {
+            return;
+        }
+
+        self.best_move_effort = best_move_effort;
+    }
+
+    fn node_adjustment(&self) -> f64 {
+        NODE_ADJUSTMENT_BIAS + NODE_ADJUSTMENT_WEIGHT * self.best_move_effort
     }
 
     pub fn check_soft_bound(&self, depth: i16, nodes: u64) -> bool {
@@ -43,7 +68,18 @@ impl<'a> TimeManager<'a> {
             return true;
         }
 
-        self.start_time.elapsed() >= self.soft_bound
+        let soft_bound = if depth < SOFT_BOUND_ADJUSTMENT_MIN_DEPTH {
+            self.soft_bound
+        } else {
+            // Adjust the soft bound based on several parameters.
+            let mut soft_bound = self.soft_bound.as_secs_f64();
+
+            soft_bound *= self.node_adjustment();
+
+            Duration::try_from_secs_f64(soft_bound).unwrap_or(Duration::MAX)
+        };
+
+        self.start_time.elapsed() >= soft_bound
     }
 
     pub fn check_hard_bound(&self, nodes: u64) -> bool {
