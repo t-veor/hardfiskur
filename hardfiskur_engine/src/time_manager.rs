@@ -3,6 +3,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use hardfiskur_core::board::Move;
+
 use crate::search_limits::{SearchLimits, TimeControls};
 
 pub const MOVE_OVERHEAD: Duration = Duration::from_millis(15);
@@ -19,6 +21,9 @@ pub const SOFT_BOUND_ADJUSTMENT_MIN_DEPTH: i16 = 10;
 pub const NODE_ADJUSTMENT_BIAS: f64 = 2.0;
 pub const NODE_ADJUSTMENT_WEIGHT: f64 = -1.5;
 
+// Adapted from Stash
+pub const MOVE_STABILITY_ADJUSTMENT: [f64; 5] = [2.50, 1.20, 0.90, 0.80, 0.75];
+
 #[derive(Debug, Clone)]
 pub struct TimeManager<'a> {
     start_time: Instant,
@@ -28,6 +33,9 @@ pub struct TimeManager<'a> {
     max_depth: i16,
     max_nodes: u64,
 
+    last_best_move: Option<Move>,
+
+    move_stability: usize,
     best_move_effort: f64,
 
     abort_flag: &'a AtomicBool,
@@ -44,16 +52,25 @@ impl<'a> TimeManager<'a> {
             max_depth: limits.depth,
             max_nodes: limits.node_budget,
 
+            last_best_move: None,
+            move_stability: 0,
             best_move_effort: 1.0,
 
             abort_flag,
         }
     }
 
-    pub fn on_iteration_end(&mut self, depth: i16, best_move_effort: f64) {
+    pub fn on_iteration_end(&mut self, depth: i16, best_move: Option<Move>, best_move_effort: f64) {
         // Results from first few iterations are not very stable
         if depth < SOFT_BOUND_ADJUSTMENT_MIN_DEPTH {
             return;
+        }
+
+        if self.last_best_move == best_move {
+            self.move_stability += 1;
+        } else {
+            self.last_best_move = best_move;
+            self.move_stability = 0;
         }
 
         self.best_move_effort = best_move_effort;
@@ -61,6 +78,13 @@ impl<'a> TimeManager<'a> {
 
     fn node_adjustment(&self) -> f64 {
         NODE_ADJUSTMENT_BIAS + NODE_ADJUSTMENT_WEIGHT * self.best_move_effort
+    }
+
+    fn move_stability_adjustment(&self) -> f64 {
+        *MOVE_STABILITY_ADJUSTMENT
+            .get(self.move_stability)
+            .or(MOVE_STABILITY_ADJUSTMENT.last())
+            .unwrap()
     }
 
     pub fn check_soft_bound(&self, depth: i16, nodes: u64) -> bool {
@@ -75,6 +99,7 @@ impl<'a> TimeManager<'a> {
             let mut soft_bound = self.soft_bound.as_secs_f64();
 
             soft_bound *= self.node_adjustment();
+            soft_bound *= self.move_stability_adjustment();
 
             Duration::try_from_secs_f64(soft_bound).unwrap_or(Duration::MAX)
         };

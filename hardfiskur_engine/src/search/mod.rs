@@ -107,8 +107,10 @@ impl<'a> SearchContext<'a> {
         for depth in 1..=MAX_DEPTH {
             let score = self.aspiration_search(best_score, depth);
 
+            let m = self.best_root_move.take();
+
             // Accept the found best move, even from a partial search.
-            if let Some(m) = self.best_root_move.take() {
+            if let Some(m) = m {
                 best_move = Some(m);
 
                 // Already found a mate, don't need to look any further --
@@ -126,7 +128,8 @@ impl<'a> SearchContext<'a> {
             // Update soft bound parameters on the time manager
             self.time_manager.on_iteration_end(
                 depth,
-                match best_move {
+                m,
+                match m {
                     Some(m) => self.effort.get_effort(m, self.stats.nodes_searched),
                     None => 0.0,
                 },
