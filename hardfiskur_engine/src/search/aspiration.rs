@@ -24,17 +24,11 @@ impl<'a> SearchContext<'a> {
                 return Score(0);
             }
 
-            // let deviation = score.0.abs_diff((alpha + beta).0 / 2);
-
             if alpha < score && score < beta {
-                // eprintln!(
-                //     "Depth {depth} window {delta} succeeded (score={score}, deviation={deviation})"
-                // );
                 return score;
             }
 
             // Window failed, double window size and re-search
-            // eprintln!("Depth {depth} window {delta} failed, doubling (score={score}, deviation={deviation})");
             delta = delta.saturating_mul(2);
         }
     }

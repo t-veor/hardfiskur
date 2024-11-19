@@ -6,7 +6,7 @@ pub const MAX_EXTENSIONS: i16 = 16;
 
 // Aspiration Search parameters
 pub const ASPIRATION_MIN_DEPTH: i16 = 5;
-pub const ASPIRATION_INITIAL_WINDOW: i32 = 20;
+pub const ASPIRATION_INITIAL_WINDOW: i32 = 50;
 
 // Reverse Futility Pruning parameters
 pub const RFP_MAX_DEPTH: i16 = 6;
