@@ -3,11 +3,13 @@ mod fen_input;
 mod search_thread;
 mod sfx_stream;
 
-use board_manager::BoardManager;
+use std::time::Duration;
+
 use eframe::egui::{self, Layout, Vec2};
-use fen_input::FenInput;
 use hardfiskur_core::board::{Board, Move};
 
+use board_manager::BoardManager;
+use fen_input::FenInput;
 use search_thread::SearchThread;
 use sfx_stream::SFXStream;
 
@@ -16,6 +18,7 @@ struct HardfiskurApp {
 
     fen_input: FenInput,
 
+    move_time: Duration,
     search_thread: SearchThread,
     sfx_stream: SFXStream,
 
@@ -30,6 +33,7 @@ impl HardfiskurApp {
             fen_input: FenInput::new(),
 
             search_thread: SearchThread::new(),
+            move_time: Duration::from_secs(1),
             sfx_stream: SFXStream::new(),
 
             user_just_moved: false,
@@ -39,10 +43,13 @@ impl HardfiskurApp {
     fn start_search(&mut self, ctx: &egui::Context) {
         if !self.search_thread.searching() {
             let ctx = ctx.clone();
-            self.search_thread
-                .send_search_request(self.board_manager.current_board(), move || {
+            self.search_thread.send_search_request(
+                self.board_manager.current_board(),
+                self.move_time,
+                move || {
                     ctx.request_repaint();
-                });
+                },
+            );
         }
     }
 
@@ -81,6 +88,18 @@ impl eframe::App for HardfiskurApp {
                 if ui.button("Undo move").clicked() {
                     self.board_manager.pop_move();
                 }
+
+                let mut move_time_secs = self.move_time.as_secs_f64();
+                ui.add(
+                    egui::DragValue::new(&mut move_time_secs)
+                        .prefix("Move time: ")
+                        .speed(0.1)
+                        .range(0.0..=600.0)
+                        .clamp_to_range(false)
+                        .suffix(" secs"),
+                );
+                self.move_time =
+                    Duration::try_from_secs_f64(move_time_secs).unwrap_or(Duration::ZERO);
 
                 ui.separator();
 

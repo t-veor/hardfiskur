@@ -69,7 +69,12 @@ impl SearchThread {
         self.outstanding_request
     }
 
-    pub fn send_search_request(&mut self, board: &Board, waker: impl Fn() + Send + Sync + 'static) {
+    pub fn send_search_request(
+        &mut self,
+        board: &Board,
+        move_time: Duration,
+        waker: impl Fn() + Send + Sync + 'static,
+    ) {
         let tx = self.tx.clone();
 
         self.search_gen += 1;
@@ -80,7 +85,7 @@ impl SearchThread {
         self.engine.start_search(
             board,
             SearchLimits {
-                time_controls: TimeControls::FixedMoveTime(Duration::from_millis(1000)),
+                time_controls: TimeControls::FixedMoveTime(move_time),
                 ..SearchLimits::infinite()
             },
             GUIReporter {
