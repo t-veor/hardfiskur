@@ -494,3 +494,20 @@ Ptnml(0-2): [20, 59, 169, 133, 71], WL/DD Ratio: 1.32
 LLR: 2.96 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 491d437 (Node Based Time Management)
+
+-   Adjust soft bound based on effort spent on best move
+
+Bench = 2028673 (unchanged)
+
+```
+--------------------------------------------------
+Results of HF-new-491d437 vs HF-old-869a8f7 (10+0.1, 1t, 32MB, UHO_Lichess_4852_v1.epd):
+Elo: 10.89 +/- 6.53, nElo: 15.08 +/- 9.03
+LOS: 99.95 %, DrawRatio: 39.32 %, PairsRatio: 1.14
+Games: 5682, Wins: 1797, Losses: 1619, Draws: 2266, Points: 2930.0 (51.57 %)
+Ptnml(0-2): [175, 631, 1117, 677, 241], WL/DD Ratio: 1.33
+LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+```
