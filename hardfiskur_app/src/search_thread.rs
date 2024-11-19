@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use hardfiskur_core::board::{Board, Color, Move};
+use hardfiskur_core::board::{Board, Color, Move, UCIMove};
 use hardfiskur_engine::{
     search_limits::{SearchLimits, TimeControls},
     search_result::{SearchInfo, SearchResult},
@@ -29,22 +29,43 @@ where
     waker: F,
 }
 
-impl<F: Fn() + Send + Sync + 'static> SearchReporter for GUIReporter<F> {
-    fn receive_search_info(&self, _info: SearchInfo) {}
-
-    fn search_complete(&self, result: SearchResult) {
+impl<F> GUIReporter<F>
+where
+    F: Fn() + Send + Sync + 'static,
+{
+    fn print_search_info(&self, info: &SearchInfo) {
         let score = match self.to_move {
-            Color::White => result.info.score,
-            Color::Black => -result.info.score,
+            Color::White => info.score,
+            Color::Black => -info.score,
         };
 
-        println!(
-            "score {score} depth {} nodes {} time {:?} tt_hits {}",
-            result.info.raw_stats.depth,
-            result.info.raw_stats.nodes_searched,
-            result.info.elapsed,
-            result.info.raw_stats.tt_hits
+        print!(
+            "score {score} depth {} seldepth {} time {} nodes {} tt_hits {}",
+            info.raw_stats.depth,
+            info.raw_stats.sel_depth,
+            info.elapsed.as_millis(),
+            info.raw_stats.nodes_searched,
+            info.raw_stats.tt_hits
         );
+
+        if !info.pv.is_empty() {
+            print!(" pv");
+            for m in info.pv.iter() {
+                print!(" {}", UCIMove::from(*m));
+            }
+        }
+
+        println!();
+    }
+}
+
+impl<F: Fn() + Send + Sync + 'static> SearchReporter for GUIReporter<F> {
+    fn receive_search_info(&self, info: SearchInfo) {
+        self.print_search_info(&info);
+    }
+
+    fn search_complete(&self, result: SearchResult) {
+        self.print_search_info(&result.info);
 
         self.tx.send((result.best_move, self.generation)).unwrap();
         (self.waker)();
