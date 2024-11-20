@@ -64,7 +64,7 @@ fn uci_options() -> Vec<UCIOptionConfig> {
             name: "Hash".into(),
             default: Some(32),
             min: Some(1),
-            max: Some(4096),
+            max: Some(131072),
         },
         UCIOptionConfig::Spin {
             name: "Threads".into(),
@@ -85,8 +85,8 @@ fn handle_option(engine: &mut Engine, option_name: &str, option_value: Option<&s
             }
         };
 
-        if !(1..=4096).contains(&value) {
-            eprintln!("Invalid value for Hash: {value} (min=1, max=4096)");
+        if !(1..=131072).contains(&value) {
+            eprintln!("Invalid value for Hash: {value} (min=1, max=131072)");
             return;
         }
 
@@ -117,7 +117,8 @@ pub fn main_loop(engine: &mut Engine) {
                 println!("{}", UCIMessage::id_author("Tyler Zhang"));
 
                 for option in uci_options() {
-                    println!("{option}");
+                    let message = UCIMessage::Option(option);
+                    println!("{message}");
                 }
 
                 println!("{}", UCIMessage::UCIOk);
