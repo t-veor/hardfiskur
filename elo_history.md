@@ -511,3 +511,19 @@ Ptnml(0-2): [175, 631, 1117, 677, 241], WL/DD Ratio: 1.33
 LLR: 2.95 (-2.94, 2.94) [0.00, 5.00]
 --------------------------------------------------
 ```
+
+## 89ac99a (Aspiration Windows)
+
+-   Add aspiration window search
+
+Bench = 1837505
+
+Trying out OpenBench for running SPRTs.
+
+```
+Elo   | 32.99 +- 11.99 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.97 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 1690 W: 585 L: 425 D: 680
+Penta | [46, 152, 320, 250, 77]
+```
