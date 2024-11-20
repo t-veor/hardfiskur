@@ -22,7 +22,8 @@ struct HardfiskurApp {
     search_thread: SearchThread,
     sfx_stream: SFXStream,
 
-    user_just_moved: bool,
+    automove_after_user: bool,
+    automove_after_engine: bool,
 }
 
 impl HardfiskurApp {
@@ -36,7 +37,8 @@ impl HardfiskurApp {
             move_time: Duration::from_secs(1),
             sfx_stream: SFXStream::new(),
 
-            user_just_moved: false,
+            automove_after_user: false,
+            automove_after_engine: false,
         }
     }
 
@@ -53,7 +55,7 @@ impl HardfiskurApp {
         }
     }
 
-    fn make_move(&mut self, the_move: Move) {
+    fn make_move(&mut self, ctx: &egui::Context, the_move: Move, from_user: bool) {
         if self.board_manager.push_move(the_move) {
             if the_move.is_capture() {
                 self.sfx_stream.play_capture();
@@ -63,13 +65,17 @@ impl HardfiskurApp {
         }
 
         self.search_thread.cancel_search();
+
+        if from_user && self.automove_after_user || !from_user && self.automove_after_engine {
+            self.start_search(ctx);
+        }
     }
 }
 
 impl eframe::App for HardfiskurApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if let Some(m) = self.search_thread.try_receive_move() {
-            self.make_move(m);
+            self.make_move(ctx, m, false);
         }
 
         egui::SidePanel::right("right_panel")
@@ -101,6 +107,9 @@ impl eframe::App for HardfiskurApp {
                 self.move_time =
                     Duration::try_from_secs_f64(move_time_secs).unwrap_or(Duration::ZERO);
 
+                ui.checkbox(&mut self.automove_after_user, "Move after user");
+                ui.checkbox(&mut self.automove_after_engine, "Move again after engine");
+
                 ui.separator();
 
                 if let Some(scroll_request) = self.board_manager.ui_move_history(ui) {
@@ -130,11 +139,8 @@ impl eframe::App for HardfiskurApp {
                 |ui| {
                     let input_move = self.board_manager.ui_board(ui);
 
-                    self.user_just_moved = false;
-
                     if let Some(m) = input_move {
-                        self.make_move(m);
-                        self.user_just_moved = true;
+                        self.make_move(ctx, m, true);
                     }
                 },
             );
