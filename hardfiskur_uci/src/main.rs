@@ -22,7 +22,7 @@ fn main() {
     if args.len() == 2 && args[1] == "bench" {
         let (nodes, time) = engine.bench(None);
         let nps = nodes * 1000 / time.as_millis() as u64;
-        println!("nodes {nodes} time {} nps {nps}", time.as_millis());
+        println!("{nodes} nodes {nps} nps {} time", time.as_millis());
         return;
     }
 
