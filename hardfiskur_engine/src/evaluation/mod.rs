@@ -77,6 +77,8 @@ impl<'a> EvalContext<'a> {
         let mut phase = Phase(0);
         let mut score = PackedScore::ZERO;
 
+        score += self.tempo(self.board.to_move(), trace);
+
         for (piece, bitboard) in self.board.repr().boards_colored(Color::White) {
             for square in bitboard.squares() {
                 phase.apply_phase(piece);

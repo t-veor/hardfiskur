@@ -1,21 +1,22 @@
 use hardfiskur_core::board::{Bitboard, Color, Piece, PieceType, Square};
 
-use crate::evaluation::parameters::{
-    BISHOP_MOBILITY, KNIGHT_MOBILITY, PIECE_SQUARE_TABLES, QUEEN_MOBILITY, ROOK_MOBILITY,
-};
-
 use super::{
     lookups::{PAWN_SHIELD_CLOSE_MASKS, PAWN_SHIELD_FAR_MASKS, SENSIBLE_KING_MASKS},
     packed_score::S,
-    parameters::{
-        DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, PASSED_PAWNS, PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR,
-    },
+    parameters::*,
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
     EvalContext,
 };
 
 impl<'a> EvalContext<'a> {
+    #[inline]
+    pub fn tempo(&self, color: Color, trace: &mut impl Trace) -> S {
+        trace.add(|t| t.tempo_bonus += color.sign() as i16);
+
+        color.sign() * TEMPO_BONUS
+    }
+
     #[inline]
     pub fn material<C: ColorParam>(&self, piece_type: PieceType, trace: &mut impl Trace) -> S {
         trace.add(|t| t.material[piece_type.index()] += C::COEFF);

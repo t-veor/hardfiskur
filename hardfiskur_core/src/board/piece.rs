@@ -139,6 +139,13 @@ impl Color {
             Color::Black => 1,
         }
     }
+
+    pub const fn sign(self) -> i32 {
+        match self {
+            Color::White => 1,
+            Color::Black => -1,
+        }
+    }
 }
 
 /// Represents a piece in a chess game.

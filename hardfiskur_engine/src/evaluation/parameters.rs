@@ -3,6 +3,8 @@
 use crate::s;
 use super::packed_score::S;
 
+pub const TEMPO_BONUS: S = s!(0);
+
 pub const MATERIAL: [S; 6] = [
     s!(100,155), s!(425,447), s!(468,464), s!(601,821), s!(1262,1462), s!(0), 
 ];

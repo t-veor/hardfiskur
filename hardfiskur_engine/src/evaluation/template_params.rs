@@ -6,7 +6,7 @@ pub trait ColorParam: sealed::Sealed {
     const IS_WHITE: bool = Self::COLOR.is_white();
     const IS_BLACK: bool = Self::COLOR.is_black();
 
-    const SIGN: i32 = if Self::IS_WHITE { 1 } else { -1 };
+    const SIGN: i32 = Self::COLOR.sign();
     const COEFF: i16 = Self::SIGN as i16;
 }
 

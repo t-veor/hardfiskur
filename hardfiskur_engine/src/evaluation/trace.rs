@@ -19,6 +19,7 @@ impl Trace for NullTrace {
 #[derive(Debug, Clone, FromBytes, IntoBytes)]
 #[repr(C)]
 pub struct EvalTrace {
+    pub tempo_bonus: i16,
     pub material: [i16; 6],
 
     pub pawn_pst: [i16; 64],
@@ -62,6 +63,7 @@ pub type Parameter = [f64; 2];
 #[derive(Debug, Clone, FromBytes, IntoBytes, Immutable)]
 #[repr(C)]
 pub struct EvalParameters {
+    pub tempo_bonus: Parameter,
     pub material: [Parameter; 6],
 
     pub pawn_pst: [Parameter; 64],
@@ -192,6 +194,7 @@ impl EvalParameters {
 impl Default for EvalParameters {
     fn default() -> Self {
         Self {
+            tempo_bonus: TEMPO_BONUS.into(),
             material: convert_packed_score_array(MATERIAL),
 
             pawn_pst: convert_packed_score_array(PAWN_PST),
@@ -219,6 +222,9 @@ impl Default for EvalParameters {
 impl Display for EvalParameters {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let pad_size = Some(4);
+
+        Self::fmt_single(f, "TEMPO_BONUS", self.tempo_bonus, None)?;
+        Self::writeln_if_pretty(f)?;
 
         Self::fmt_array(f, "MATERIAL", &self.material, None)?;
         Self::writeln_if_pretty(f)?;
