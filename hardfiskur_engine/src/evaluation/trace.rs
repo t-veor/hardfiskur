@@ -39,6 +39,9 @@ pub struct EvalTrace {
 
     pub pawn_shield_close: i16,
     pub pawn_shield_far: i16,
+
+    pub semi_open_file_bonuses: [i16; 3],
+    pub open_file_bonuses: [i16; 3],
 }
 
 impl EvalTrace {
@@ -82,6 +85,9 @@ pub struct EvalParameters {
 
     pub pawn_shield_close: Parameter,
     pub pawn_shield_far: Parameter,
+
+    pub semi_open_file_bonuses: [Parameter; 3],
+    pub open_file_bonuses: [Parameter; 3],
 }
 
 impl EvalParameters {
@@ -212,6 +218,9 @@ impl Default for EvalParameters {
 
             pawn_shield_close: PAWN_SHIELD_CLOSE.into(),
             pawn_shield_far: PAWN_SHIELD_FAR.into(),
+
+            semi_open_file_bonuses: convert_packed_score_array(SEMI_OPEN_FILE_BONUSES),
+            open_file_bonuses: convert_packed_score_array(OPEN_FILE_BONUSES),
         }
     }
 }
@@ -260,6 +269,16 @@ impl Display for EvalParameters {
 
         Self::fmt_single(f, "PAWN_SHIELD_CLOSE", self.pawn_shield_close, None)?;
         Self::fmt_single(f, "PAWN_SHIELD_FAR", self.pawn_shield_far, None)?;
+        Self::writeln_if_pretty(f)?;
+
+        Self::fmt_array(
+            f,
+            "SEMI_OPEN_FILE_BONUSES",
+            &self.semi_open_file_bonuses,
+            None,
+        )?;
+        Self::fmt_array(f, "OPEN_FILE_BONUSES", &self.open_file_bonuses, None)?;
+        Self::writeln_if_pretty(f)?;
 
         Ok(())
     }

@@ -8,7 +8,8 @@ use super::{
     lookups::{PAWN_SHIELD_CLOSE_MASKS, PAWN_SHIELD_FAR_MASKS, SENSIBLE_KING_MASKS},
     packed_score::S,
     parameters::{
-        DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, PASSED_PAWNS, PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR,
+        DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, OPEN_FILE_BONUSES, PASSED_PAWNS,
+        PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR, SEMI_OPEN_FILE_BONUSES,
     },
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
@@ -46,6 +47,41 @@ impl<'a> EvalContext<'a> {
         });
 
         C::SIGN * PIECE_SQUARE_TABLES[piece_type.index()][square.index()]
+    }
+
+    #[inline]
+    pub fn open_file_bonus<C: ColorParam>(
+        &self,
+        piece_type: PieceType,
+        square: Square,
+        trace: &mut impl Trace,
+    ) -> S {
+        let idx = match piece_type {
+            PieceType::Rook => 0,
+            PieceType::Queen => 1,
+            PieceType::King => 2,
+            _ => return S::ZERO,
+        };
+
+        let semi_open = self.pawns.semi_open_files[C::INDEX].get(square);
+        let fully_open =
+            semi_open && self.pawns.semi_open_files[C::COLOR.flip().index()].get(square);
+
+        trace.add(|t| {
+            if fully_open {
+                t.open_file_bonuses[idx] += C::COEFF;
+            } else if semi_open {
+                t.semi_open_file_bonuses[idx] += C::COEFF;
+            }
+        });
+
+        if fully_open {
+            C::SIGN * OPEN_FILE_BONUSES[idx]
+        } else if semi_open {
+            C::SIGN * SEMI_OPEN_FILE_BONUSES[idx]
+        } else {
+            S::ZERO
+        }
     }
 
     #[inline]

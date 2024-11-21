@@ -82,6 +82,7 @@ impl<'a> EvalContext<'a> {
                 phase.apply_phase(piece);
                 score += self.material::<White>(piece.piece_type(), trace);
                 score += self.piece_square_table::<White>(piece.piece_type(), square, trace);
+                score += self.open_file_bonus::<White>(piece.piece_type(), square, trace);
             }
         }
 
@@ -90,6 +91,7 @@ impl<'a> EvalContext<'a> {
                 phase.apply_phase(piece);
                 score += self.material::<Black>(piece.piece_type(), trace);
                 score += self.piece_square_table::<Black>(piece.piece_type(), square, trace);
+                score += self.open_file_bonus::<Black>(piece.piece_type(), square, trace);
             }
         }
 
