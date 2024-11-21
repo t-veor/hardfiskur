@@ -527,3 +527,19 @@ LLR   | 2.97 (-2.94, 2.94) [0.00, 5.00]
 Games | N: 1690 W: 585 L: 425 D: 680
 Penta | [46, 152, 320, 250, 77]
 ```
+
+## 8c0ecd6 (Adaptive Aspiration Windows)
+
+-   Use adaptive aspiration windows -- lower window and reduce depth on fail
+    lows, increase window and reset depth on fail highs
+-   Some parameter tweaking on initial aspiration window size
+
+Bench = 1907036
+
+```
+Elo   | 19.47 +- 9.03 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.99 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 2948 W: 941 L: 776 D: 1231
+Penta | [80, 319, 555, 396, 124]
+```
