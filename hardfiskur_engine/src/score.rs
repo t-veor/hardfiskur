@@ -78,6 +78,18 @@ impl Score {
             self
         }
     }
+
+    pub const fn saturating_add(self, other: i32) -> Self {
+        Self(self.0.saturating_add(other))
+    }
+
+    pub const fn saturating_sub(self, other: i32) -> Self {
+        Self(self.0.saturating_sub(other))
+    }
+
+    pub const fn midpoint(self, other: Self) -> Self {
+        Self(((self.0 as i64 + other.0 as i64) >> 1) as i32)
+    }
 }
 
 impl Add for Score {

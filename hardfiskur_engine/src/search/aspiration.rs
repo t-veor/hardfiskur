@@ -13,22 +13,33 @@ impl<'a> SearchContext<'a> {
         }
 
         let mut delta = ASPIRATION_INITIAL_WINDOW;
-        loop {
-            let alpha = Score(prev_score.0.saturating_sub(delta)).max(-Score::INF);
-            let beta = Score(prev_score.0.saturating_add(delta)).min(Score::INF);
+        let mut alpha = prev_score.saturating_sub(delta).max(-Score::INF);
+        let mut beta = prev_score.saturating_add(delta).min(Score::INF);
+        let mut reduction = 0;
 
-            let score = self.negamax::<Root>(depth, 0, alpha, beta);
+        loop {
+            let score = self.negamax::<Root>((depth - reduction).max(1), 0, alpha, beta);
 
             // Give up if time is up
             if self.should_exit_search() {
                 return Score(0);
             }
 
-            if alpha < score && score < beta {
+            if score <= alpha {
+                // Fail-low, grow the window downwards.
+                alpha = alpha.saturating_sub(delta).max(-Score::INF);
+                beta = alpha.midpoint(beta);
+                reduction = 0;
+            } else if score >= beta {
+                // Fail-high, grow the window upwards
+                beta = beta.saturating_add(delta).min(Score::INF);
+                reduction += 1;
+            } else {
+                // Window passed
                 return score;
             }
 
-            // Window failed, double window size and re-search
+            // double window size and re-search
             delta = delta.saturating_mul(2);
         }
     }
