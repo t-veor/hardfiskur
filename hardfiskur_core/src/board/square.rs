@@ -326,6 +326,10 @@ impl Square {
         // (56).
         Self(self.0 ^ 0b111000)
     }
+
+    pub const fn vertical_distance(&self, other: Square) -> u8 {
+        self.rank().abs_diff(other.rank())
+    }
 }
 
 impl Display for Square {

@@ -5,10 +5,13 @@ use crate::evaluation::parameters::{
 };
 
 use super::{
-    lookups::{PAWN_SHIELD_CLOSE_MASKS, PAWN_SHIELD_FAR_MASKS, SENSIBLE_KING_MASKS},
+    lookups::{
+        PASSED_PAWN_MASKS, PAWN_SHIELD_CLOSE_MASKS, PAWN_SHIELD_FAR_MASKS, SENSIBLE_KING_MASKS,
+    },
     packed_score::S,
     parameters::{
         DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, PASSED_PAWNS, PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR,
+        PAWN_STORM,
     },
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
@@ -168,5 +171,29 @@ impl<'a> EvalContext<'a> {
         } else {
             S::ZERO
         }
+    }
+
+    pub fn pawn_storm<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let opponent_idx = C::COLOR.flip().index();
+        let opponent_king = self.kings[opponent_idx];
+
+        // Use the passed pawn masks to get the pawns in front of the opponent king.
+        let pawn_storm_mask = PASSED_PAWN_MASKS[opponent_idx][opponent_king.index()];
+        let storming_pawns = pawn_storm_mask & self.pawns.pawns[C::INDEX];
+
+        let mut total = S::ZERO;
+
+        for pawn in storming_pawns.squares() {
+            let distance_idx = match pawn.vertical_distance(opponent_king) {
+                x @ 1..=4 => (x - 1) as usize,
+                _ => continue,
+            };
+
+            trace.add(|t| t.pawn_storm[distance_idx] += C::COEFF);
+
+            total += C::SIGN * PAWN_STORM[distance_idx];
+        }
+
+        total
     }
 }

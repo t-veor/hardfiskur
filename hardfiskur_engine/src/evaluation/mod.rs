@@ -120,6 +120,10 @@ impl<'a> EvalContext<'a> {
         score += self.pawn_shield::<White>(trace);
         score += self.pawn_shield::<Black>(trace);
 
+        // Pawn storm
+        score += self.pawn_storm::<White>(trace);
+        score += self.pawn_storm::<Black>(trace);
+
         (Score(phase.taper_packed(score)), phase)
     }
 }
