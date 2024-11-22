@@ -557,5 +557,18 @@ SPRT  | 10.0+0.10s Threads=1 Hash=32MB
 LLR   | 2.95 (-2.94, 2.94) [0.00, 5.00]
 Games | N: 1980 W: 690 L: 530 D: 760
 Penta | [50, 201, 377, 263, 99]
-http://raspberrypi:8000/test/18/
+```
+
+## 7991a2a (Additional Pawn Evaluation)
+
+-   Added protected and phalanx pawn evaluation terms
+
+Bench = 1674830
+
+```
+Elo   | 18.26 +- 8.71 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.95 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 3066 W: 982 L: 821 D: 1263
+Penta | [84, 320, 598, 413, 118]
 ```
