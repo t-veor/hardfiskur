@@ -110,3 +110,6 @@ pub const SEMI_OPEN_FILE_BONUSES: [S; 3] = [
 pub const OPEN_FILE_BONUSES: [S; 3] = [
     s!(44,11), s!(-19,37), s!(-102,0), 
 ];
+
+pub const KNIGHT_OUTPOSTS: S = s!(0);
+pub const BISHOP_OUTPOSTS: S = s!(0);

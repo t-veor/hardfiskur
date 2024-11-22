@@ -44,6 +44,9 @@ pub struct EvalTrace {
 
     pub semi_open_file_bonuses: [i16; 3],
     pub open_file_bonuses: [i16; 3],
+
+    pub knight_outposts: i16,
+    pub bishop_outposts: i16,
 }
 
 impl EvalTrace {
@@ -92,6 +95,9 @@ pub struct EvalParameters {
 
     pub semi_open_file_bonuses: [Parameter; 3],
     pub open_file_bonuses: [Parameter; 3],
+
+    pub knight_outposts: Parameter,
+    pub bishop_outposts: Parameter,
 }
 
 impl EvalParameters {
@@ -227,6 +233,9 @@ impl Default for EvalParameters {
 
             semi_open_file_bonuses: convert_packed_score_array(SEMI_OPEN_FILE_BONUSES),
             open_file_bonuses: convert_packed_score_array(OPEN_FILE_BONUSES),
+
+            knight_outposts: KNIGHT_OUTPOSTS.into(),
+            bishop_outposts: BISHOP_OUTPOSTS.into(),
         }
     }
 }
@@ -286,6 +295,10 @@ impl Display for EvalParameters {
             None,
         )?;
         Self::fmt_array(f, "OPEN_FILE_BONUSES", &self.open_file_bonuses, None)?;
+        Self::writeln_if_pretty(f)?;
+
+        Self::fmt_single(f, "KNIGHT_OUTPOSTS", self.knight_outposts, None)?;
+        Self::fmt_single(f, "BISHOP_OUTPOSTS", self.bishop_outposts, None)?;
         Self::writeln_if_pretty(f)?;
 
         Ok(())

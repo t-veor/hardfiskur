@@ -8,8 +8,9 @@ use super::{
     lookups::{PAWN_SHIELD_CLOSE_MASKS, PAWN_SHIELD_FAR_MASKS, SENSIBLE_KING_MASKS},
     packed_score::S,
     parameters::{
-        DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, OPEN_FILE_BONUSES, PASSED_PAWNS,
-        PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR, PHALANX_PAWNS, PROTECTED_PAWNS, SEMI_OPEN_FILE_BONUSES,
+        BISHOP_OUTPOSTS, DOUBLED_PAWNS, ISOLATED_PAWNS, KNIGHT_OUTPOSTS, MATERIAL,
+        OPEN_FILE_BONUSES, PASSED_PAWNS, PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR, PHALANX_PAWNS,
+        PROTECTED_PAWNS, SEMI_OPEN_FILE_BONUSES,
     },
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
@@ -223,5 +224,25 @@ impl<'a> EvalContext<'a> {
         } else {
             S::ZERO
         }
+    }
+
+    pub fn knight_outposts<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let knights_in_outposts = self.pawns.outposts[C::INDEX]
+            & self.board.get_bitboard_for_piece(Piece::knight(C::COLOR));
+        let count = knights_in_outposts.pop_count() as i32;
+
+        trace.add(|t| t.knight_outposts += C::COEFF * count as i16);
+
+        C::SIGN * KNIGHT_OUTPOSTS * count
+    }
+
+    pub fn bishop_outposts<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let bishops_in_outposts = self.pawns.outposts[C::INDEX]
+            & self.board.get_bitboard_for_piece(Piece::bishop(C::COLOR));
+        let count = bishops_in_outposts.pop_count() as i32;
+
+        trace.add(|t| t.bishop_outposts += C::COEFF * count as i16);
+
+        C::SIGN * BISHOP_OUTPOSTS * count
     }
 }

@@ -130,6 +130,12 @@ impl<'a> EvalContext<'a> {
         score += self.pawn_shield::<White>(trace);
         score += self.pawn_shield::<Black>(trace);
 
+        // Outposts
+        score += self.knight_outposts::<White>(trace);
+        score += self.knight_outposts::<Black>(trace);
+        score += self.bishop_outposts::<White>(trace);
+        score += self.bishop_outposts::<Black>(trace);
+
         (Score(phase.taper_packed(score)), phase)
     }
 }
