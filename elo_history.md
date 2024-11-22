@@ -588,3 +588,17 @@ LLR   | 2.95 (-2.94, 2.94) [0.00, 5.00]
 Games | N: 2524 W: 814 L: 653 D: 1057
 Penta | [67, 264, 484, 335, 112]
 ```
+
+## 079a567 (Outpost Evaluation)
+
+-   Apply bonus to knights and bishops in outposts
+
+Bench = 1558639
+
+```
+Elo   | 8.11 +- 5.87 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.51 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 6816 W: 2086 L: 1927 D: 2803
+Penta | [195, 806, 1308, 843, 256]
+```
