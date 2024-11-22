@@ -47,6 +47,8 @@ pub struct EvalTrace {
 
     pub knight_outposts: i16,
     pub bishop_outposts: i16,
+
+    pub king_zone_attacks: [i16; 6],
 }
 
 impl EvalTrace {
@@ -98,6 +100,8 @@ pub struct EvalParameters {
 
     pub knight_outposts: Parameter,
     pub bishop_outposts: Parameter,
+
+    pub king_zone_attacks: [Parameter; 6],
 }
 
 impl EvalParameters {
@@ -236,6 +240,8 @@ impl Default for EvalParameters {
 
             knight_outposts: KNIGHT_OUTPOSTS.into(),
             bishop_outposts: BISHOP_OUTPOSTS.into(),
+
+            king_zone_attacks: convert_packed_score_array(KING_ZONE_ATTACKS),
         }
     }
 }
@@ -299,6 +305,9 @@ impl Display for EvalParameters {
 
         Self::fmt_single(f, "KNIGHT_OUTPOSTS", self.knight_outposts, None)?;
         Self::fmt_single(f, "BISHOP_OUTPOSTS", self.bishop_outposts, None)?;
+        Self::writeln_if_pretty(f)?;
+
+        Self::fmt_array(f, "KING_ZONE_ATTACKS", &self.king_zone_attacks, None)?;
         Self::writeln_if_pretty(f)?;
 
         Ok(())

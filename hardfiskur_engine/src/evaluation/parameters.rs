@@ -114,3 +114,4 @@ pub const OPEN_FILE_BONUSES: [S; 3] = [
 pub const KNIGHT_OUTPOSTS: S = s!(48,27);
 pub const BISHOP_OUTPOSTS: S = s!(57,-3);
 
+pub const KING_ZONE_ATTACKS: [S; 6] = [s!(0); 6];

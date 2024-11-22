@@ -1,17 +1,9 @@
 use hardfiskur_core::board::{Bitboard, Color, Piece, PieceType, Square};
 
-use crate::evaluation::parameters::{
-    BISHOP_MOBILITY, KNIGHT_MOBILITY, PIECE_SQUARE_TABLES, QUEEN_MOBILITY, ROOK_MOBILITY,
-};
-
 use super::{
     lookups::{PAWN_SHIELD_CLOSE_MASKS, PAWN_SHIELD_FAR_MASKS, SENSIBLE_KING_MASKS},
     packed_score::S,
-    parameters::{
-        BISHOP_OUTPOSTS, DOUBLED_PAWNS, ISOLATED_PAWNS, KNIGHT_OUTPOSTS, MATERIAL,
-        OPEN_FILE_BONUSES, PASSED_PAWNS, PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR, PHALANX_PAWNS,
-        PROTECTED_PAWNS, SEMI_OPEN_FILE_BONUSES,
-    },
+    parameters::*,
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
     EvalContext,
@@ -86,11 +78,14 @@ impl<'a> EvalContext<'a> {
     }
 
     #[inline]
-    pub fn mobility<C: ColorParam, P: PieceTypeParam>(&self, trace: &mut impl Trace) -> S {
+    pub fn mobility_and_king_zone_attacks<C: ColorParam, P: PieceTypeParam>(
+        &self,
+        trace: &mut impl Trace,
+    ) -> S {
         const {
             assert!(
                 !matches!(P::PIECE_TYPE, PieceType::Pawn | PieceType::King),
-                "Can't call mobility() with Pawn or King!"
+                "Can't call mobility_and_king_zone_attacks() with Pawn or King!"
             );
         }
 
@@ -107,14 +102,16 @@ impl<'a> EvalContext<'a> {
             .get_bitboard_for_piece(Piece::new(C::COLOR, P::PIECE_TYPE));
 
         for square in piece_bb.squares() {
-            let mobility_bb = match P::PIECE_TYPE {
+            let attack_bb = match P::PIECE_TYPE {
                 PieceType::Knight => self.lookups.get_knight_moves(square),
                 PieceType::Bishop => self.lookups.get_bishop_attacks(self.occupied, square),
                 PieceType::Rook => self.lookups.get_rook_attacks(self.occupied, square),
                 PieceType::Queen => self.lookups.get_queen_attacks(self.occupied, square),
                 PieceType::Pawn | PieceType::King => unreachable!(),
-            } & mobility_squares;
+            };
 
+            // Mobility
+            let mobility_bb = attack_bb & mobility_squares;
             let mobility_count = mobility_bb.pop_count() as usize;
 
             trace.add(|t| match P::PIECE_TYPE {
@@ -133,6 +130,15 @@ impl<'a> EvalContext<'a> {
                     PieceType::Queen => QUEEN_MOBILITY[mobility_count],
                     PieceType::Pawn | PieceType::King => unreachable!(),
                 };
+
+            // King zone attacks
+            let king_zone_attacks = attack_bb & self.king_zones[C::Flip::INDEX];
+            let king_zone_attack_count = king_zone_attacks.pop_count() as i32;
+
+            trace
+                .add(|t| t.king_zone_attacks[P::INDEX] += C::COEFF * king_zone_attack_count as i16);
+
+            total += C::SIGN * KING_ZONE_ATTACKS[P::INDEX];
         }
 
         total

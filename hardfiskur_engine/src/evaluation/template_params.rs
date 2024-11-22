@@ -8,6 +8,8 @@ pub trait ColorParam: sealed::Sealed {
 
     const SIGN: i32 = if Self::IS_WHITE { 1 } else { -1 };
     const COEFF: i16 = Self::SIGN as i16;
+
+    type Flip: ColorParam;
 }
 
 pub struct White;
@@ -15,10 +17,12 @@ pub struct Black;
 
 impl ColorParam for White {
     const COLOR: Color = Color::White;
+    type Flip = Black;
 }
 
 impl ColorParam for Black {
     const COLOR: Color = Color::Black;
+    type Flip = White;
 }
 
 pub trait PieceTypeParam: sealed::Sealed {

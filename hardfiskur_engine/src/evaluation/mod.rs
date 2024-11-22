@@ -51,10 +51,12 @@ pub struct EvalContext<'a> {
 
     pawns: PawnStructure,
     kings: [Square; 2],
+    king_zones: [Bitboard; 2],
 }
 
 impl<'a> EvalContext<'a> {
     pub fn new(board: &'a Board) -> Self {
+        let lookups = Lookups::get_instance();
         let occupied = board.get_occupied_bitboard();
 
         let pawns = PawnStructure::new(board);
@@ -62,14 +64,22 @@ impl<'a> EvalContext<'a> {
         let white_king = board.get_king(Color::White);
         let black_king = board.get_king(Color::Black);
 
+        // King zone is defined to be the 3x4 area of the king -- the 3x3 area
+        // around the king, plus 3 additional tiles in the forward direction.
+        let mut white_king_zone = lookups.get_king_moves(white_king);
+        white_king_zone |= white_king_zone.step_north();
+        let mut black_king_zone = lookups.get_king_moves(black_king);
+        black_king_zone |= black_king_zone.step_south();
+
         Self {
             board,
-            lookups: Lookups::get_instance(),
+            lookups,
 
             occupied,
 
             pawns,
             kings: [white_king, black_king],
+            king_zones: [white_king_zone, black_king_zone],
         }
     }
 
@@ -96,15 +106,15 @@ impl<'a> EvalContext<'a> {
         }
 
         // Mobility
-        score += self.mobility::<White, Knight>(trace);
-        score += self.mobility::<White, Bishop>(trace);
-        score += self.mobility::<White, Rook>(trace);
-        score += self.mobility::<White, Queen>(trace);
+        score += self.mobility_and_king_zone_attacks::<White, Knight>(trace);
+        score += self.mobility_and_king_zone_attacks::<White, Bishop>(trace);
+        score += self.mobility_and_king_zone_attacks::<White, Rook>(trace);
+        score += self.mobility_and_king_zone_attacks::<White, Queen>(trace);
 
-        score += self.mobility::<Black, Knight>(trace);
-        score += self.mobility::<Black, Bishop>(trace);
-        score += self.mobility::<Black, Rook>(trace);
-        score += self.mobility::<Black, Queen>(trace);
+        score += self.mobility_and_king_zone_attacks::<Black, Knight>(trace);
+        score += self.mobility_and_king_zone_attacks::<Black, Bishop>(trace);
+        score += self.mobility_and_king_zone_attacks::<Black, Rook>(trace);
+        score += self.mobility_and_king_zone_attacks::<Black, Queen>(trace);
 
         // Passed pawns
         score += self.passed_pawns::<White>(trace);
