@@ -572,3 +572,19 @@ LLR   | 2.95 (-2.94, 2.94) [0.00, 5.00]
 Games | N: 3066 W: 982 L: 821 D: 1263
 Penta | [84, 320, 598, 413, 118]
 ```
+
+## 328fcaa (Fix bug in mobility eval)
+
+-   Found a bug for mobility eval, where when calculating black pawn attacks
+    (used for calculating safe mobility for white), white pawn attacks were
+    used...
+
+Bench = 1519426
+
+```
+Elo   | 22.19 +- 9.77 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.95 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 2524 W: 814 L: 653 D: 1057
+Penta | [67, 264, 484, 335, 112]
+```
