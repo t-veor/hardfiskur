@@ -98,6 +98,8 @@ pub const PASSED_PAWNS: [S; 64] = [
 
 pub const DOUBLED_PAWNS: S = s!(  -9, -30);
 pub const ISOLATED_PAWNS: S = s!( -20, -16);
+pub const PHALANX_PAWNS: S = s!(0);
+pub const PROTECTED_PAWNS: S = s!(0);
 
 pub const PAWN_SHIELD_CLOSE: S = s!(58,-25);
 pub const PAWN_SHIELD_FAR: S = s!(40,-10);

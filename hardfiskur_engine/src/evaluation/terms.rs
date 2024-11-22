@@ -9,7 +9,7 @@ use super::{
     packed_score::S,
     parameters::{
         DOUBLED_PAWNS, ISOLATED_PAWNS, MATERIAL, OPEN_FILE_BONUSES, PASSED_PAWNS,
-        PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR, SEMI_OPEN_FILE_BONUSES,
+        PAWN_SHIELD_CLOSE, PAWN_SHIELD_FAR, PHALANX_PAWNS, PROTECTED_PAWNS, SEMI_OPEN_FILE_BONUSES,
     },
     template_params::{ColorParam, PieceTypeParam},
     trace::Trace,
@@ -179,6 +179,25 @@ impl<'a> EvalContext<'a> {
         trace.add(|t| t.isolated_pawns += C::COEFF * isolated_count as i16);
 
         C::SIGN * isolated_count as i32 * ISOLATED_PAWNS
+    }
+
+    pub fn phalanx_pawns<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let pawns = self.pawns.pawns[C::INDEX];
+        let phalanx_pawns = pawns & (pawns.step_east() | pawns.step_west());
+        let phalanx_count = phalanx_pawns.pop_count();
+
+        trace.add(|t| t.phalanx_pawns += C::COEFF * phalanx_count as i16);
+
+        C::SIGN * phalanx_count as i32 * PHALANX_PAWNS
+    }
+
+    pub fn protected_pawns<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        let protected_pawns = self.pawns.pawns[C::INDEX] & self.pawns.pawn_attacks[C::INDEX];
+        let protected_count = protected_pawns.pop_count();
+
+        trace.add(|t| t.protected_pawns += C::COEFF * protected_count as i16);
+
+        C::SIGN * protected_count as i32 * PROTECTED_PAWNS
     }
 
     pub fn pawn_shield<C: ColorParam>(&self, trace: &mut impl Trace) -> S {

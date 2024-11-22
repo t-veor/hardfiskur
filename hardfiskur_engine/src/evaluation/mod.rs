@@ -114,9 +114,17 @@ impl<'a> EvalContext<'a> {
         score += self.doubled_pawns::<White>(trace);
         score += self.doubled_pawns::<Black>(trace);
 
-        // Isoalted pawns
+        // Isolated pawns
         score += self.isolated_pawns::<White>(trace);
         score += self.isolated_pawns::<Black>(trace);
+
+        // Phalanx pawns
+        score += self.phalanx_pawns::<White>(trace);
+        score += self.phalanx_pawns::<Black>(trace);
+
+        // Protected pawns
+        score += self.protected_pawns::<White>(trace);
+        score += self.protected_pawns::<Black>(trace);
 
         // Pawn shield
         score += self.pawn_shield::<White>(trace);
