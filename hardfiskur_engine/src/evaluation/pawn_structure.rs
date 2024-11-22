@@ -19,7 +19,7 @@ impl PawnStructure {
         let black_pawns = board.repr()[Piece::BLACK_PAWN];
 
         let white_pawn_attacks = move_gen::white_pawn_attacks(white_pawns);
-        let black_pawn_attacks = move_gen::white_pawn_attacks(black_pawns);
+        let black_pawn_attacks = move_gen::black_pawn_attacks(black_pawns);
 
         let white_passed_pawns = white_pawns
             .squares()
