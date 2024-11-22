@@ -543,3 +543,19 @@ LLR   | 2.99 (-2.94, 2.94) [0.00, 5.00]
 Games | N: 2948 W: 941 L: 776 D: 1231
 Penta | [80, 319, 555, 396, 124]
 ```
+
+## 2516f32 (Open Files)
+
+-   Added semi- and fully open file bonuses (or maluses) for rooks, queens, and
+    kings
+
+Bench = 1519323
+
+```
+Elo   | 28.14 +- 11.17 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.95 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 1980 W: 690 L: 530 D: 760
+Penta | [50, 201, 377, 263, 99]
+http://raspberrypi:8000/test/18/
+```
