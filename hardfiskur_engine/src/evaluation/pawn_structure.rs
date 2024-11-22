@@ -11,6 +11,7 @@ pub struct PawnStructure {
     pub pawn_attacks: [Bitboard; 2],
     pub passed_pawns: [Bitboard; 2],
     pub semi_open_files: [Bitboard; 2],
+    pub outposts: [Bitboard; 2],
 }
 
 impl PawnStructure {
@@ -40,11 +41,15 @@ impl PawnStructure {
             .filter(|&file| (file & black_pawns).is_empty())
             .fold(Bitboard::EMPTY, |acc, bb| acc | bb);
 
+        let white_outposts = (white_pawn_attacks).without(black_pawn_attacks.fill_south());
+        let black_outposts = black_pawn_attacks.without(white_pawn_attacks.fill_north());
+
         Self {
             pawns: [white_pawns, black_pawns],
             pawn_attacks: [white_pawn_attacks, black_pawn_attacks],
             passed_pawns: [white_passed_pawns, black_passed_pawns],
             semi_open_files: [white_semi_open_files, black_semi_open_files],
+            outposts: [white_outposts, black_outposts],
         }
     }
 
@@ -173,6 +178,46 @@ mod test {
                 . . # # . . # .
                 . . # # . . # .
                 . . # # . . # .
+            "
+            .parse()
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn outposts() {
+        let board =
+            Board::try_parse_fen("4k3/8/p4p1p/P1p1p1p1/1p6/1P3P1P/8/4K3 w - - 0 1").unwrap();
+        let pawns = PawnStructure::new(&board);
+
+        assert_eq!(
+            pawns.outposts[0],
+            "
+                . . . . . . . .
+                . . . . . . . .
+                . # . . . . . .
+                . . . . . . . .
+                # . # . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+            "
+            .parse()
+            .unwrap()
+        );
+
+        assert_eq!(
+            pawns.outposts[1],
+            "
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . # . . . . . .
+                . # . # . # . #
+                # . # . . . . .
+                . . . . . . . .
+                . . . . . . . .
+
             "
             .parse()
             .unwrap()

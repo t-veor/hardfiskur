@@ -159,6 +159,26 @@ impl Bitboard {
         Self((self.0 << 7) & !Self::H_FILE.0)
     }
 
+    // Returns all bits in this bitboard and above (higher in rank) bits in this
+    // bitboard.
+    pub const fn fill_north(self) -> Self {
+        let mut tmp = self.0;
+        tmp |= tmp << 8;
+        tmp |= tmp << 16;
+        tmp |= tmp << 32;
+        Self(tmp)
+    }
+
+    // Returns all bits in this bitboard and below (lower in rank) bits in this
+    // bitboard.
+    pub const fn fill_south(self) -> Self {
+        let mut tmp = self.0;
+        tmp |= tmp >> 8;
+        tmp |= tmp >> 16;
+        tmp |= tmp >> 32;
+        Self(tmp)
+    }
+
     /// Counts the number of bits set in this bitboard.
     #[inline]
     pub const fn pop_count(self) -> u32 {
@@ -648,6 +668,70 @@ mod test {
         assert_eq!(board.step_south_west(), b(2, 2));
         assert_eq!(board.step_west(), b(3, 2) | b(0, 6));
         assert_eq!(board.step_north_west(), b(4, 2) | b(1, 6));
+    }
+
+    #[test]
+    fn bitboard_fill_north() {
+        let b = Bitboard::from_str(
+            "
+            . . . . . . . #
+            . . . . . . . .
+            . . . . . # . .
+            . . . . . . . .
+            # . . . . . # .
+            . . . . . . . .
+            . . . # . . . .
+            . . # . . . . .
+        ",
+        )
+        .unwrap();
+        let expected = Bitboard::from_str(
+            "
+            # . # # . # # #
+            # . # # . # # .
+            # . # # . # # .
+            # . # # . . # .
+            # . # # . . # .
+            . . # # . . . .
+            . . # # . . . .
+            . . # . . . . .
+        ",
+        )
+        .unwrap();
+
+        assert_eq!(b.fill_north(), expected);
+    }
+
+    #[test]
+    fn bitboard_fill_south() {
+        let b = Bitboard::from_str(
+            "
+            . . . . . . . #
+            . . . . . . . .
+            . . . . . # . .
+            . . . . . . . .
+            # . . . . . # .
+            . . . . . . . .
+            . . . # . . . .
+            . . # . . . . .
+        ",
+        )
+        .unwrap();
+        let expected = Bitboard::from_str(
+            "
+            . . . . . . . #
+            . . . . . . . #
+            . . . . . # . #
+            . . . . . # . #
+            # . . . . # # #
+            # . . . . # # #
+            # . . # . # # #
+            # . # # . # # #
+        ",
+        )
+        .unwrap();
+
+        assert_eq!(b.fill_south(), expected);
     }
 
     #[test]
