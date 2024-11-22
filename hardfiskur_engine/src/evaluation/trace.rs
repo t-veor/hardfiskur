@@ -33,6 +33,8 @@ pub struct EvalTrace {
     pub rook_mobility: [i16; 15],
     pub queen_mobility: [i16; 28],
 
+    pub virtual_mobility: [i16; 28],
+
     pub passed_pawns: [i16; 64],
     pub doubled_pawns: i16,
     pub isolated_pawns: i16,
@@ -85,6 +87,8 @@ pub struct EvalParameters {
     pub bishop_mobility: [Parameter; 14],
     pub rook_mobility: [Parameter; 15],
     pub queen_mobility: [Parameter; 28],
+
+    pub virtual_mobility: [Parameter; 28],
 
     pub passed_pawns: [Parameter; 64],
     pub doubled_pawns: Parameter,
@@ -226,6 +230,8 @@ impl Default for EvalParameters {
             rook_mobility: convert_packed_score_array(ROOK_MOBILITY),
             queen_mobility: convert_packed_score_array(QUEEN_MOBILITY),
 
+            virtual_mobility: convert_packed_score_array(VIRTUAL_MOBILITY),
+
             passed_pawns: convert_packed_score_array(PASSED_PAWNS),
             doubled_pawns: DOUBLED_PAWNS.into(),
             isolated_pawns: ISOLATED_PAWNS.into(),
@@ -279,6 +285,9 @@ impl Display for EvalParameters {
         Self::fmt_array(f, "BISHOP_MOBILITY", &self.bishop_mobility, None)?;
         Self::fmt_array(f, "ROOK_MOBILITY", &self.rook_mobility, None)?;
         Self::fmt_array(f, "QUEEN_MOBILITY", &self.queen_mobility, None)?;
+        Self::writeln_if_pretty(f)?;
+
+        Self::fmt_array(f, "VIRTUAL_MOBILITY", &self.virtual_mobility, None)?;
         Self::writeln_if_pretty(f)?;
 
         Self::fmt_pst(f, "PASSED_PAWNS", &self.passed_pawns, pad_size)?;

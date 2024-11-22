@@ -116,6 +116,10 @@ impl<'a> EvalContext<'a> {
         score += self.mobility_and_king_zone_attacks::<Black, Rook>(trace);
         score += self.mobility_and_king_zone_attacks::<Black, Queen>(trace);
 
+        // Virtual Mobility
+        score += self.virtual_mobility::<White>(trace);
+        score += self.virtual_mobility::<Black>(trace);
+
         // Passed pawns
         score += self.passed_pawns::<White>(trace);
         score += self.passed_pawns::<Black>(trace);

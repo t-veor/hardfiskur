@@ -144,6 +144,25 @@ impl<'a> EvalContext<'a> {
         total
     }
 
+    pub fn virtual_mobility<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
+        // Pretend the king is a queen and apply a malus based on how many
+        // squares the virtual queen can see, as an estimate of how vulnerable
+        // the king is to sliding piece attacks.
+        let king_square = self.kings[C::INDEX];
+        let occupied = self.occupied;
+        let our_pieces = self.board.get_bitboard_for_color(C::COLOR);
+
+        let virtual_queen_attacks = self
+            .lookups
+            .get_queen_attacks(occupied, king_square)
+            .without(our_pieces);
+        let virtual_mobility = virtual_queen_attacks.pop_count() as usize;
+
+        trace.add(|t| t.virtual_mobility[virtual_mobility] += C::COEFF);
+
+        C::SIGN * VIRTUAL_MOBILITY[virtual_mobility]
+    }
+
     #[inline]
     pub fn passed_pawns<C: ColorParam>(&self, trace: &mut impl Trace) -> S {
         let mut total = S::ZERO;
