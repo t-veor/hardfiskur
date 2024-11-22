@@ -92,6 +92,11 @@ pub const PAWN_SHIELD_FAR_MASKS: [[Bitboard; 2]; 2] = [
     ],
 ];
 
+pub const VALID_OUTPOST_SQUARES: [Bitboard; 2] = [
+    Bitboard::RANK_4.or(Bitboard::RANK_5).or(Bitboard::RANK_6),
+    Bitboard::RANK_3.or(Bitboard::RANK_4).or(Bitboard::RANK_5),
+];
+
 #[cfg(test)]
 mod test {
     use super::*;

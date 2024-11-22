@@ -1,9 +1,12 @@
 use hardfiskur_core::{
-    board::{Bitboard, Board, Piece},
+    board::{Bitboard, Board, Color, Piece},
     move_gen,
 };
 
-use super::{lookups::PASSED_PAWN_MASKS, template_params::ColorParam};
+use super::{
+    lookups::{PASSED_PAWN_MASKS, VALID_OUTPOST_SQUARES},
+    template_params::ColorParam,
+};
 
 #[derive(Debug, Clone)]
 pub struct PawnStructure {
@@ -41,8 +44,10 @@ impl PawnStructure {
             .filter(|&file| (file & black_pawns).is_empty())
             .fold(Bitboard::EMPTY, |acc, bb| acc | bb);
 
-        let white_outposts = (white_pawn_attacks).without(black_pawn_attacks.fill_south());
-        let black_outposts = black_pawn_attacks.without(white_pawn_attacks.fill_north());
+        let white_outposts = (white_pawn_attacks).without(black_pawn_attacks.fill_south())
+            & VALID_OUTPOST_SQUARES[Color::White.index()];
+        let black_outposts = black_pawn_attacks.without(white_pawn_attacks.fill_north())
+            & VALID_OUTPOST_SQUARES[Color::Black.index()];
 
         Self {
             pawns: [white_pawns, black_pawns],
@@ -218,6 +223,43 @@ mod test {
                 . . . . . . . .
                 . . . . . . . .
 
+            "
+            .parse()
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn outposts_only_on_ranks_456() {
+        let board = Board::try_parse_fen("4k3/6p1/4Pp2/4p3/3P4/2Pp4/1P6/4K3 w - - 0 1").unwrap();
+        let pawns = PawnStructure::new(&board);
+
+        assert_eq!(
+            pawns.outposts[0],
+            "
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . # . . . . .
+                . # . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+            "
+            .parse()
+            .unwrap()
+        );
+        assert_eq!(
+            pawns.outposts[1],
+            "
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . # .
+                . . . . . # . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
             "
             .parse()
             .unwrap()
