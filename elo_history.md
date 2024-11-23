@@ -602,3 +602,17 @@ LLR   | 2.51 (-2.94, 2.94) [0.00, 5.00]
 Games | N: 6816 W: 2086 L: 1927 D: 2803
 Penta | [195, 806, 1308, 843, 256]
 ```
+
+## 7ac3f8b (King Zone Attacks Evaluation)
+
+-   Apply bonus to pieces attacking the opponent king zone
+
+Bench = 1488160
+
+```
+Elo   | 33.45 +- 11.80 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.99 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 1594 W: 529 L: 376 D: 689
+Penta | [31, 150, 318, 231, 67]
+```
