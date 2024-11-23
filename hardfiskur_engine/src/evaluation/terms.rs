@@ -138,7 +138,7 @@ impl<'a> EvalContext<'a> {
             trace
                 .add(|t| t.king_zone_attacks[P::INDEX] += C::COEFF * king_zone_attack_count as i16);
 
-            total += C::SIGN * KING_ZONE_ATTACKS[P::INDEX];
+            total += C::SIGN * KING_ZONE_ATTACKS[P::INDEX] * king_zone_attack_count;
         }
 
         total
