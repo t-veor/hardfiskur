@@ -616,3 +616,19 @@ LLR   | 2.99 (-2.94, 2.94) [0.00, 5.00]
 Games | N: 1594 W: 529 L: 376 D: 689
 Penta | [31, 150, 318, 231, 67]
 ```
+
+## 90b8f4a (Virtual Mobility Evaluation)
+
+-   Add evaluation term for virtual mobility -- pretend that the king is a queen
+    and apply a bonus/penalty based on how many squares the "virtual" queen can
+    see.
+
+Bench = 1693822
+
+```
+Elo   | 16.03 +- 8.04 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.97 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 3492 W: 1065 L: 904 D: 1523
+Penta | [75, 408, 683, 441, 139]
+```
