@@ -179,8 +179,8 @@ impl TranspositionTable {
             use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
 
             let index = self.index(key);
-            let ptr = self.entries.as_ptr().add(index).cast();
-            _mm_prefetch::<_MM_HINT_T0>(ptr);
+            let ptr = self.entries.as_ptr().add(index);
+            _mm_prefetch::<_MM_HINT_T0>(ptr.cast());
         }
 
         #[cfg(not(target_arch = "x86_64"))]
