@@ -59,6 +59,8 @@ impl<'a> SearchContext<'a> {
                 continue;
             }
 
+            self.tt.prefetch(self.board.zobrist_hash_after(Some(m)));
+
             self.board.push_move_unchecked(m);
 
             let eval = -self.quiescence(ply_from_root + 1, -beta, -alpha);

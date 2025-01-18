@@ -173,6 +173,20 @@ impl TranspositionTable {
         self.entries[index] = entry;
     }
 
+    pub fn prefetch(&self, key: ZobristHash) {
+        #[cfg(target_arch = "x86_64")]
+        unsafe {
+            use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+
+            let index = self.index(key);
+            let ptr = self.entries.as_ptr().add(index).cast();
+            _mm_prefetch::<_MM_HINT_T0>(ptr);
+        }
+
+        #[cfg(not(target_arch = "x86_64"))]
+        let _ = key;
+    }
+
     pub fn resize(&mut self, max_size_in_mb: NonZeroUsize) {
         self.num_entries = Self::get_num_entries(max_size_in_mb);
         self.clear();

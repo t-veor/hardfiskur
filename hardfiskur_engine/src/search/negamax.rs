@@ -131,6 +131,8 @@ impl<'a> SearchContext<'a> {
 
             let prev_total_nodes = self.stats.nodes_searched;
 
+            self.tt.prefetch(self.board.zobrist_hash_after(Some(m)));
+
             self.board.push_move_unchecked(m);
             moves_played += 1;
 
