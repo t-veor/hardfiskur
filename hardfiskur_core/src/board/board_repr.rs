@@ -35,8 +35,6 @@ pub struct BoardRepr {
     // 8. All black pieces
     // 9-14: Black piece boards (see above)
     boards: [Bitboard; 15],
-
-    zobrist_hash: ZobristHash,
 }
 
 impl BoardRepr {
@@ -60,8 +58,6 @@ impl BoardRepr {
                 let square = Square::from_index_unchecked(i);
                 repr[piece].set(square);
                 repr[piece.color()].set(square);
-
-                repr.zobrist_hash.toggle_piece(piece, square);
             }
         }
 
@@ -170,9 +166,6 @@ impl BoardRepr {
         self[piece] ^= from_to_bb;
         self[color] ^= from_to_bb;
 
-        self.zobrist_hash.toggle_piece(piece, from);
-        self.zobrist_hash.toggle_piece(piece, to);
-
         if the_move.is_en_passant() {
             let removed_pawn_square = the_move.en_passant_square();
             let removed_pawn_bb = Bitboard::from_square(removed_pawn_square);
@@ -181,23 +174,15 @@ impl BoardRepr {
 
             self[opponent_pawn] ^= removed_pawn_bb;
             self[color.flip()] ^= removed_pawn_bb;
-
-            self.zobrist_hash
-                .toggle_piece(opponent_pawn, removed_pawn_square);
         } else {
             if let Some(capture) = the_move.captured_piece() {
                 self[capture] ^= to_bb;
                 self[capture.color()] ^= to_bb;
-
-                self.zobrist_hash.toggle_piece(capture, to);
             }
 
             if let Some(promote) = the_move.promotion() {
                 self[piece] ^= to_bb;
                 self[promote] ^= to_bb;
-
-                self.zobrist_hash.toggle_piece(piece, to);
-                self.zobrist_hash.toggle_piece(promote, to);
             }
 
             if the_move.is_castle() {
@@ -210,9 +195,6 @@ impl BoardRepr {
 
                 self[rook] ^= rook_from_to_bb;
                 self[color] ^= rook_from_to_bb;
-
-                self.zobrist_hash.toggle_piece(rook, rook_from);
-                self.zobrist_hash.toggle_piece(rook, rook_to);
             }
         }
     }
@@ -222,8 +204,52 @@ impl BoardRepr {
     ///
     /// Does not include hash contributions from the player to move, castling
     /// rights, or the en passant square.
-    pub fn zobrist_hash(&self) -> ZobristHash {
-        self.zobrist_hash
+    pub fn recalc_zobrist_hash(&self) -> ZobristHash {
+        let mut hash = ZobristHash::default();
+
+        for (piece, square) in self.pieces() {
+            hash.toggle_piece(piece, square);
+        }
+
+        hash
+    }
+
+    pub fn zobrist_diff_for(the_move: Move) -> ZobristHash {
+        let mut hash = ZobristHash::default();
+
+        let from = the_move.from_square();
+        let to = the_move.to_square();
+        let piece = the_move.piece();
+        let color = piece.color();
+
+        hash.toggle_piece(piece, from);
+        hash.toggle_piece(piece, to);
+
+        if the_move.is_en_passant() {
+            let removed_pawn_square = the_move.en_passant_square();
+            let opponent_pawn = Piece::pawn(color.flip());
+
+            hash.toggle_piece(opponent_pawn, removed_pawn_square);
+        } else {
+            if let Some(capture) = the_move.captured_piece() {
+                hash.toggle_piece(capture, to);
+            }
+
+            if let Some(promote) = the_move.promotion() {
+                hash.toggle_piece(piece, to);
+                hash.toggle_piece(promote, to);
+            }
+
+            if the_move.is_castle() {
+                let (rook_from, rook_to) = the_move.castling_rook_squares();
+                let rook = Piece::rook(color);
+
+                hash.toggle_piece(rook, rook_from);
+                hash.toggle_piece(rook, rook_to);
+            }
+        }
+
+        hash
     }
 }
 
@@ -388,15 +414,6 @@ impl BoardRepr {
             }
 
             if !(white_pieces & black_pieces).is_empty() {
-                return false;
-            }
-
-            let mut zobrist_hash = ZobristHash::default();
-            for (piece, square) in self.pieces() {
-                zobrist_hash.toggle_piece(piece, square);
-            }
-
-            if zobrist_hash != self.zobrist_hash {
                 return false;
             }
 

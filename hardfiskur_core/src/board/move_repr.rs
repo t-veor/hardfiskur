@@ -174,7 +174,8 @@ impl Move {
     }
 
     /// If this move is an en passant capture, returns the square where the
-    /// captured pawn was on (as it is different to )
+    /// captured pawn was on (as it is different to the square the capturing
+    /// pawn landed on).
     ///
     /// Note that this method does not actually check if this move was an en
     /// passant capture for performance reasons. The result of this method

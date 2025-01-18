@@ -106,7 +106,7 @@ impl Board {
         let board = BoardRepr::new(board);
 
         let zobrist_hash =
-            board.zobrist_hash() ^ Self::non_board_hash(to_move, castling, en_passant);
+            board.recalc_zobrist_hash() ^ Self::non_board_hash(to_move, castling, en_passant);
 
         Self {
             board,
@@ -702,6 +702,11 @@ impl Board {
     }
 
     fn make_move_unchecked(&mut self, the_move: Option<Move>) -> UnmakeData {
+        let zobrist_diff = self.zobrist_diff_for(the_move)
+            ^ the_move
+                .map(BoardRepr::zobrist_diff_for)
+                .unwrap_or_default();
+
         self.to_move = self.to_move.flip();
         if self.to_move.is_white() {
             self.fullmoves += 1;
@@ -735,8 +740,7 @@ impl Board {
         }
 
         let prev_zobrist_hash = self.zobrist_hash;
-        self.zobrist_hash = self.board.zobrist_hash()
-            ^ Self::non_board_hash(self.to_move, self.castling, self.en_passant);
+        self.zobrist_hash ^= zobrist_diff;
 
         UnmakeData {
             the_move,
@@ -745,6 +749,38 @@ impl Board {
             halfmove_clock: prev_halfmove_clock,
             zobrist_hash: prev_zobrist_hash,
         }
+    }
+
+    pub fn zobrist_diff_for(&self, the_move: Option<Move>) -> ZobristHash {
+        // Color always flips
+        let mut hash = ZobristHash::color(Color::Black);
+
+        // Note: even null moves cause en passant state to change
+        hash ^= ZobristHash::en_passant(self.en_passant);
+
+        if let Some(the_move) = the_move {
+            // Update if the move broke any castling rights
+            let new_castling = self
+                .castling
+                .difference(Self::castling_rights_removed(the_move));
+            hash ^= ZobristHash::castling(self.castling) ^ ZobristHash::castling(new_castling);
+
+            // Update with new en passant state
+            if the_move.is_double_pawn_push() {
+                // (Only the file matters)
+                hash ^= ZobristHash::en_passant(Some(the_move.from_square()));
+            }
+        }
+
+        hash
+    }
+
+    pub fn zobrist_hash_after(&self, the_move: Option<Move>) -> ZobristHash {
+        self.zobrist_hash
+            ^ self.zobrist_diff_for(the_move)
+            ^ the_move
+                .map(BoardRepr::zobrist_diff_for)
+                .unwrap_or_default()
     }
 
     fn unmake_move(&mut self, unmake_data: UnmakeData) {
@@ -806,7 +842,7 @@ impl Board {
         self.board.consistency_check();
 
         let check = || {
-            let mut zobrist_hash = self.board.zobrist_hash();
+            let mut zobrist_hash = self.board.recalc_zobrist_hash();
             zobrist_hash ^= Self::non_board_hash(self.to_move, self.castling, self.en_passant);
 
             if zobrist_hash != self.zobrist_hash {
