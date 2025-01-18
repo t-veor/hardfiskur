@@ -632,3 +632,19 @@ LLR   | 2.97 (-2.94, 2.94) [0.00, 5.00]
 Games | N: 3492 W: 1065 L: 904 D: 1523
 Penta | [75, 408, 683, 441, 139]
 ```
+
+## c42302b (Transposition Lookup in Quiesence)
+
+-   Perform transposition table lookup in quiescence, to skip re-evaluating the
+    same position, produce cutoffs, and order moves
+-   Raised default bench depth to 12
+
+Bench = 8047136
+
+```
+Elo   | 54.10 +- 15.31 (95%)
+SPRT  | 10.0+0.10s Threads=1 Hash=32MB
+LLR   | 2.95 (-2.94, 2.94) [0.00, 5.00]
+Games | N: 1010 W: 368 L: 212 D: 430
+Penta | [18, 83, 180, 173, 51]
+```
