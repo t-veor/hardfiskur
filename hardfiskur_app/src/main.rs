@@ -43,6 +43,10 @@ impl HardfiskurApp {
     }
 
     fn start_search(&mut self, ctx: &egui::Context) {
+        if !self.board_manager.playing() {
+            return;
+        }
+
         if !self.search_thread.searching() {
             let ctx = ctx.clone();
             self.search_thread.send_search_request(

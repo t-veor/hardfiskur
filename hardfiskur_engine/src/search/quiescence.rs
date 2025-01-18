@@ -1,6 +1,11 @@
 use hardfiskur_core::move_gen::{MoveGenFlags, MoveVec};
 
-use crate::{evaluation::evaluate, move_ordering::MovePicker, score::Score};
+use crate::{
+    evaluation::evaluate,
+    move_ordering::MovePicker,
+    score::Score,
+    transposition_table::{TranspositionEntry, TranspositionFlag},
+};
 
 use super::SearchContext;
 
@@ -13,8 +18,19 @@ impl<'a> SearchContext<'a> {
         self.stats.quiescence_nodes += 1;
         self.stats.sel_depth = self.stats.sel_depth.max(ply_from_root);
 
-        // Score from standing pat.
-        let mut best_score = evaluate(self.board);
+        let (mut best_score, tt_entry) = if let Some(entry) = self.tt.get(self.board.zobrist_hash())
+        {
+            if Self::should_cutoff_quiescence(&entry, alpha, beta, ply_from_root) {
+                self.stats.tt_hits += 1;
+
+                return entry.get_score(ply_from_root);
+            }
+
+            (entry.get_score(ply_from_root), Some(entry))
+        } else {
+            // Score from standing pat.
+            (evaluate(&self.board), None)
+        };
 
         if best_score >= beta {
             // Beta cutoff!
@@ -32,8 +48,10 @@ impl<'a> SearchContext<'a> {
             moves
         };
 
-        let mut ordered_moves = MovePicker::new(capturing_moves, None);
+        let mut ordered_moves =
+            MovePicker::new(capturing_moves, tt_entry.and_then(|entry| entry.best_move));
 
+        let mut best_move = None;
         while let Some(m) =
             ordered_moves.next_move(self.board, ply_from_root, &self.killers, self.history)
         {
@@ -49,6 +67,7 @@ impl<'a> SearchContext<'a> {
 
             if eval > best_score {
                 best_score = eval;
+                best_move = Some(m);
 
                 if eval >= beta {
                     // Beta cutoff!
@@ -60,6 +79,29 @@ impl<'a> SearchContext<'a> {
             alpha = alpha.max(eval);
         }
 
+        let flag = if best_score >= beta {
+            TranspositionFlag::Lowerbound
+        } else {
+            TranspositionFlag::Upperbound
+        };
+        self.tt.set(
+            self.board.zobrist_hash(),
+            TranspositionEntry::new(flag, 0, best_score, best_move, ply_from_root),
+        );
+
         best_score
+    }
+
+    fn should_cutoff_quiescence(
+        entry: &TranspositionEntry,
+        alpha: Score,
+        beta: Score,
+        ply_from_root: u16,
+    ) -> bool {
+        match entry.flag {
+            TranspositionFlag::Exact => true,
+            TranspositionFlag::Lowerbound => entry.get_score(ply_from_root) >= beta,
+            TranspositionFlag::Upperbound => entry.get_score(ply_from_root) <= alpha,
+        }
     }
 }
