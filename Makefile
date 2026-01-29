@@ -1,3 +1,5 @@
+EXE ?= hardfiskur
+
 ifeq ($(OS),Windows_NT)
 	NAME := $(EXE).exe
 else
